@@ -6,6 +6,8 @@
  * test-engine.js by exercising the actual HTTP wiring. SPOILER-SAFE output.
  */
 
+// Smoke-test the REAL pack path (dev-server otherwise defaults to the test pack).
+process.env.USE_REAL_PACK = process.env.USE_REAL_PACK || '1';
 const { start } = require('./dev-server');
 
 let pass = 0, fail = 0;

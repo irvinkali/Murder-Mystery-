@@ -16,6 +16,14 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
+// SPOILER SAFETY: local rehearsal defaults to the DUMMY test pack so the owner
+// can play without seeing the real solution. Opt into the real pack explicitly
+// with USE_REAL_PACK=1 (or by setting MYSTERY_PACK_FILE yourself).
+const TEST_PACK = path.join(__dirname, '..', 'packs', 'test', 'pack.json');
+if (!process.env.MYSTERY_PACK_FILE && !process.env.USE_REAL_PACK) {
+  process.env.MYSTERY_PACK_FILE = TEST_PACK;
+}
+
 const PUBLIC = path.join(__dirname, 'public');
 const FUNCTIONS = path.join(__dirname, 'functions');
 
@@ -99,8 +107,15 @@ module.exports = { requestHandler, start };
 
 if (require.main === module) {
   const port = Number(process.env.PORT) || 8888;
+  const usingTest = process.env.MYSTERY_PACK_FILE === TEST_PACK;
   start(port).then(() => {
-    console.log(`Mystery Engine dev server → http://localhost:${port}`);
+    if (usingTest) {
+      console.log('\x1b[42m\x1b[30m  REHEARSAL MODE — DUMMY TEST PACK (spoiler-safe, fake content)  \x1b[0m');
+      console.log('  Safe to play as a guest: no real characters, clues, or solution are loaded.');
+    } else {
+      console.log('\x1b[41m\x1b[37m  ⚠ REAL PACK LOADED — this WILL reveal the real solution. Not for players.  \x1b[0m');
+    }
+    console.log(`\nMystery Engine dev server → http://localhost:${port}`);
     console.log('  player join : /            host : /host            gallery : /gallery?party=CODE');
     console.log('  (in-memory state — restarting the server clears all games)');
   });

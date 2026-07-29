@@ -43,12 +43,24 @@ const PROP_CATALOG = {
 };
 
 let _cache = null;
+let _cacheKey = null;
 
-/** Load and decode the structured pack into memory (cached). */
+/** Which pack file to load: env override (rehearsal/test) or the real pack. */
+function packPath() {
+  return process.env.MYSTERY_PACK_FILE || PACK_B64;
+}
+
+/**
+ * Load the structured pack into memory (cached). A `.b64` file is base64; any
+ * other extension is treated as plain JSON (used by the dummy rehearsal pack).
+ */
 function loadRuntimePack() {
-  if (_cache) return _cache;
-  const b64 = fs.readFileSync(PACK_B64, 'utf8');
-  _cache = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+  const p = packPath();
+  if (_cache && _cacheKey === p) return _cache;
+  const raw = fs.readFileSync(p, 'utf8');
+  const json = p.endsWith('.b64') ? Buffer.from(raw, 'base64').toString('utf8') : raw;
+  _cache = JSON.parse(json);
+  _cacheKey = p;
   return _cache;
 }
 

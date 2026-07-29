@@ -1,0 +1,502 @@
+{
+  "schema": "mystery-engine/pack@1",
+  "id": "test-rehearsal",
+  "generatedFrom": {
+    "checksum": "TEST",
+    "byteLength": 0
+  },
+  "victim": "**Vera Victim**, 99, a fictional test-artist. Public knowledge at game start: Vera Victim died at her own test-exhibition; everyone is a suspect. This is dummy content for rehearsal.",
+  "timeline": "TEST TIMELINE: things happened at a fictional test hour. Dummy content.",
+  "cast": [
+    {
+      "id": "C1",
+      "name": "Casey One",
+      "piece": 1,
+      "brief": "TEST DOSSIER — You are Casey One, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C2",
+      "name": "Casey Two",
+      "piece": 2,
+      "brief": "TEST DOSSIER — You are Casey Two, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C3",
+      "name": "Casey Three",
+      "piece": 3,
+      "brief": "TEST DOSSIER — You are Casey Three, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C4",
+      "name": "Casey Four",
+      "piece": 4,
+      "brief": "TEST DOSSIER — You are Casey Four, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C5",
+      "name": "Casey Five",
+      "piece": 5,
+      "brief": "TEST DOSSIER — You are Casey Five, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C6",
+      "name": "Casey Six",
+      "piece": 6,
+      "brief": "TEST DOSSIER — You are Casey Six, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C7",
+      "name": "Casey Seven",
+      "piece": 7,
+      "brief": "TEST DOSSIER — You are Casey Seven, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C8",
+      "name": "Casey Eight",
+      "piece": 8,
+      "brief": "TEST DOSSIER — You are Casey Eight, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C9",
+      "name": "Casey Nine",
+      "piece": 9,
+      "brief": "TEST DOSSIER — You are Casey Nine, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    },
+    {
+      "id": "C10",
+      "name": "Casey Ten",
+      "piece": 10,
+      "brief": "TEST DOSSIER — You are Casey Ten, a guest at the test gallery. PUBLIC: you are pleasant and a little nosy. SECRET: you once \"borrowed\" a stapler and never returned it. This is dummy content for rehearsal only."
+    }
+  ],
+  "flex": [
+    {
+      "id": "F1",
+      "name": "Flex One",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex One, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F2",
+      "name": "Flex Two",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Two, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F3",
+      "name": "Flex Three",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Three, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F4",
+      "name": "Flex Four",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Four, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F5",
+      "name": "Flex Five",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Five, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F6",
+      "name": "Flex Six",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Six, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F7",
+      "name": "Flex Seven",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Seven, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F8",
+      "name": "Flex Eight",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Eight, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F9",
+      "name": "Flex Nine",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Nine, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    },
+    {
+      "id": "F10",
+      "name": "Flex Ten",
+      "piece": null,
+      "brief": "TEST FLEX DOSSIER — You are Flex Ten, an extra guest. SECRET: you are secretly bored. Dummy content for rehearsal only."
+    }
+  ],
+  "props": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7"
+  ],
+  "matrix": {
+    "P1": {
+      "A": "genuine",
+      "B": "herring",
+      "C": "genuine",
+      "D": "herring"
+    },
+    "P2": {
+      "A": "genuine",
+      "B": "herring",
+      "C": "herring",
+      "D": "genuine"
+    },
+    "P3": {
+      "A": "genuine",
+      "B": "herring",
+      "C": "herring",
+      "D": "herring"
+    },
+    "P4": {
+      "A": "keystone",
+      "B": "keystone",
+      "C": "keystone",
+      "D": "keystone"
+    },
+    "P5": {
+      "A": "herring",
+      "B": "genuine",
+      "C": "herring",
+      "D": "herring"
+    },
+    "P6": {
+      "A": "herring",
+      "B": "genuine",
+      "C": "herring",
+      "D": "genuine"
+    },
+    "P7": {
+      "A": "herring",
+      "B": "herring",
+      "C": "genuine",
+      "D": "herring"
+    }
+  },
+  "variants": [
+    {
+      "letter": "A",
+      "killer": "Casey One",
+      "motive": "TEST MOTIVE for variant A: the stapler grudge finally boiled over.",
+      "method": "TEST METHOD for variant A: an entirely fictional means, safe to read.",
+      "voices": "TEST: muffled test-voices heard at test-o'clock.",
+      "evidence": {
+        "steps": [
+          {
+            "n": 1,
+            "isKeystone": false,
+            "text": "E1 TEST CLUE referencing P1 — dummy evidence for variant A."
+          },
+          {
+            "n": 2,
+            "isKeystone": false,
+            "text": "E2 TEST CLUE referencing P2 — dummy evidence for variant A."
+          },
+          {
+            "n": 3,
+            "isKeystone": false,
+            "text": "E3 TEST CLUE referencing P3 — dummy evidence for variant A."
+          },
+          {
+            "n": 4,
+            "isKeystone": false,
+            "text": "E4 TEST CLUE referencing P4 — dummy evidence for variant A."
+          },
+          {
+            "n": 5,
+            "isKeystone": false,
+            "text": "E5 TEST CLUE referencing P1 — dummy evidence for variant A."
+          },
+          {
+            "n": 6,
+            "isKeystone": true,
+            "text": "E6 KEYSTONE: TEST CLUE referencing P4 — dummy evidence for variant A."
+          }
+        ],
+        "keystoneStep": 6
+      },
+      "genuineProps": [
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "herrings": [
+        "P5",
+        "P6",
+        "P7"
+      ]
+    },
+    {
+      "letter": "B",
+      "killer": "Casey Two",
+      "motive": "TEST MOTIVE for variant B: the stapler grudge finally boiled over.",
+      "method": "TEST METHOD for variant B: an entirely fictional means, safe to read.",
+      "voices": "TEST: muffled test-voices heard at test-o'clock.",
+      "evidence": {
+        "steps": [
+          {
+            "n": 1,
+            "isKeystone": false,
+            "text": "E1 TEST CLUE referencing P4 — dummy evidence for variant B."
+          },
+          {
+            "n": 2,
+            "isKeystone": false,
+            "text": "E2 TEST CLUE referencing P5 — dummy evidence for variant B."
+          },
+          {
+            "n": 3,
+            "isKeystone": false,
+            "text": "E3 TEST CLUE referencing P6 — dummy evidence for variant B."
+          },
+          {
+            "n": 4,
+            "isKeystone": false,
+            "text": "E4 TEST CLUE referencing P4 — dummy evidence for variant B."
+          },
+          {
+            "n": 5,
+            "isKeystone": false,
+            "text": "E5 TEST CLUE referencing P5 — dummy evidence for variant B."
+          },
+          {
+            "n": 6,
+            "isKeystone": true,
+            "text": "E6 KEYSTONE: TEST CLUE referencing P4 — dummy evidence for variant B."
+          }
+        ],
+        "keystoneStep": 6
+      },
+      "genuineProps": [
+        "P4",
+        "P5",
+        "P6"
+      ],
+      "herrings": [
+        "P1",
+        "P2",
+        "P3",
+        "P7"
+      ]
+    },
+    {
+      "letter": "C",
+      "killer": "Casey Three",
+      "motive": "TEST MOTIVE for variant C: the stapler grudge finally boiled over.",
+      "method": "TEST METHOD for variant C: an entirely fictional means, safe to read.",
+      "voices": "TEST: muffled test-voices heard at test-o'clock.",
+      "evidence": {
+        "steps": [
+          {
+            "n": 1,
+            "isKeystone": false,
+            "text": "E1 TEST CLUE referencing P1 — dummy evidence for variant C."
+          },
+          {
+            "n": 2,
+            "isKeystone": false,
+            "text": "E2 TEST CLUE referencing P4 — dummy evidence for variant C."
+          },
+          {
+            "n": 3,
+            "isKeystone": false,
+            "text": "E3 TEST CLUE referencing P7 — dummy evidence for variant C."
+          },
+          {
+            "n": 4,
+            "isKeystone": false,
+            "text": "E4 TEST CLUE referencing P1 — dummy evidence for variant C."
+          },
+          {
+            "n": 5,
+            "isKeystone": false,
+            "text": "E5 TEST CLUE referencing P4 — dummy evidence for variant C."
+          },
+          {
+            "n": 6,
+            "isKeystone": true,
+            "text": "E6 KEYSTONE: TEST CLUE referencing P4 — dummy evidence for variant C."
+          }
+        ],
+        "keystoneStep": 6
+      },
+      "genuineProps": [
+        "P1",
+        "P4",
+        "P7"
+      ],
+      "herrings": [
+        "P2",
+        "P3",
+        "P5",
+        "P6"
+      ]
+    },
+    {
+      "letter": "D",
+      "killer": "Casey Four",
+      "motive": "TEST MOTIVE for variant D: the stapler grudge finally boiled over.",
+      "method": "TEST METHOD for variant D: an entirely fictional means, safe to read.",
+      "voices": "TEST: muffled test-voices heard at test-o'clock.",
+      "evidence": {
+        "steps": [
+          {
+            "n": 1,
+            "isKeystone": false,
+            "text": "E1 TEST CLUE referencing P2 — dummy evidence for variant D."
+          },
+          {
+            "n": 2,
+            "isKeystone": false,
+            "text": "E2 TEST CLUE referencing P4 — dummy evidence for variant D."
+          },
+          {
+            "n": 3,
+            "isKeystone": false,
+            "text": "E3 TEST CLUE referencing P6 — dummy evidence for variant D."
+          },
+          {
+            "n": 4,
+            "isKeystone": false,
+            "text": "E4 TEST CLUE referencing P2 — dummy evidence for variant D."
+          },
+          {
+            "n": 5,
+            "isKeystone": false,
+            "text": "E5 TEST CLUE referencing P4 — dummy evidence for variant D."
+          },
+          {
+            "n": 6,
+            "isKeystone": true,
+            "text": "E6 KEYSTONE: TEST CLUE referencing P4 — dummy evidence for variant D."
+          }
+        ],
+        "keystoneStep": 6
+      },
+      "genuineProps": [
+        "P2",
+        "P4",
+        "P6"
+      ],
+      "herrings": [
+        "P1",
+        "P3",
+        "P5",
+        "P7"
+      ]
+    }
+  ],
+  "branching": "TEST BRANCHING NOTES (dummy).",
+  "branchingData": {
+    "defense": {
+      "targets": {
+        "C1": {
+          "default": "TEST DEFENSE (Casey One): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": {
+            "variant": "A",
+            "text": "TEST COMPLICATING (Casey One): you did it (in this test). Keep bluffing."
+          }
+        },
+        "C2": {
+          "default": "TEST DEFENSE (Casey Two): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": {
+            "variant": "B",
+            "text": "TEST COMPLICATING (Casey Two): you did it (in this test). Keep bluffing."
+          }
+        },
+        "C3": {
+          "default": "TEST DEFENSE (Casey Three): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": {
+            "variant": "C",
+            "text": "TEST COMPLICATING (Casey Three): you did it (in this test). Keep bluffing."
+          }
+        },
+        "C4": {
+          "default": "TEST DEFENSE (Casey Four): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": {
+            "variant": "D",
+            "text": "TEST COMPLICATING (Casey Four): you did it (in this test). Keep bluffing."
+          }
+        },
+        "C5": {
+          "default": "TEST DEFENSE (Casey Five): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": null
+        },
+        "C6": {
+          "default": "TEST DEFENSE (Casey Six): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": null
+        },
+        "C7": {
+          "default": "TEST DEFENSE (Casey Seven): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": null
+        },
+        "C8": {
+          "default": "TEST DEFENSE (Casey Eight): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": null
+        },
+        "C9": {
+          "default": "TEST DEFENSE (Casey Nine): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": null
+        },
+        "C10": {
+          "default": "TEST DEFENSE (Casey Ten): stay calm, it's only a rehearsal — point at someone else's stapler.",
+          "complicating": null
+        }
+      }
+    },
+    "alibi": {
+      "A": {
+        "charId": "C1",
+        "text": "TEST ALIBI FLAG (variant A): your test-alibi doesn't add up. Fix it or gamble."
+      },
+      "B": {
+        "charId": "C2",
+        "text": "TEST ALIBI FLAG (variant B): your test-alibi doesn't add up. Fix it or gamble."
+      },
+      "C": {
+        "charId": "C3",
+        "text": "TEST ALIBI FLAG (variant C): your test-alibi doesn't add up. Fix it or gamble."
+      },
+      "D": {
+        "charId": "C4",
+        "text": "TEST ALIBI FLAG (variant D): your test-alibi doesn't add up. Fix it or gamble."
+      }
+    },
+    "medical": {
+      "A": {
+        "full": "TEST MEDICAL FULL (variant A): the dummy files say it was the stapler, definitely.",
+        "partial": "TEST MEDICAL PARTIAL (variant A): a leaked dummy page — 'stapler ... inconclusive.'"
+      },
+      "B": {
+        "full": "TEST MEDICAL FULL (variant B): the dummy files say it was the stapler, definitely.",
+        "partial": "TEST MEDICAL PARTIAL (variant B): a leaked dummy page — 'stapler ... inconclusive.'"
+      },
+      "C": {
+        "full": "TEST MEDICAL FULL (variant C): the dummy files say it was the stapler, definitely.",
+        "partial": "TEST MEDICAL PARTIAL (variant C): a leaked dummy page — 'stapler ... inconclusive.'"
+      },
+      "D": {
+        "full": "TEST MEDICAL FULL (variant D): the dummy files say it was the stapler, definitely.",
+        "partial": "TEST MEDICAL PARTIAL (variant D): a leaked dummy page — 'stapler ... inconclusive.'"
+      }
+    }
+  },
+  "fairnessRules": [
+    {
+      "n": 1,
+      "text": "TEST rule: rehearsal only."
+    }
+  ]
+}
