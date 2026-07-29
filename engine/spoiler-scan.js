@@ -57,6 +57,16 @@ function sensitiveTokens(pack) {
   return [...tokens];
 }
 
+// Flex names are checked as FULL-NAME phrases (not single tokens), so common
+// words inside them — "Dev", "June", "Park" — never false-positive on code.
+function sensitivePhrases(pack) {
+  const safe = safeCorpus();
+  return (pack.flex || [])
+    .map((f) => f.name)
+    .filter((n) => n && /\s/.test(n))
+    .filter((n) => !safe.includes(n.toLowerCase()));
+}
+
 function trackedFiles() {
   const out = execSync('git ls-files', { cwd: REPO, encoding: 'utf8' });
   return out.split('\n').map((s) => s.trim()).filter(Boolean)
@@ -70,19 +80,23 @@ function mask(tok) {
 function main() {
   const pack = loadRuntimePack();
   const tokens = sensitiveTokens(pack);
+  const phrases = sensitivePhrases(pack);
   const files = trackedFiles();
   const res = [];
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   for (const f of files) {
     let text;
     try { text = fs.readFileSync(path.join(REPO, f), 'utf8'); } catch (_) { continue; }
     for (const tok of tokens) {
-      const re = new RegExp('\\b' + tok + '\\b');
-      if (re.test(text)) res.push({ file: f, tok });
+      if (new RegExp('\\b' + tok + '\\b').test(text)) res.push({ file: f, tok });
+    }
+    for (const ph of phrases) {
+      if (new RegExp('\\b' + esc(ph) + '\\b').test(text)) res.push({ file: f, tok: ph });
     }
   }
 
-  console.log(`\nSpoiler scan — ${tokens.length} sensitive names × ${files.length} tracked files (excluding *.b64)`);
+  console.log(`\nSpoiler scan — ${tokens.length} names + ${phrases.length} flex names × ${files.length} tracked files (excluding *.b64)`);
   if (res.length === 0) {
     console.log('\x1b[32m✓ CLEAN — no plot names found in any Kali-readable file\x1b[0m\n');
     process.exit(0);

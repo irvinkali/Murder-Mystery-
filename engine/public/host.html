@@ -32,12 +32,24 @@
 
     <div class="divider"></div>
     <h3>Run a poll</h3>
+    <label>Poll type</label>
+    <select id="branch">
+      <option value="">Ordinary poll</option>
+      <option value="benefits">Special · "Who benefits most?" (Phase 3 — arms the suspected guest)</option>
+      <option value="subpoena">Special · "Subpoena the files?" (Phase 4 — the medical reveal)</option>
+    </select>
     <label>Question</label>
     <input id="pq" placeholder="Type your question for the room" />
     <label>Options (comma-separated)</label>
-    <input id="po" placeholder="Option one, Option two, Option three" />
+    <input id="po" placeholder="For the special polls, use guest names / Yes, No" />
     <button id="pollBtn">Open poll</button>
+    <p class="muted" id="branchHint" style="font-size:12px"></p>
     <div class="list" id="pollList" style="margin-top:14px"></div>
+
+    <div class="divider"></div>
+    <h3>The 6:40 question</h3>
+    <p class="muted">Ask the room aloud; guests answer on their phones during Phase 3. Then resolve — the app privately flags a contradiction if there is one. You won't be told who.</p>
+    <button id="alibiBtn" class="ghost">Resolve the 6:40 flag</button>
 
     <div class="divider"></div>
     <h3>The reveal</h3>
@@ -83,12 +95,26 @@ el('#createBtn').addEventListener('click', async () => {
 el('#advBtn').addEventListener('click', async () => {
   try { const r = await api('advance', { partyCode: Store.party, hostToken: Store.host }); phase = r.phase; tick(); } catch(e){ alert(e.message); }
 });
+const BRANCH_PRESETS = {
+  benefits: { q: 'Who benefits most from her death?', hint: 'Options = guest names. On close, the top-voted guest gets a private, engagement-keeping drop (Phase 3).' },
+  subpoena: { q: 'Should the files be subpoenaed?', hint: 'Options = Yes, No. On close, the medical evidence surfaces per the vote (Phase 4).' },
+};
+el('#branch').addEventListener('change', () => {
+  const p = BRANCH_PRESETS[el('#branch').value];
+  el('#branchHint').textContent = p ? p.hint : '';
+  if (p && !el('#pq').value) el('#pq').value = p.q;
+  if (el('#branch').value === 'subpoena') el('#po').value = el('#po').value || 'Yes, No';
+});
 el('#pollBtn').addEventListener('click', async () => {
   const question = el('#pq').value.trim();
   const options = el('#po').value.split(',').map(s=>s.trim()).filter(Boolean);
   if (options.length < 2) { alert('Give at least two options.'); return; }
+  const branch = el('#branch').value || undefined;
   const id = 'p' + Date.now();
-  try { await api('poll', { action:'create', partyCode: Store.party, hostToken: Store.host, id, question, options }); el('#pq').value=''; el('#po').value=''; tick(); } catch(e){ alert(e.message); }
+  try { await api('poll', { action:'create', partyCode: Store.party, hostToken: Store.host, id, question, options, branch }); el('#pq').value=''; el('#po').value=''; el('#branch').value=''; el('#branchHint').textContent=''; tick(); } catch(e){ alert(e.message); }
+});
+el('#alibiBtn').addEventListener('click', async () => {
+  try { await api('alibi', { action:'resolve', partyCode: Store.party, hostToken: Store.host }); alert('Resolved. Any contradiction has been flagged privately.'); } catch(e){ alert(e.message); }
 });
 el('#revealBtn').addEventListener('click', async () => {
   try {

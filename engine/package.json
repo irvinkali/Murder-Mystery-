@@ -7,11 +7,11 @@
   "scripts": {
     "validate": "node validate.js",
     "build-pack": "node build-pack.js",
-    "test": "node test-engine.js",
+    "test": "node test-engine.js && node test-branching.js",
     "smoke": "node smoke.js",
     "dev": "node dev-server.js",
     "spoiler-scan": "node spoiler-scan.js",
-    "check": "node build-pack.js && node validate.js && node test-engine.js && node smoke.js && node spoiler-scan.js"
+    "check": "node build-pack.js && node validate.js && node test-engine.js && node test-branching.js && node smoke.js && node spoiler-scan.js"
   },
   "dependencies": {
     "@netlify/blobs": "^8.1.0"

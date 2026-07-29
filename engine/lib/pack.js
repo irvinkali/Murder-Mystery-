@@ -202,6 +202,56 @@ function parseFairnessRules(sectionBody) {
 }
 
 /**
+ * Parse the branching-consequences document into structured data the resolver
+ * consumes. Pure structure — no plot literals here; the drop text is carried
+ * through from the (radioactive) source and only ever surfaces to players in
+ * game, never to the terminal.
+ */
+function parseBranching(text) {
+  if (!text) return null;
+  const t = text.replace(/[“”]/g, '"'); // normalize curly quotes
+  const body = (kw) => {
+    const m = t.match(new RegExp('##\\s+\\d+\\.\\s+[^\\n]*' + kw + '[^\\n]*\\n([\\s\\S]*?)(?=\\n##\\s+\\d+\\.|$)', 'i'));
+    return m ? m[1] : '';
+  };
+
+  // §1 Defense drops — per core character: a default line and an optional
+  // "killer, complicating" line tied to a specific variant.
+  const defBody = body('DEFENSE');
+  const targets = {};
+  const blockRe = /\*\*C(\d+)\s+[^*]*\*\*([\s\S]*?)(?=\*\*C\d+\s|\n##|$)/g;
+  let m;
+  while ((m = blockRe.exec(defBody)) !== null) {
+    const id = 'C' + m[1];
+    const blk = m[2];
+    const def = blk.match(/Default[^:]*:\s*"([^"]*)"/i);
+    const comp = blk.match(/Variant\s+([A-D])\s*\(killer,\s*complicating\):\s*"([^"]*)"/i);
+    targets[id] = { default: def ? def[1] : null, complicating: comp ? { variant: comp[1], text: comp[2] } : null };
+  }
+
+  // §2 Alibi contradiction flag — per variant, one target character + drop.
+  const aliBody = body('ALIBI');
+  const alibi = {};
+  const aliRe = /\*\*Variant\s+([A-D])\s*→\s*C(\d+)[^:]*:\*\*\s*"([^"]*)"/g;
+  while ((m = aliRe.exec(aliBody)) !== null) alibi[m[1]] = { charId: 'C' + m[2], text: m[3] };
+
+  // §3 Medical files reveal — per variant, a FULL and a PARTIAL text.
+  const medBody = body('MEDICAL');
+  const medical = {};
+  const medRe = /\*\*Variant\s+([A-D])\s*—\s*FULL:\*\*\s*"([^"]*)"\s*—\s*PARTIAL:\s*"([^"]*)"/g;
+  while ((m = medRe.exec(medBody)) !== null) medical[m[1]] = { full: m[2], partial: m[3] };
+
+  return { defense: { targets }, alibi, medical };
+}
+
+/** Load branching data from an optional radioactive file (in memory only). */
+function loadBranching(b64Path) {
+  if (!b64Path || !fs.existsSync(b64Path)) return null;
+  const text = Buffer.from(fs.readFileSync(b64Path, 'utf8'), 'base64').toString('utf8');
+  return parseBranching(text);
+}
+
+/**
  * Load and parse a pack bible into a structured object.
  * @param {string} b64Path path to the radioactive *.b64 bible
  */
@@ -227,6 +277,9 @@ function loadPack(b64Path) {
   const flexFromFile = loadFlex(flexPath);
   const flex = flexFromFile.length ? flexFromFile : parseFlex(text).map((id) => ({ id }));
 
+  // Branching consequences live in an optional sibling file; null until authored.
+  const branchingData = loadBranching(path.join(path.dirname(b64Path), 'branching.md.b64'));
+
   // Distinct prop ids referenced by the matrix.
   const props = Object.keys(matrix).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
 
@@ -242,6 +295,7 @@ function loadPack(b64Path) {
     matrix,
     fairnessRules,
     branching: findSection('BRANCH').trim(),
+    branchingData,
   };
 }
 
@@ -249,6 +303,8 @@ module.exports = {
   loadPack,
   decodeBible,
   loadFlex,
+  loadBranching,
+  parseBranching,
   parseRoster,
   md5,
   // exported for unit-level reuse if ever needed

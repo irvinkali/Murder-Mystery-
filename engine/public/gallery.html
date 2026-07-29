@@ -19,6 +19,11 @@
     <p class="serif" id="victim" style="font-size:22px"></p>
   </div>
 
+  <div class="card" id="screenBox" style="display:none;border-color:var(--gold)">
+    <div class="eyebrow">Announcement</div>
+    <p class="big" id="screenText" style="font-size:clamp(28px,5vw,52px)"></p>
+  </div>
+
   <div class="card">
     <h2>The guests</h2>
     <div class="grid" id="roster"></div>
@@ -41,6 +46,8 @@ async function refresh() {
     el('#phase').textContent = state.phase;
     el('#phaseName').textContent = state.phaseName;
     el('#victim').textContent = state.victim || '';
+    if (state.screen) { el('#screenBox').style.display = 'block'; el('#screenText').textContent = state.screen; }
+    else { el('#screenBox').style.display = 'none'; }
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'present':'—'}</span></div>`).join('');
     const open = (state.polls||[]).find(p => !p.closed);

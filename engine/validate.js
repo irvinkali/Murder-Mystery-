@@ -82,19 +82,19 @@ function run() {
   {
     let ok = true;
     const notes = [];
+    // Full names of flex characters, so we can confirm none appears in a solution.
+    const flexNames = (pack.flex || []).map((f) => f.name).filter(Boolean);
     for (const v of V) {
       const blob = [v.killer, v.motive, v.method, v.voices,
         ...v.evidence.steps.map((s) => s.text)].join(' ');
-      const usesFlex = /\bF\d+\b/.test(blob);
-      const killerIsCore = /\bC\d+\b/.test(v.killer) ? coreIds.has((v.killer.match(/C\d+/) || [])[0]) : true;
-      // Killer is named (prose) rather than by id; assert no flex token appears.
-      if (usesFlex) { ok = false; notes.push(`V${v.letter}:flex-ref`); }
-      void killerIsCore;
+      const usesFlexId = /\bF\d+\b/.test(blob);
+      const usesFlexName = flexNames.some((n) => new RegExp('\\b' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(blob));
+      if (usesFlexId || usesFlexName) { ok = false; notes.push(`V${v.letter}:flex-ref`); }
     }
     // With flex list currently empty this is trivially satisfied; the scan still
     // guards against a future flex character becoming load-bearing.
     check('R2', 'No variant solution depends on a flex character',
-      'rigorous', ok && variantsOk, `flex chars defined: ${pack.flex.length}; ${notes.length ? notes.join(' ') : 'no flex references in any solution'}`);
+      'rigorous', ok && variantsOk, `flex chars defined: ${pack.flex.length}; ${notes.length ? notes.join(' ') : 'no flex id or name appears in any solution'}`);
   }
 
   // ---- §7 Rule 3: every core character surface-plausible in every variant ----

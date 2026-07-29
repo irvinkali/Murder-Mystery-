@@ -46,7 +46,11 @@ async function main() {
   }
   assert('10 players joined', codes.length === 10);
   assert('each player got a distinct character', chars.size === 10);
-  assert('11th join is rejected while only the 10 core seats exist',
+  // Flex characters are authored, so seats now extend to 20.
+  const eleventh = await j(join(POST({ partyCode, name: 'Player11' })));
+  assert('11th player is seated into a flex role', !!eleventh.personalCode && /^F\d+$/.test(eleventh.character.id));
+  for (let i = 12; i <= 20; i++) await j(join(POST({ partyCode, name: 'Player' + i })));
+  assert('21st join is rejected once all 20 seats are filled',
     !!(await j(join(POST({ partyCode, name: 'Overflow' })))).error);
 
   // Flex seating mechanism (players 11–20). Pure logic test with placeholder

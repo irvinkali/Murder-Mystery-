@@ -32,6 +32,7 @@ function main() {
     matrix: pack.matrix,
     variants: pack.variants,
     branching: pack.branching,
+    branchingData: pack.branchingData,
     fairnessRules: pack.fairnessRules,
   };
 

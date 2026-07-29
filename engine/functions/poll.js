@@ -7,6 +7,10 @@
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { getGame, updateGame } = require('../lib/store');
+const { loadRuntimePack } = require('../lib/runtime');
+const { matchCharByLabel, computeDefense, computeMedical, mergeDrops } = require('../lib/branching');
+
+const KEYSTONE_PHASE = 4;
 
 function tally(poll) {
   const counts = {};
@@ -15,6 +19,43 @@ function tally(poll) {
     if (choice in counts) counts[choice] += 1;
   }
   return counts;
+}
+
+function winningOption(counts) {
+  let best = null, bestN = -1;
+  for (const [opt, n] of Object.entries(counts)) if (n > bestN) { best = opt; bestN = n; }
+  return best;
+}
+
+/**
+ * Run the branching consequence tied to a poll on close. Mutates `g`. Returns a
+ * short, spoiler-free tag describing what fired (never the drop text).
+ */
+function resolvePollBranch(g, poll, counts) {
+  const pack = loadRuntimePack();
+  g.branchFired = g.branchFired || {};
+
+  // §4.1 Defense drops — Phase 3, once, "who benefits" poll.
+  if (poll.branch === 'benefits' && g.phase === 3 && !g.branchFired.defense) {
+    const winId = matchCharByLabel(pack, winningOption(counts));
+    if (winId) {
+      const res = computeDefense(pack, g, winId);
+      if (res) { mergeDrops(g, [res]); g.branchFired.defense = true; return 'defense'; }
+    }
+  }
+
+  // §4.3 Medical reveal — Phase 4, once, "subpoena" poll.
+  if (poll.branch === 'subpoena' && g.phase === KEYSTONE_PHASE && !g.branchFired.medical) {
+    const yes = Object.entries(counts).filter(([o]) => /^y/i.test(o)).reduce((s, [, n]) => s + n, 0);
+    const no = Object.entries(counts).filter(([o]) => /^n/i.test(o)).reduce((s, [, n]) => s + n, 0);
+    const outcome = yes > no ? 'yes' : 'no';
+    const { drops, screen } = computeMedical(pack, g, outcome);
+    mergeDrops(g, drops);
+    if (screen) g.screen = { text: screen, at: new Date().toISOString() };
+    g.branchFired.medical = outcome;
+    return 'medical:' + outcome;
+  }
+  return null;
 }
 
 exports.handler = async (event) => {
@@ -31,12 +72,13 @@ exports.handler = async (event) => {
   if (b.action === 'create') {
     if (b.hostToken !== game.hostToken) return forbidden('host only');
     if (!Array.isArray(b.options) || b.options.length < 2) return bad('options[] (>=2) required');
+    const branch = ['benefits', 'subpoena'].includes(b.branch) ? b.branch : null;
     await updateGame(code, (g) => {
-      g.polls[b.id] = { question: b.question || '', options: b.options, votes: {}, closed: false };
+      g.polls[b.id] = { question: b.question || '', options: b.options, votes: {}, closed: false, branch };
       g.log.push({ at: new Date().toISOString(), kind: 'poll-create', id: b.id });
       return g;
     });
-    return ok({ id: b.id, created: true });
+    return ok({ id: b.id, created: true, branch });
   }
 
   if (b.action === 'vote') {
@@ -58,13 +100,15 @@ exports.handler = async (event) => {
     const poll = game.polls[b.id];
     if (!poll) return notFound('no such poll');
     let counts = null;
+    let fired = null;
     await updateGame(code, (g) => {
       g.polls[b.id].closed = true;
       counts = tally(g.polls[b.id]);
-      g.log.push({ at: new Date().toISOString(), kind: 'poll-close', id: b.id });
+      fired = resolvePollBranch(g, g.polls[b.id], counts);
+      g.log.push({ at: new Date().toISOString(), kind: 'poll-close', id: b.id, fired });
       return g;
     });
-    return ok({ id: b.id, closed: true, counts });
+    return ok({ id: b.id, closed: true, counts, fired });
   }
 
   return bad('unknown action');

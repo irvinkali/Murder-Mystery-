@@ -32,6 +32,16 @@
     <div class="brief" id="brief">Loading…</div>
   </div>
 
+  <div id="dropsBox"></div>
+
+  <div class="card" id="alibiBox" style="display:none;border-color:var(--gold)">
+    <h2>Where were you at 6:40?</h2>
+    <p class="muted">Everyone is being asked. Answer honestly — or don't.</p>
+    <input id="alibiInput" placeholder="e.g. by the bar, in the west gallery…" />
+    <button id="alibiBtn">Log my answer</button>
+    <div class="err" id="alibiErr"></div>
+  </div>
+
   <div class="card">
     <h2>The room</h2>
     <p class="muted" id="victim"></p>
@@ -95,6 +105,13 @@ async function refresh() {
     } else {
       el('#nudgeBox').style.display = 'none';
     }
+    // Private branching drops.
+    const drops = (you && you.drops) || [];
+    el('#dropsBox').innerHTML = drops.map(d =>
+      `<div class="card" style="border-color:var(--gold)"><div class="eyebrow">New information · for you</div><p class="brief" style="font-size:18px;margin:6px 0 0">${esc(d.text)}</p></div>`).join('');
+    // The 6:40 question, during Phase 3, until this player has answered.
+    const showAlibi = you && state.phase === 3 && !you.alibiSubmitted;
+    el('#alibiBox').style.display = showAlibi ? 'block' : 'none';
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'in play':'—'}</span></div>`).join('');
     renderPolls(state.polls || []);
@@ -117,6 +134,15 @@ async function examine(propId) {
   } catch (e) { box.textContent = e.message; }
 }
 
+el('#alibiBtn').addEventListener('click', async () => {
+  const answer = el('#alibiInput').value.trim();
+  if (!answer) { el('#alibiErr').textContent = 'Say something.'; return; }
+  try {
+    await api('alibi', { action:'submit', partyCode: Store.party, personalCode: Store.code, answer });
+    el('#alibiBox').style.display = 'none';
+    refresh();
+  } catch (e) { el('#alibiErr').textContent = e.message; }
+});
 el('#leave').addEventListener('click', () => { Store.clear(); location.href = '/'; });
 renderProps(); refresh(); setInterval(refresh, 5000);
 </script>
