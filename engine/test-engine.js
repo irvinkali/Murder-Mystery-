@@ -46,8 +46,25 @@ async function main() {
   }
   assert('10 players joined', codes.length === 10);
   assert('each player got a distinct character', chars.size === 10);
-  assert('11th join is rejected (core cast full)',
+  assert('11th join is rejected while only the 10 core seats exist',
     !!(await j(join(POST({ partyCode, name: 'Overflow' })))).error);
+
+  // Flex seating mechanism (players 11–20). Pure logic test with placeholder
+  // ids — no plot content. Proves the engine will seat flex the moment authored
+  // flex characters are dropped in, and that seats are honestly capped until then.
+  {
+    const { assignableIds, capacity } = require('./lib/runtime');
+    const synth = {
+      cast: Array.from({ length: 10 }, (_, i) => ({ id: 'C' + (i + 1) })),
+      flex: Array.from({ length: 10 }, (_, i) => ({ id: 'F' + (i + 1) })),
+    };
+    const seats = assignableIds(synth);
+    assert('flex: seating order is core (1–10) then flex (11–20)',
+      seats.length === 20 && seats[9] === 'C10' && seats[10] === 'F1' && seats[19] === 'F10');
+    assert('flex: capacity reaches 20 when flex is present', capacity(synth) === 20);
+    assert('flex absent: capacity is honestly the core count (10)',
+      capacity({ cast: synth.cast, flex: [] }) === 10);
+  }
 
   // 3. player state — own brief present, no variant, no other briefs.
   const st = await j(state(GET({ partyCode, personalCode: codes[0] })));

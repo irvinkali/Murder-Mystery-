@@ -182,6 +182,18 @@ function run() {
       'rigorous', ok && variantsOk, ok ? `all ${hi - lo + 1} counts solvable with core cast only` : `failing counts: ${failing.join(',')}`);
   }
 
+  // ---- Seating capacity (core + flex). Surfaced honestly; not a silent cap. ----
+  {
+    const [, hi] = EXPECTED.playerRange;
+    const seats = pack.cast.length + (pack.flex ? pack.flex.length : 0);
+    const reaches = seats >= hi;
+    check('CAP', `Seats available for players (target up to ${hi})`,
+      'rigorous', seats >= EXPECTED.coreCast,
+      reaches
+        ? `${seats} seats — covers the full ${EXPECTED.playerRange[0]}–${hi} range`
+        : `${seats} seats (core only) — author flex characters F1–F${hi - pack.cast.length} to seat players ${pack.cast.length + 1}–${hi}`);
+  }
+
   report(pack);
 }
 

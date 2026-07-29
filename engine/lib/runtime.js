@@ -86,9 +86,19 @@ function publicRoster(pack) {
 
 /** A single player's private dossier. Served ONLY to that player. */
 function playerBrief(pack, characterId) {
-  const c = pack.cast.find((x) => x.id === characterId);
+  const c = [...pack.cast, ...(pack.flex || [])].find((x) => x.id === characterId);
   if (!c) return null;
-  return { id: c.id, name: c.name, piece: c.piece, brief: c.brief };
+  return { id: c.id, name: c.name, piece: c.piece != null ? c.piece : null, brief: c.brief };
+}
+
+/** Seating order: core cast first (10-player games use only these), then flex. */
+function assignableIds(pack) {
+  return [...pack.cast.map((c) => c.id), ...(pack.flex || []).map((f) => f.id)];
+}
+
+/** Total seats available = core + flex. */
+function capacity(pack) {
+  return pack.cast.length + (pack.flex ? pack.flex.length : 0);
 }
 
 /**
@@ -219,6 +229,8 @@ module.exports = {
   publicVictimBlurb,
   publicRoster,
   playerBrief,
+  assignableIds,
+  capacity,
   resolvePropScan,
   resolveKillerId,
   killerUnlock,

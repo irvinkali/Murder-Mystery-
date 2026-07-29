@@ -42,10 +42,17 @@ function splitSections(text) {
   return out;
 }
 
-/** Parse the core cast: **C<n>. Name** ... PIECE No. <k>. */
-function parseCast(sectionBody) {
-  const cast = [];
-  const entryRe = /\*\*(C\d+)\.\s*([^*]+?)\*\*/g;
+/**
+ * Parse a roster of characters whose ids share a letter prefix. Used for the
+ * core cast (`C`) and, when authored, flex characters (`F`). Each entry:
+ * `**<L><n>. Name** ...persona/secret... [PIECE No. <k>]`.
+ * `brief` is the character's private dossier — served ONLY to the player who
+ * holds that character, never to others, and never as part of the solution.
+ */
+function parseRoster(sectionBody, letter) {
+  const out = [];
+  if (!sectionBody) return out;
+  const entryRe = new RegExp('\\*\\*(' + letter + '\\d+)\\.\\s*([^*]+?)\\*\\*', 'g');
   const marks = [];
   let m;
   while ((m = entryRe.exec(sectionBody)) !== null) {
@@ -55,17 +62,24 @@ function parseCast(sectionBody) {
     const end = i + 1 < marks.length ? marks[i + 1].at : sectionBody.length;
     const chunk = sectionBody.slice(marks[i].after, end).trim();
     const piece = chunk.match(/PIECE\s+No\.\s+(\d+)/i);
-    cast.push({
-      id: marks[i].id,
-      name: marks[i].name,
-      piece: piece ? Number(piece[1]) : null,
-      // `brief` is the character's private dossier (persona + own secret + their
-      // MEMENTO piece). The engine serves this ONLY to the player holding this
-      // character, never to others, and never as part of the solution.
-      brief: chunk,
-    });
+    out.push({ id: marks[i].id, name: marks[i].name, piece: piece ? Number(piece[1]) : null, brief: chunk });
   }
-  return cast;
+  return out;
+}
+
+function parseCast(sectionBody) {
+  return parseRoster(sectionBody, 'C');
+}
+
+/**
+ * Load flex characters from an optional radioactive file, if present. Returns
+ * [] when the file does not exist yet (flex are additive and never
+ * load-bearing, so the pack is valid without them). Decodes in memory only.
+ */
+function loadFlex(flexB64Path) {
+  if (!flexB64Path || !fs.existsSync(flexB64Path)) return [];
+  const text = Buffer.from(fs.readFileSync(flexB64Path, 'utf8'), 'base64').toString('utf8');
+  return parseRoster(text, 'F');
 }
 
 /** Find any flex characters (**F<n>. ...**) anywhere in the document. */
@@ -208,7 +222,10 @@ function loadPack(b64Path) {
   const variants = parseVariants(findSection('SOLUTION'));
   const matrix = parseMatrix(findSection('MATRIX'));
   const fairnessRules = parseFairnessRules(findSection('FAIRNESS'));
-  const flex = parseFlex(text);
+  // Flex characters live in an optional sibling file; [] until authored.
+  const flexPath = path.join(path.dirname(b64Path), 'flex-characters.md.b64');
+  const flexFromFile = loadFlex(flexPath);
+  const flex = flexFromFile.length ? flexFromFile : parseFlex(text).map((id) => ({ id }));
 
   // Distinct prop ids referenced by the matrix.
   const props = Object.keys(matrix).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
@@ -231,8 +248,10 @@ function loadPack(b64Path) {
 module.exports = {
   loadPack,
   decodeBible,
+  loadFlex,
+  parseRoster,
   md5,
   // exported for unit-level reuse if ever needed
-  _internal: { splitSections, parseCast, parseVariants, parseMatrix, parseEvidenceChain },
+  _internal: { splitSections, parseCast, parseRoster, parseVariants, parseMatrix, parseEvidenceChain },
   DEFAULT_BIBLE: path.join(__dirname, '..', '..', 'packs', 'last-exhibit', 'plot-bible.md.b64'),
 };
