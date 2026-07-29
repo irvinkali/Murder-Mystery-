@@ -1,0 +1,25 @@
+name: check
+
+# Runs the spoiler-safe gate on every push/PR: rebuild the encoded pack,
+# validate all fairness rules, run the engine + HTTP smoke tests, and — most
+# importantly — fail the build if any plot name has leaked into a
+# Kali-readable file. No plot content is ever printed.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fairness + engine + smoke + spoiler-scan
+        working-directory: engine
+        # The gate scripts use only Node built-ins and an in-memory store, so no
+        # dependency install is required to run them.
+        run: npm run check
