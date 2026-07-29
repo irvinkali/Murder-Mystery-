@@ -53,9 +53,17 @@ function parseCast(sectionBody) {
   }
   for (let i = 0; i < marks.length; i++) {
     const end = i + 1 < marks.length ? marks[i + 1].at : sectionBody.length;
-    const chunk = sectionBody.slice(marks[i].after, end);
+    const chunk = sectionBody.slice(marks[i].after, end).trim();
     const piece = chunk.match(/PIECE\s+No\.\s+(\d+)/i);
-    cast.push({ id: marks[i].id, name: marks[i].name, piece: piece ? Number(piece[1]) : null });
+    cast.push({
+      id: marks[i].id,
+      name: marks[i].name,
+      piece: piece ? Number(piece[1]) : null,
+      // `brief` is the character's private dossier (persona + own secret + their
+      // MEMENTO piece). The engine serves this ONLY to the player holding this
+      // character, never to others, and never as part of the solution.
+      brief: chunk,
+    });
   }
   return cast;
 }
@@ -208,13 +216,15 @@ function loadPack(b64Path) {
   return {
     checksum: md5(text),
     byteLength: Buffer.byteLength(text, 'utf8'),
+    victim: findSection('VICTIM').trim(),
+    timeline: findSection('TIMELINE').trim(),
     cast,
     flex,
     variants,
     props,
     matrix,
     fairnessRules,
-    branching: findSection('BRANCH'),
+    branching: findSection('BRANCH').trim(),
   };
 }
 

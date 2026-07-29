@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>You found something — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">The Last Exhibit</div>
+  <h1>You found something</h1>
+  <div class="card">
+    <div class="reveal" id="box">Examining…</div>
+  </div>
+  <div class="card" id="joinPrompt" style="display:none">
+    <p>You need to be in the party to examine this.</p>
+    <label>Party code</label>
+    <input id="party" maxlength="4" autocapitalize="characters" />
+    <label>Your name</label>
+    <input id="name" />
+    <button id="joinBtn">Join & examine</button>
+    <div class="err" id="err"></div>
+  </div>
+  <div class="center"><a href="/player.html">← Back to your dossier</a></div>
+</div>
+<script src="/app.js"></script>
+<script>
+function propId() {
+  const fromPath = (location.pathname.match(/\/prop\/([A-Za-z0-9]+)/) || [])[1];
+  return (fromPath || qs('id') || '').toUpperCase();
+}
+const PID = propId();
+
+async function examine() {
+  const box = el('#box');
+  if (!PID) { box.textContent = 'Unknown exhibit tag.'; return; }
+  if (!Store.party || !Store.code) { el('#joinPrompt').style.display = 'block'; el('#party').value = Store.party || ''; box.textContent = 'Exhibit ' + PID.slice(1) + '.'; return; }
+  try {
+    const { reveal } = await api('scan', { partyCode: Store.party, personalCode: Store.code, propId: PID });
+    let html = `<div class="serif" style="font-size:22px">${esc(reveal.label||PID)}</div><p class="muted">${esc(reveal.blurb||'')}</p>`;
+    if (reveal.locked) { box.className = 'reveal locked'; html += `<p>${esc(reveal.lockedHint||'')}</p>`; }
+    else if (reveal.extra) { html += `<p>${esc(reveal.extra.text)}</p>`; }
+    else { html += `<p class="muted">Nothing more reveals itself — for now.</p>`; }
+    box.innerHTML = html;
+  } catch (e) { box.textContent = e.message; }
+}
+el('#joinBtn').addEventListener('click', async () => {
+  const partyCode = el('#party').value.trim().toUpperCase();
+  const name = el('#name').value.trim();
+  if (!partyCode || !name) { el('#err').textContent = 'Enter the code and your name.'; return; }
+  try {
+    const r = await api('join', { partyCode, name });
+    Store.party = partyCode; Store.code = r.personalCode;
+    el('#joinPrompt').style.display = 'none';
+    examine();
+  } catch (e) { el('#err').textContent = e.message; }
+});
+examine();
+</script>
+</body>
+</html>

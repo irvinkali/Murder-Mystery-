@@ -6,7 +6,13 @@
   "type": "commonjs",
   "scripts": {
     "validate": "node validate.js",
-    "build-pack": "node build-pack.js"
+    "build-pack": "node build-pack.js",
+    "test": "node test-engine.js",
+    "spoiler-scan": "node spoiler-scan.js",
+    "check": "node build-pack.js && node validate.js && node test-engine.js && node spoiler-scan.js"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
   },
   "engines": {
     "node": ">=18"

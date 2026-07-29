@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Your Dossier — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">The Last Exhibit</div>
+  <div class="row" style="align-items:baseline">
+    <h1 id="charName" style="flex:3">…</h1>
+    <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
+  </div>
+
+  <div class="card">
+    <h2>Your dossier</h2>
+    <div class="brief" id="brief">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2>The room</h2>
+    <p class="muted" id="victim"></p>
+    <div class="divider"></div>
+    <div class="grid" id="roster"></div>
+  </div>
+
+  <div class="card">
+    <h2>I found something</h2>
+    <p class="muted">Tap a prop's tag with your phone, or pick its exhibit number here.</p>
+    <div class="grid" id="props"></div>
+    <div class="reveal" id="revealBox" style="display:none;margin-top:16px"></div>
+  </div>
+
+  <div class="card" id="pollCard" style="display:none">
+    <h2>Open question</h2>
+    <div id="polls"></div>
+  </div>
+
+  <div class="center"><button class="ghost" id="leave">Leave party</button></div>
+  <div class="err" id="err"></div>
+</div>
+<script src="/app.js"></script>
+<script>
+if (!Store.party || !Store.code) location.href = '/';
+const props = ['P1','P2','P3','P4','P5','P6','P7'];
+
+function renderPolls(list) {
+  const open = list.filter(p => !p.closed);
+  el('#pollCard').style.display = open.length ? 'block' : 'none';
+  el('#polls').innerHTML = open.map(p => `
+    <div style="margin-bottom:14px">
+      <div class="serif" style="font-size:18px">${esc(p.question)}</div>
+      <div class="row">${p.options.map(o => `<button data-poll="${esc(p.id)}" data-choice="${esc(o)}">${esc(o)}</button>`).join('')}</div>
+    </div>`).join('');
+  document.querySelectorAll('[data-poll]').forEach(b => b.addEventListener('click', async () => {
+    try { await api('poll', { action:'vote', partyCode: Store.party, personalCode: Store.code, id: b.dataset.poll, choice: b.dataset.choice });
+      b.textContent = '✓ ' + b.dataset.choice; b.disabled = true; } catch(e){ el('#err').textContent = e.message; }
+  }));
+}
+
+async function refresh() {
+  try {
+    const { state, you } = await api(`state?partyCode=${Store.party}&personalCode=${Store.code}`);
+    el('#phasePill').textContent = `Phase ${state.phase} · ${state.phaseName}`;
+    el('#victim').textContent = state.victim || '';
+    if (you && you.character) {
+      el('#charName').textContent = you.character.name;
+      el('#brief').textContent = you.character.brief;
+    }
+    el('#roster').innerHTML = state.roster.map(c =>
+      `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'in play':'—'}</span></div>`).join('');
+    renderPolls(state.polls || []);
+  } catch (e) { el('#err').textContent = e.message; }
+}
+
+function renderProps() {
+  el('#props').innerHTML = props.map(p => `<button class="tile" data-prop="${p}"><b>Exhibit ${p.slice(1)}</b><span class="muted">tap to examine</span></button>`).join('');
+  document.querySelectorAll('[data-prop]').forEach(b => b.addEventListener('click', () => examine(b.dataset.prop)));
+}
+async function examine(propId) {
+  const box = el('#revealBox'); box.style.display = 'block'; box.className = 'reveal'; box.textContent = 'Examining…';
+  try {
+    const { reveal } = await api('scan', { partyCode: Store.party, personalCode: Store.code, propId });
+    let html = `<div class="serif" style="font-size:20px">${esc(reveal.label || propId)}</div><p class="muted">${esc(reveal.blurb||'')}</p>`;
+    if (reveal.locked) { box.className = 'reveal locked'; html += `<p>${esc(reveal.lockedHint||'Not yet.')}</p>`; }
+    else if (reveal.extra) { html += `<p>${esc(reveal.extra.text)}</p>`; }
+    else { html += `<p class="muted">Nothing more reveals itself — for now.</p>`; }
+    box.innerHTML = html;
+  } catch (e) { box.textContent = e.message; }
+}
+
+el('#leave').addEventListener('click', () => { Store.clear(); location.href = '/'; });
+renderProps(); refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

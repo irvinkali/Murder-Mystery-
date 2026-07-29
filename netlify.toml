@@ -1,0 +1,36 @@
+# Netlify configuration for the Mystery Engine.
+# Static front-end in engine/public; serverless API in engine/functions;
+# shared game state in Netlify Blobs.
+
+[build]
+  base = ""
+  publish = "engine/public"
+  functions = "engine/functions"
+  command = "cd engine && npm run build-pack && npm run validate"
+
+[functions]
+  node_bundler = "esbuild"
+  # Ship the encoded pack alongside the functions so they can decode it in memory.
+  included_files = ["packs/**/*.b64"]
+
+# Friendly API path -> functions.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# NFC prop tags point at /prop/<id>; route to the player app which scans it.
+[[redirects]]
+  from = "/prop/*"
+  to = "/prop.html"
+  status = 200
+
+[[redirects]]
+  from = "/gallery"
+  to = "/gallery.html"
+  status = 200
+
+[[redirects]]
+  from = "/host"
+  to = "/host.html"
+  status = 200

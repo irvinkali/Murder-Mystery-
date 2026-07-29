@@ -24,11 +24,14 @@ function main() {
     schema: 'mystery-engine/pack@1',
     id: 'last-exhibit',
     generatedFrom: { checksum: pack.checksum, byteLength: pack.byteLength },
+    victim: pack.victim,
+    timeline: pack.timeline,
     cast: pack.cast,
     flex: pack.flex,
     props: pack.props,
     matrix: pack.matrix,
     variants: pack.variants,
+    branching: pack.branching,
     fairnessRules: pack.fairnessRules,
   };
 

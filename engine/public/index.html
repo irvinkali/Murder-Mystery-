@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="center">
+    <div class="eyebrow">Galerie Noir presents</div>
+    <h1>The Last Exhibit</h1>
+    <p class="muted">An evening of art, appetite, and one unforgivable secret.</p>
+  </div>
+
+  <div class="card">
+    <h2>Join the party</h2>
+    <label for="party">Party code</label>
+    <input id="party" autocapitalize="characters" autocomplete="off" maxlength="4" placeholder="ABCD" />
+    <label for="name">Your name</label>
+    <input id="name" autocomplete="name" placeholder="How your fellow guests know you" />
+    <button id="joinBtn">Take my place</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="center muted">
+    <p>Hosting tonight? <a href="/host">Open host controls →</a></p>
+  </div>
+  <footer>The app is your game master. No one at this party knows how it ends — not even the host.</footer>
+</div>
+<script src="/app.js"></script>
+<script>
+  el('#party').value = Store.party || (qs('party') || '');
+  el('#joinBtn').addEventListener('click', async () => {
+    const partyCode = el('#party').value.trim().toUpperCase();
+    const name = el('#name').value.trim();
+    el('#err').textContent = '';
+    if (!partyCode || !name) { el('#err').textContent = 'Enter the party code and your name.'; return; }
+    el('#joinBtn').disabled = true;
+    try {
+      const r = await api('join', { partyCode, name });
+      Store.party = partyCode; Store.code = r.personalCode;
+      location.href = '/player.html';
+    } catch (e) {
+      el('#err').textContent = e.message;
+      el('#joinBtn').disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

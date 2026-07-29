@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Host — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Host controls</div>
+  <h1>The Last Exhibit</h1>
+  <p class="muted">You run the tempo. The app keeps the secret — the solution is sealed and hidden from you until the reveal, so you can play too.</p>
+
+  <div class="card" id="setup">
+    <h2>Start a party</h2>
+    <button id="createBtn">Create party</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card" id="live" style="display:none">
+    <h2>Party <span id="code" class="serif" style="color:var(--gold-2)"></span></h2>
+    <p class="muted">Guests join at this site with the code. Put the Gallery Screen on the TV:</p>
+    <p><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
+    <div class="divider"></div>
+
+    <label>Phase</label>
+    <div class="row">
+      <span class="pill on" id="phasePill">Phase 1</span>
+      <button id="advBtn" style="margin-top:0">Advance phase →</button>
+    </div>
+
+    <div class="divider"></div>
+    <h3>Run a poll</h3>
+    <label>Question</label>
+    <input id="pq" placeholder="Type your question for the room" />
+    <label>Options (comma-separated)</label>
+    <input id="po" placeholder="Option one, Option two, Option three" />
+    <button id="pollBtn">Open poll</button>
+    <div class="list" id="pollList" style="margin-top:14px"></div>
+
+    <div class="divider"></div>
+    <h3>The reveal</h3>
+    <p class="muted">Unlocks in Phase 6. This is the only place the sealed solution appears.</p>
+    <button id="revealBtn" class="ghost">Reveal the solution</button>
+    <div class="reveal" id="revealBox" style="display:none;margin-top:14px"></div>
+  </div>
+  <div class="center"><button class="ghost" id="reset">Forget this party on this device</button></div>
+</div>
+<script src="/app.js"></script>
+<script>
+let phase = 1;
+function showLive() {
+  el('#setup').style.display = 'none';
+  el('#live').style.display = 'block';
+  el('#code').textContent = Store.party;
+  const g = `${location.origin}/gallery?party=${Store.party}`;
+  el('#galleryLink').href = g; el('#galleryLink').textContent = g;
+}
+async function tick() {
+  if (!Store.party) return;
+  try {
+    const { state } = await api(`state?partyCode=${Store.party}`);
+    phase = state.phase;
+    el('#phasePill').textContent = `Phase ${state.phase} · ${state.phaseName}`;
+    el('#pollList').innerHTML = (state.polls||[]).map(p =>
+      `<div class="barrow"><span>${esc(p.question||p.id)}</span><span class="muted">${p.total} votes</span>${p.closed?'<span class="pill">closed</span>':`<button data-close="${esc(p.id)}" style="margin:0">Close</button>`}</div>`).join('');
+    document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', async () => {
+      const r = await api('poll', { action:'close', partyCode: Store.party, hostToken: Store.host, id: b.dataset.close });
+      alert('Results: ' + Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   '));
+    }));
+  } catch(e) {}
+}
+
+el('#createBtn').addEventListener('click', async () => {
+  el('#createBtn').disabled = true;
+  try {
+    const r = await api('create-game', { hostName: 'Host' });
+    Store.party = r.partyCode; Store.host = r.hostToken;
+    showLive(); tick();
+  } catch(e){ el('#err').textContent = e.message; el('#createBtn').disabled = false; }
+});
+el('#advBtn').addEventListener('click', async () => {
+  try { const r = await api('advance', { partyCode: Store.party, hostToken: Store.host }); phase = r.phase; tick(); } catch(e){ alert(e.message); }
+});
+el('#pollBtn').addEventListener('click', async () => {
+  const question = el('#pq').value.trim();
+  const options = el('#po').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if (options.length < 2) { alert('Give at least two options.'); return; }
+  const id = 'p' + Date.now();
+  try { await api('poll', { action:'create', partyCode: Store.party, hostToken: Store.host, id, question, options }); el('#pq').value=''; el('#po').value=''; tick(); } catch(e){ alert(e.message); }
+});
+el('#revealBtn').addEventListener('click', async () => {
+  try {
+    const r = await api('reveal', { partyCode: Store.party, hostToken: Store.host });
+    const box = el('#revealBox'); box.style.display='block';
+    box.innerHTML = `<div class="serif" style="font-size:22px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div>`+
+      `<p><b>Motive.</b> ${esc(r.motive)}</p><p><b>Method.</b> ${esc(r.method)}</p>`+
+      `<div class="list">${r.evidence.map(e=>`<div>${esc('E'+e.n)}${e.keystone?' · KEYSTONE':''}: ${esc(e.text)}</div>`).join('')}</div>`;
+  } catch(e){ alert(e.message); }
+});
+el('#reset').addEventListener('click', () => { Store.clear(); location.reload(); });
+
+if (Store.party && Store.host) { showLive(); tick(); }
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

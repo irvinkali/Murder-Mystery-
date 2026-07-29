@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Galerie Noir — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body class="gallery">
+<div class="wrap">
+  <div class="center">
+    <div class="eyebrow">Galerie Noir</div>
+    <h1>The Last Exhibit</h1>
+    <div class="big" id="phase">—</div>
+    <p class="muted" id="phaseName"></p>
+  </div>
+
+  <div class="card">
+    <p class="serif" id="victim" style="font-size:22px"></p>
+  </div>
+
+  <div class="card">
+    <h2>The guests</h2>
+    <div class="grid" id="roster"></div>
+  </div>
+
+  <div class="card" id="pollCard" style="display:none">
+    <h2 id="pollQ"></h2>
+    <div class="list" id="pollBars"></div>
+  </div>
+
+  <footer>No accounts · No personal data on this screen · Join with the party code on your phone</footer>
+</div>
+<script src="/app.js"></script>
+<script>
+const party = qs('party') || Store.party;
+async function refresh() {
+  if (!party) { el('#phaseName').textContent = 'Add ?party=CODE to this URL'; return; }
+  try {
+    const { state } = await api(`state?partyCode=${party}`);
+    el('#phase').textContent = state.phase;
+    el('#phaseName').textContent = state.phaseName;
+    el('#victim').textContent = state.victim || '';
+    el('#roster').innerHTML = state.roster.map(c =>
+      `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'present':'—'}</span></div>`).join('');
+    const open = (state.polls||[]).find(p => !p.closed);
+    if (open) {
+      el('#pollCard').style.display = 'block';
+      el('#pollQ').textContent = open.question;
+      el('#pollBars').innerHTML = `<p class="muted">${open.total} response(s) — vote on your phone</p>`;
+    } else { el('#pollCard').style.display = 'none'; }
+  } catch (e) { el('#phaseName').textContent = e.message; }
+}
+refresh(); setInterval(refresh, 4000);
+</script>
+</body>
+</html>
