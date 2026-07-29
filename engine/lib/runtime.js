@@ -127,6 +127,39 @@ function resolvePropScan(pack, variantLetter, propId, phase) {
   return { ...base, extra: { step: step.n, text: step.text, keystone: isKeystone } };
 }
 
+// Generic, plot-free rescue prompts for players who have gone quiet. They nod
+// at "your character has something to protect" without encoding any secret.
+const NUDGES = [
+  'Someone just glanced at you across the room. Go find out why.',
+  'You have been quiet. Pick the person you trust least and ask them where they were.',
+  'Your character is protecting something. Make sure no one is circling it.',
+  'Go examine a piece you have not looked at yet — tap its tag.',
+  'Start a rumor. Nothing steadies a room like a little chaos.',
+  'Compare notes with someone. One of you knows more than you think.',
+  'Ask the room a question out loud. Watch who gets uncomfortable.',
+];
+const NUDGE_PHASES = new Set([2, 3, 4, 5]);
+const NUDGE_THRESHOLD_MS = 8 * 60 * 1000;
+
+function hashId(s) {
+  let h = 0;
+  for (let i = 0; i < String(s).length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/**
+ * A rescue nudge for an idle player. Returns null unless the player has been
+ * inactive past the threshold during an active phase. Deterministic pick (no
+ * randomness) so it is testable and stable between polls.
+ */
+function idleNudge(characterId, phase, idleMs, thresholdMs) {
+  const limit = typeof thresholdMs === 'number' ? thresholdMs : NUDGE_THRESHOLD_MS;
+  if (!NUDGE_PHASES.has(phase)) return null;
+  if (!(idleMs >= limit)) return null;
+  const idx = (hashId(characterId) + phase) % NUDGES.length;
+  return { text: NUDGES[idx], idleMinutes: Math.floor(idleMs / 60000) };
+}
+
 /**
  * Map a variant's killer (stored as a prose name) to a character id, by finding
  * the cast member whose name appears in the killer string.
@@ -177,6 +210,7 @@ module.exports = {
   PHASES,
   KEYSTONE_PHASE,
   KILLER_UNLOCK_PHASE,
+  NUDGE_THRESHOLD_MS,
   PROP_CATALOG,
   loadRuntimePack,
   selectVariant,
@@ -188,5 +222,6 @@ module.exports = {
   resolvePropScan,
   resolveKillerId,
   killerUnlock,
+  idleNudge,
   branchingHooks,
 };

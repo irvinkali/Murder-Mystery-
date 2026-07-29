@@ -108,6 +108,27 @@ async function main() {
   }
   assert('at least one variant exposes its keystone via a prop', sweepProps >= 1);
 
+  // 4c. Idle-rescue nudge — absent for an active player, present once idle.
+  {
+    const freshCode = codes[1];
+    const s1 = await j(state(GET({ partyCode, personalCode: freshCode })));
+    assert('no nudge for a recently-active player', !(s1.you && s1.you.nudge));
+    // Backdate this player's activity well past the threshold.
+    const { NUDGE_THRESHOLD_MS } = require('./lib/runtime');
+    const { updateGame } = require('./lib/store');
+    await updateGame(partyCode, (g) => {
+      g.players[freshCode].lastActive = new Date(Date.now() - NUDGE_THRESHOLD_MS - 60000).toISOString();
+      return g;
+    });
+    const s2 = await j(state(GET({ partyCode, personalCode: freshCode })));
+    assert('idle player gets a rescue nudge during an active phase',
+      !!(s2.you && s2.you.nudge && s2.you.nudge.text));
+    // A deliberate action (scan) clears the idle state.
+    await j(scan(POST({ partyCode, personalCode: freshCode, propId: 'P1' })));
+    const s3 = await j(state(GET({ partyCode, personalCode: freshCode })));
+    assert('a scan clears the nudge', !(s3.you && s3.you.nudge));
+  }
+
   // 5. scan requires membership.
   assert('scan rejects a non-player',
     !!(await j(scan(POST({ partyCode, personalCode: 'ZZZZZ', propId: 'P1' })))).error);

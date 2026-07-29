@@ -26,6 +26,7 @@ exports.handler = async (event) => {
     const d = g.discovered[propId] || { count: 0, firstAt: new Date().toISOString() };
     d.count += 1;
     g.discovered[propId] = d;
+    if (g.players[personalCode]) g.players[personalCode].lastActive = new Date().toISOString();
     g.log.push({ at: new Date().toISOString(), kind: 'scan', propId, by: personalCode });
     return g;
   });

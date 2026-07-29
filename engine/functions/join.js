@@ -25,7 +25,8 @@ exports.handler = async (event) => {
     assignedId = coreIds.find((id) => !taken.has(id)) || null; // flex added later
     if (!assignedId) return g; // full (core cast exhausted)
     pcode = personalCode();
-    g.players[pcode] = { name, characterId: assignedId, joinedAt: new Date().toISOString() };
+    const now = new Date().toISOString();
+    g.players[pcode] = { name, characterId: assignedId, joinedAt: now, lastActive: now };
     g.assignments[assignedId] = pcode;
     g.log.push({ at: new Date().toISOString(), kind: 'join', characterId: assignedId });
     return g;

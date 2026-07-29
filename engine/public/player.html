@@ -22,6 +22,11 @@
     <div class="list" id="killerGuide"></div>
   </div>
 
+  <div class="card" id="nudgeBox" style="display:none;border-color:var(--gold)">
+    <div class="eyebrow">A quiet word</div>
+    <p class="serif" id="nudgeText" style="font-size:19px;margin:6px 0 0"></p>
+  </div>
+
   <div class="card">
     <h2>Your dossier</h2>
     <div class="brief" id="brief">Loading…</div>
@@ -83,6 +88,12 @@ async function refresh() {
       el('#killerGuide').innerHTML = you.killer.guidance.map(g => `<div>— ${esc(g)}</div>`).join('');
     } else {
       el('#killerBox').style.display = 'none';
+    }
+    if (you && you.nudge) {
+      el('#nudgeBox').style.display = 'block';
+      el('#nudgeText').textContent = you.nudge.text;
+    } else {
+      el('#nudgeBox').style.display = 'none';
     }
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'in play':'—'}</span></div>`).join('');

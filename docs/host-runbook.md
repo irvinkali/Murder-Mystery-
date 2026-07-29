@@ -95,7 +95,7 @@ You mostly let the app be the game master; you set tempo and read the room.
 | 6 · The Reveal | 10m | Trigger the reveal from `/host`; read it aloud | Reveals the sealed solution |
 
 **Polls** (StoryPop-style) are your main lever. Good ones: "Who benefits most?",
-"Where were you at 6:40?", "Should we subpoena the doctor's files?" Options are
+"Who are you most suspicious of?", "Whose story doesn't add up?" Options are
 usually the guest characters — read them off the in-app roster.
 
 **Quiet guests?** Walk over and hand them a small task drawn from their own

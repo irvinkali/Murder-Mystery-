@@ -47,6 +47,7 @@ exports.handler = async (event) => {
     if (!poll.options.includes(b.choice)) return bad('invalid choice');
     await updateGame(code, (g) => {
       g.polls[b.id].votes[b.personalCode] = b.choice; // one vote per player; anonymous in tally
+      if (g.players[b.personalCode]) g.players[b.personalCode].lastActive = new Date().toISOString();
       return g;
     });
     return ok({ id: b.id, voted: true });
