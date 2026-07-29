@@ -43,7 +43,13 @@ engine/
 cd engine
 npm run validate     # check §7 fairness rules across variants × player counts
 npm run build-pack   # (re)generate packs/last-exhibit/pack.json.b64 (encoded)
+npm test             # end-to-end engine test (in-memory)
+npm run smoke        # boot the server and test the real HTTP wiring
+npm run spoiler-scan # fail if any plot name appears in a Kali-readable file
+npm run check        # all of the above, in order
+npm run dev          # local preview at http://localhost:8888 (no deploy needed)
 ```
 
-Both commands are spoiler-safe: they read the radioactive `.b64` inputs, work
-in memory, and print only structural / pass-fail results.
+All of these are spoiler-safe: they read the radioactive `.b64` inputs, work in
+memory, and print only structural / pass-fail results. `npm run check` is the
+one gate to run before every commit.

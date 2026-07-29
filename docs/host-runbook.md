@@ -20,6 +20,18 @@ so you can play too.
    game state lives there.
 5. Note your site address, e.g. `https://your-game.netlify.app`.
 
+### Prefer to try it first without deploying?
+On any computer with Node.js installed, from the repo folder run:
+
+```
+node engine/dev-server.js
+```
+
+Then open `http://localhost:8888` (join), `/host`, and `/gallery?party=CODE`.
+No install, no account — game state lives in memory and resets when you stop the
+server. Great for a quick look before you deploy for real. (NFC tags still need
+the deployed https address to open on phones.)
+
 ### Verify it deployed cleanly
 - Open `https://your-site/host` → click **Create party** → you should get a
   4-letter code.
