@@ -1,0 +1,20 @@
+# --- Spoiler protection: never commit decoded plot content ---
+# Any file that could contain decoded pack/plot text is forbidden in git.
+*.decoded
+*.plain
+*.md.decoded
+*.json.decoded
+/tmp-decode/
+packs/**/*.md
+!docs/**/*.md
+!README.md
+!STATE.md
+
+# Node / build
+node_modules/
+.netlify/
+dist/
+*.log
+.env
+.env.*
+.DS_Store

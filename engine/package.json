@@ -1,0 +1,14 @@
+{
+  "name": "mystery-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plot-agnostic platform for live phone-driven murder-mystery parties.",
+  "type": "commonjs",
+  "scripts": {
+    "validate": "node validate.js",
+    "build-pack": "node build-pack.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
