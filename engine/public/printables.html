@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Printables — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+<style>
+  /* Print-specific: white paper, black ink, clean page breaks. */
+  .sheet { background: #fff; color: #111; border-radius: 10px; padding: 22px; margin: 18px 0; }
+  .sheet h2, .sheet h3 { color: #111; }
+  .placards, .labels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .placard { border: 1px solid #111; border-radius: 6px; padding: 16px; min-height: 120px; }
+  .placard .no { font-family: var(--font); font-size: 30px; }
+  .placard .medium { color: #555; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+  .label { border: 1px dashed #444; border-radius: 6px; padding: 12px; font-size: 13px; }
+  .label .url { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; background: #f2f2f2; padding: 6px 8px; border-radius: 5px; display: block; margin-top: 6px; }
+  .fold { border: 1px solid #111; border-radius: 6px; padding: 0; overflow: hidden; }
+  .fold .third { padding: 14px 16px; border-bottom: 1px dashed #999; font-family: var(--font); }
+  .fold .third:last-child { border-bottom: none; }
+  .invite { border: 2px solid #111; padding: 26px; font-family: var(--font); text-align: center; }
+  .controls { position: sticky; top: 0; }
+  @media print {
+    body { background: #fff; }
+    .controls, .noprint, footer { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    .sheet { break-inside: avoid; page-break-inside: avoid; box-shadow: none; margin: 0 0 12mm; }
+    .sheet + .sheet { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="controls card noprint">
+    <div class="eyebrow">Host tools · Printables</div>
+    <h2>Print the kit</h2>
+    <p class="muted">Set your deployed site address, then print this page to PDF (or paper). Everything here is safe to read — none of it reveals the solution. The app supplies each prop's real meaning during play.</p>
+    <label for="site">Your site address</label>
+    <input id="site" placeholder="https://your-game.netlify.app" />
+    <button id="printBtn">Print / Save as PDF</button>
+  </div>
+
+  <!-- SHEET 1: NFC programming map -->
+  <div class="sheet">
+    <h2>NFC tag map</h2>
+    <p>Using the free <b>NFC Tools</b> app, write each URL below to that prop's sticker (Write → Add a record → URL/URI). Test-tap each after writing.</p>
+    <div class="labels" id="nfc"></div>
+    <p class="muted" style="margin-top:14px">If a tag ever fails, guests can still use “I found something” in the app and pick the exhibit number — the meaning is tied to the item, not the tag.</p>
+  </div>
+
+  <!-- SHEET 2: prop labels & inserts -->
+  <div class="sheet">
+    <h2>Prop labels &amp; inserts</h2>
+    <p class="muted">Cut out. For the folded inserts, fold on the dashed lines <b>without reading</b> — they’re written to be ambiguous on purpose, and the app tells the real story.</p>
+    <div class="labels">
+      <div class="label"><b>P7 — Staff fob</b><br/>GALERIE NOIR — STAFF<br/><span class="muted">Attach to a keycard on a snapped lanyard.</span></div>
+      <div class="label"><b>P3 — Prescription label</b><br/>GALERIE NOIR APOTHECARY · Rx ▓▓▓▓▓▓<br/>TAKE AS DIRECTED · ▓▓ mg<br/><span class="muted">Scratch away part of the name. Wrap around an empty bottle.</span></div>
+    </div>
+    <h3 style="margin-top:18px">P4 — Sealed envelope insert (fold in thirds, do not read)</h3>
+    <div class="fold">
+      <div class="third">Galerie Noir — for the record.</div>
+      <div class="third">Some things are meant to be opened only once.</div>
+      <div class="third">— to be read aloud, if it comes to that.</div>
+    </div>
+    <h3 style="margin-top:18px">P2 — Planner stub (write on the torn edge, then tear)</h3>
+    <div class="fold"><div class="third">…midnight — the unveiling. Everything after is different.</div></div>
+    <h3 style="margin-top:18px">P6 — Photograph crop guide</h3>
+    <p class="label">Print your staged photo, then scratch out the single face inside the marked circle. Leave the rest intact.</p>
+  </div>
+
+  <!-- SHEET 3: gallery placards -->
+  <div class="sheet">
+    <h2>Exhibit placards</h2>
+    <p class="muted">Gallery signage for the installation. Cut and mount beside each piece. “Medium: to be announced” is intentional house style.</p>
+    <div class="placards" id="placards"></div>
+  </div>
+
+  <!-- SHEET 4: invite -->
+  <div class="sheet">
+    <div class="invite">
+      <div style="letter-spacing:.3em;text-transform:uppercase;font-size:12px">Galerie Noir requests your presence</div>
+      <div style="font-size:38px;margin:8px 0">The Last Exhibit</div>
+      <p>An opening night of provocative new work. Twelve pieces. One unveiling at midnight.<br/>Come as someone with something to hide — because everyone here does.</p>
+      <p style="margin-top:14px"><b>Bring your phone.</b> You’ll receive your character and a party code on arrival.<br/>Dress: glamorous, a little funereal.</p>
+      <p class="muted" style="font-size:12px">10–20 guests · about two hours · you are a suspect</p>
+    </div>
+  </div>
+
+  <footer class="noprint">Nothing on this page reveals the killer — not even to you.</footer>
+</div>
+<script src="/app.js"></script>
+<script>
+const PROPS = [
+  ['P1','Champagne flute','A flute with a lipstick mark; leave it somewhere abandoned.'],
+  ['P2','Day planner','A datebook with one page torn out.'],
+  ['P3','Prescription bottle','Label partially scratched off; in the bathroom.'],
+  ['P4','Sealed black envelope','Tucked behind a framed piece, an edge showing.'],
+  ['P5','Art-handling gloves','White cotton, a colored smudge; by the final installation.'],
+  ['P6','Old photograph','One face scratched out; inside a coffee-table book.'],
+  ['P7','Gallery key fob','On a snapped lanyard, half under a rug near a door.'],
+];
+function siteBase() {
+  const v = (el('#site').value || '').trim().replace(/\/+$/,'');
+  return v || 'https://your-game.netlify.app';
+}
+function renderNFC() {
+  const base = siteBase();
+  el('#nfc').innerHTML = PROPS.map(([id,name,place]) =>
+    `<div class="label"><b>${id} — ${name}</b><br/><span class="muted">${place}</span>
+     <span class="url">${base}/prop/${id}</span></div>`).join('');
+}
+function renderPlacards() {
+  let h = '';
+  for (let n = 1; n <= 12; n++) {
+    h += `<div class="placard"><div class="medium">Galerie Noir</div>
+      <div class="no">Exhibit No. ${n}</div>
+      <div class="medium">Medium: to be announced</div></div>`;
+  }
+  el('#placards').innerHTML = h;
+}
+el('#site').addEventListener('input', renderNFC);
+el('#printBtn').addEventListener('click', () => window.print());
+renderNFC(); renderPlacards();
+</script>
+</body>
+</html>

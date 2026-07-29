@@ -29,6 +29,7 @@ const PHASES = [
   { n: 6, key: 'reveal', name: 'The Reveal' },
 ];
 const KEYSTONE_PHASE = 4;
+const KILLER_UNLOCK_PHASE = 3; // the hybrid killer learns the truth mid-game
 
 // Safe physical descriptions (identical to the props guide Kali already has).
 const PROP_CATALOG = {
@@ -126,6 +127,43 @@ function resolvePropScan(pack, variantLetter, propId, phase) {
   return { ...base, extra: { step: step.n, text: step.text, keystone: isKeystone } };
 }
 
+/**
+ * Map a variant's killer (stored as a prose name) to a character id, by finding
+ * the cast member whose name appears in the killer string.
+ */
+function resolveKillerId(pack, variantLetter) {
+  const v = getVariant(pack, variantLetter);
+  if (!v) return null;
+  const target = String(v.killer).toUpperCase();
+  const hit = pack.cast.find((c) => target.includes(String(c.name).toUpperCase()));
+  return hit ? hit.id : null;
+}
+
+/**
+ * The mid-game private unlock delivered ONLY to the player whose character is
+ * the sealed variant's killer, and only from Phase 3 onward. `whatYouDid` is the
+ * method text from the pack; the guidance is generic and requires no acting
+ * skill (fairness rule 6). Returns null for everyone else / too-early.
+ */
+function killerUnlock(pack, variantLetter, characterId, phase) {
+  if (phase < KILLER_UNLOCK_PHASE) return null;
+  if (resolveKillerId(pack, variantLetter) !== characterId) return null;
+  const v = getVariant(pack, variantLetter);
+  return {
+    youAreTheKiller: true,
+    unlockedAtPhase: KILLER_UNLOCK_PHASE,
+    whatYouDid: v.method,
+    guidance: [
+      'The app will never expose you — only the evidence can. Stay calm.',
+      'Keep playing your character exactly as before. No new performance is required.',
+      'You may lie about where you were and what you know. You never have to volunteer anything.',
+      'React to accusations with the same energy as everyone else — curiosity, not panic.',
+      'You "win" if no accusation reaches a group majority against you before the Reveal.',
+      'Do NOT confess, wink, or hint. Do NOT invent evidence — the props speak for themselves.',
+    ],
+  };
+}
+
 /** Parse the branching hooks into a lightweight list the host tools can fire. */
 function branchingHooks(pack) {
   const text = pack.branching || '';
@@ -138,6 +176,7 @@ function branchingHooks(pack) {
 module.exports = {
   PHASES,
   KEYSTONE_PHASE,
+  KILLER_UNLOCK_PHASE,
   PROP_CATALOG,
   loadRuntimePack,
   selectVariant,
@@ -147,5 +186,7 @@ module.exports = {
   publicRoster,
   playerBrief,
   resolvePropScan,
+  resolveKillerId,
+  killerUnlock,
   branchingHooks,
 };

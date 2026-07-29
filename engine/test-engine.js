@@ -56,6 +56,24 @@ async function main() {
   assert('roster is public but carries no secrets',
     st.state.roster.length === 10 && st.state.roster.every((c) => !('brief' in c)));
 
+  // 3b. Hybrid-killer unlock: hidden until Phase 3, then ONLY the killer sees it.
+  const { resolveKillerId } = require('./lib/runtime');
+  const sealedForKiller = (await getGame(partyCode)).variant;
+  const killerId = resolveKillerId(pack, sealedForKiller);
+  const killerCode = (await getGame(partyCode)).assignments[killerId];
+  async function killerFlags() {
+    const flags = {};
+    for (const c of codes) { const s = await j(state(GET({ partyCode, personalCode: c }))); flags[c] = !!(s.you && s.you.killer); }
+    return flags;
+  }
+  let kf = await killerFlags();
+  assert('no killer unlock before Phase 3', Object.values(kf).every((x) => !x));
+  await j(advance(POST({ partyCode, hostToken, phase: 3 })));
+  kf = await killerFlags();
+  assert('exactly one player is unlocked as the killer at Phase 3',
+    Object.values(kf).filter(Boolean).length === 1);
+  assert('the unlocked player is the sealed variant\'s killer', !!killerCode && kf[killerCode] === true);
+
   // 4. keystone gating — derive the keystone prop for the sealed variant from
   //    the pack (without printing it) and prove it is locked before Phase 4.
   const sealed = (await getGame(partyCode)).variant; // read locally; never printed

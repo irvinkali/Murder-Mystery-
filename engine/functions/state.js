@@ -6,7 +6,7 @@
 
 const { ok, bad, notFound, preflight } = require('../lib/api');
 const { getGame } = require('../lib/store');
-const { loadRuntimePack, phaseInfo, publicVictimBlurb, publicRoster, playerBrief } = require('../lib/runtime');
+const { loadRuntimePack, phaseInfo, publicVictimBlurb, publicRoster, playerBrief, killerUnlock } = require('../lib/runtime');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
@@ -38,7 +38,13 @@ exports.handler = async (event) => {
   let you = null;
   if (q.personalCode && game.players[q.personalCode]) {
     const me = game.players[q.personalCode];
-    you = { name: me.name, character: playerBrief(pack, me.characterId) };
+    you = {
+      name: me.name,
+      character: playerBrief(pack, me.characterId),
+      // The hybrid-killer unlock: present ONLY for the killer's own device from
+      // Phase 3 onward. null for everyone else — the variant never leaks here.
+      killer: killerUnlock(pack, game.variant, me.characterId, game.phase),
+    };
   }
 
   return ok({ state: publicState, you });

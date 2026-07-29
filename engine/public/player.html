@@ -14,6 +14,14 @@
     <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
   </div>
 
+  <div class="card" id="killerBox" style="display:none;border-color:var(--blood);box-shadow:0 0 0 1px var(--blood), 0 20px 60px rgba(124,31,43,.35)">
+    <div class="eyebrow" style="color:#e79aa4">A private message · for your eyes only</div>
+    <h2 style="color:#e79aa4">It was you.</h2>
+    <p class="brief" id="killerWhat"></p>
+    <div class="divider"></div>
+    <div class="list" id="killerGuide"></div>
+  </div>
+
   <div class="card">
     <h2>Your dossier</h2>
     <div class="brief" id="brief">Loading…</div>
@@ -68,6 +76,13 @@ async function refresh() {
     if (you && you.character) {
       el('#charName').textContent = you.character.name;
       el('#brief').textContent = you.character.brief;
+    }
+    if (you && you.killer) {
+      el('#killerBox').style.display = 'block';
+      el('#killerWhat').textContent = you.killer.whatYouDid || '';
+      el('#killerGuide').innerHTML = you.killer.guidance.map(g => `<div>— ${esc(g)}</div>`).join('');
+    } else {
+      el('#killerBox').style.display = 'none';
     }
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'in play':'—'}</span></div>`).join('');
