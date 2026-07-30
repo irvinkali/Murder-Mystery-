@@ -1,12 +1,14 @@
 'use strict';
 /* GET /api/state?partyCode=..&personalCode=..
- * Returns public game state + (if a valid personalCode is given) that player's
- * own private brief. Never returns the sealed variant or other players' briefs
- * before the reveal. */
+ * Public game state + (with a valid personalCode) that player's private view.
+ * Never returns the sealed variant or other players' private content before the
+ * Phase-6 reveal. All private content is framed as in-world notes. */
 
 const { ok, bad, notFound, preflight } = require('../lib/api');
 const { getGame, updateGame } = require('../lib/store');
-const { loadRuntimePack, phaseInfo, publicVictimBlurb, publicRoster, playerBrief, killerUnlock, idleNudge } = require('../lib/runtime');
+const {
+  loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES,
+} = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
 
 exports.handler = async (event) => {
@@ -18,24 +20,50 @@ exports.handler = async (event) => {
   if (!game) return notFound('no such party');
 
   const pack = loadRuntimePack();
+  const charName = (id) => {
+    const c = [...pack.cast, ...(pack.flex || [])].find((x) => x.id === id);
+    return c ? c.name : id;
+  };
+
+  // Room list: who's actually in, real first name + character name (public).
+  const roster = Object.entries(game.players).map(([code, p]) => ({
+    characterId: p.characterId,
+    characterName: charName(p.characterId),
+    firstName: p.name,
+  }));
+
+  // Gallery narrator cards (most recent first): find-hints, medical, etc.
+  const screenCards = (game.screenCards || []).slice(-6).reverse().map((c) => ({ kind: c.kind, text: c.text }));
+
+  // Aggregate-only results for closed anonymous polls (for the gallery).
+  const pollResults = Object.entries(game.pollResults || {}).map(([id, r]) => ({ id, question: r.question, counts: r.counts }));
 
   const publicState = {
     partyCode: game.partyCode,
     phase: game.phase,
     phaseName: phaseInfo(game.phase).name,
-    playerCount: Object.keys(game.players).length,
+    playerCount: roster.length,
     victim: publicVictimBlurb(pack),
-    roster: publicRoster(pack).map((c) => ({
-      ...c,
-      claimed: Boolean(game.assignments[c.id]),
-    })),
-    discoveredProps: Object.keys(game.discovered),
-    polls: Object.entries(game.polls).map(([id, p]) => ({
+    roster,
+    narration: game.narration ? game.narration.text : null,
+    screenCards,
+    pollResults,
+    reveal: game.reveal || null, // set only after the Phase-6 reveal
+    // Live polls players can act on (guidance shown to players).
+    polls: Object.entries(game.polls || {}).map(([id, p]) => ({
       id, question: p.question, options: p.options, closed: p.closed,
+      kind: p.kind || 'anonymous', mandatory: !!p.mandatory, guidance: p.guidance || '',
       total: Object.keys(p.votes).length,
     })),
-    // Public [SCREEN] announcement (e.g. the medical-files reveal), if any.
-    screen: game.screen ? game.screen.text : null,
+    discoveredCount: Object.keys(game.discovered || {}).length,
+    // Phase clock (display-only; host uses this for "time remaining").
+    timing: {
+      phaseStartedAt: game.phaseStartedAt || game.createdAt,
+      paused: !!game.paused,
+      pausedAt: game.pausedAt || null,
+      pauseAccumMs: game.pauseAccumMs || 0,
+      suggestedMinutes: PHASE_MINUTES[game.phase] || null,
+    },
   };
 
   let you = null;
@@ -43,21 +71,19 @@ exports.handler = async (event) => {
     const me = game.players[q.personalCode];
     const idleMs = Date.now() - new Date(me.lastActive || me.joinedAt).getTime();
     const unlock = killerUnlock(pack, game.variant, me.characterId, game.phase);
+    const drops = visibleDrops(game, q.personalCode, game.phase);
+    const hasHint = drops.some((d) => d.kind === 'hint');
     you = {
       name: me.name,
       character: playerBrief(pack, me.characterId),
-      // The hybrid-killer unlock: present ONLY for the killer's own device from
-      // Phase 3 onward. null for everyone else — the variant never leaks here.
+      // The current phase's private script line ("Your lines" card). Never future.
+      lines: pack.scriptLines ? (pack.scriptLines[me.characterId] || {})[game.phase] || null : null,
       killer: unlock,
-      // Rescue nudge if this player has gone quiet during an active phase.
-      // Based on deliberate activity (scans/votes), not passive polling.
-      nudge: idleNudge(me.characterId, game.phase, idleMs),
-      // Private branching drops this player can currently see.
-      drops: visibleDrops(game, q.personalCode, game.phase),
-      // Whether this player has logged their 6:40 answer (drives the prompt).
+      // Idle nudge — suppressed if a find-hint already gave them something to do.
+      nudge: hasHint ? null : idleNudge(me.characterId, game.phase, idleMs),
+      drops,
       alibiSubmitted: !!(game.alibi && game.alibi[q.personalCode]),
     };
-    // Record that the killer unlock has "fired" for this player (§4.5 ordering).
     if (unlock && !me.killerSeenAt) {
       await updateGame(game.partyCode, (g) => {
         if (g.players[q.personalCode] && !g.players[q.personalCode].killerSeenAt) {

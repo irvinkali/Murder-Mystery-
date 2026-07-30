@@ -53,18 +53,18 @@
     <h2>Prop labels &amp; inserts</h2>
     <p class="muted">Cut out. For the folded inserts, fold on the dashed lines <b>without reading</b> — they’re written to be ambiguous on purpose, and the app tells the real story.</p>
     <div class="labels">
-      <div class="label"><b>P7 — Staff fob</b><br/>GALERIE NOIR — STAFF<br/><span class="muted">Attach to a keycard on a snapped lanyard.</span></div>
-      <div class="label"><b>P3 — Prescription label</b><br/>GALERIE NOIR APOTHECARY · Rx ▓▓▓▓▓▓<br/>TAKE AS DIRECTED · ▓▓ mg<br/><span class="muted">Scratch away part of the name. Wrap around an empty bottle.</span></div>
+      <div class="label"><b>Exhibit 27 — Staff fob</b><br/>GALERIE NOIR — STAFF<br/><span class="muted">Attach to a keycard on a snapped lanyard.</span></div>
+      <div class="label"><b>Exhibit 23 — Prescription label</b><br/>GALERIE NOIR APOTHECARY · Rx ▓▓▓▓▓▓<br/>TAKE AS DIRECTED · ▓▓ mg<br/><span class="muted">Scratch away part of the name. Wrap around an empty bottle.</span></div>
     </div>
-    <h3 style="margin-top:18px">P4 — Sealed envelope insert (fold in thirds, do not read)</h3>
+    <h3 style="margin-top:18px">Exhibit 24 — Sealed envelope insert (fold in thirds, do not read)</h3>
     <div class="fold">
       <div class="third">Galerie Noir — for the record.</div>
       <div class="third">Some things are meant to be opened only once.</div>
       <div class="third">— to be read aloud, if it comes to that.</div>
     </div>
-    <h3 style="margin-top:18px">P2 — Planner stub (write on the torn edge, then tear)</h3>
+    <h3 style="margin-top:18px">Exhibit 22 — Planner stub (write on the torn edge, then tear)</h3>
     <div class="fold"><div class="third">…midnight — the unveiling. Everything after is different.</div></div>
-    <h3 style="margin-top:18px">P6 — Photograph crop guide</h3>
+    <h3 style="margin-top:18px">Exhibit 26 — Photograph crop guide</h3>
     <p class="label">Print your staged photo, then scratch out the single face inside the marked circle. Leave the rest intact.</p>
   </div>
 
@@ -90,14 +90,15 @@
 </div>
 <script src="/app.js"></script>
 <script>
+// [exhibit number, name, placement] — guests see the exhibit number, never a P-id.
 const PROPS = [
-  ['P1','Champagne flute','A flute with a lipstick mark; leave it somewhere abandoned.'],
-  ['P2','Day planner','A datebook with one page torn out.'],
-  ['P3','Prescription bottle','Label partially scratched off; in the bathroom.'],
-  ['P4','Sealed black envelope','Tucked behind a framed piece, an edge showing.'],
-  ['P5','Art-handling gloves','White cotton, a colored smudge; by the final installation.'],
-  ['P6','Old photograph','One face scratched out; inside a coffee-table book.'],
-  ['P7','Gallery key fob','On a snapped lanyard, half under a rug near a door.'],
+  ['21','Champagne flute','A flute with a lipstick mark; leave it somewhere abandoned.'],
+  ['22','Day planner','A datebook with one page torn out.'],
+  ['23','Prescription bottle','Label partially scratched off; in the bathroom.'],
+  ['24','Sealed black envelope','Tucked behind a framed piece, an edge showing.'],
+  ['25','Art-handling gloves','White cotton, a colored smudge; by the final installation.'],
+  ['26','Old photograph','One face scratched out; inside a coffee-table book.'],
+  ['27','Gallery key fob','On a snapped lanyard, half under a rug near a door.'],
 ];
 function siteBase() {
   const v = (el('#site').value || '').trim().replace(/\/+$/,'');
@@ -105,9 +106,9 @@ function siteBase() {
 }
 function renderNFC() {
   const base = siteBase();
-  el('#nfc').innerHTML = PROPS.map(([id,name,place]) =>
-    `<div class="label"><b>${id} — ${name}</b><br/><span class="muted">${place}</span>
-     <span class="url">${base}/prop/${id}</span></div>`).join('');
+  el('#nfc').innerHTML = PROPS.map(([num,name,place]) =>
+    `<div class="label"><b>Exhibit ${num} — ${name}</b><br/><span class="muted">${place}</span>
+     <span class="url">${base}/prop/${num}</span></div>`).join('');
 }
 function renderPlacards() {
   let h = '';

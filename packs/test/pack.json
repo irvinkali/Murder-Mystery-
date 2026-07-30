@@ -1,6 +1,459 @@
 {
   "schema": "mystery-engine/pack@1",
   "id": "test-rehearsal",
+  "scriptLines": {
+    "C1": {
+      "1": {
+        "quote": "TEST line (Casey One, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey One): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey One, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey One, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey One, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C2": {
+      "1": {
+        "quote": "TEST line (Casey Two, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Two): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Two, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Two, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Two, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C3": {
+      "1": {
+        "quote": "TEST line (Casey Three, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Three): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Three, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Three, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Three, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C4": {
+      "1": {
+        "quote": "TEST line (Casey Four, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Four): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Four, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Four, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Four, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C5": {
+      "1": {
+        "quote": "TEST line (Casey Five, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Five): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Five, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Five, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Five, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C6": {
+      "1": {
+        "quote": "TEST line (Casey Six, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Six): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Six, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Six, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Six, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C7": {
+      "1": {
+        "quote": "TEST line (Casey Seven, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Seven): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Seven, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Seven, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Seven, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C8": {
+      "1": {
+        "quote": "TEST line (Casey Eight, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Eight): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Eight, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Eight, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Eight, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C9": {
+      "1": {
+        "quote": "TEST line (Casey Nine, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Nine): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Nine, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Nine, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Nine, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "C10": {
+      "1": {
+        "quote": "TEST line (Casey Ten, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Casey Ten): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Casey Ten, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Casey Ten, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Casey Ten, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F1": {
+      "1": {
+        "quote": "TEST line (Flex One, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex One): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex One, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex One, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex One, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F2": {
+      "1": {
+        "quote": "TEST line (Flex Two, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Two): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Two, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Two, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Two, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F3": {
+      "1": {
+        "quote": "TEST line (Flex Three, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Three): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Three, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Three, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Three, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F4": {
+      "1": {
+        "quote": "TEST line (Flex Four, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Four): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Four, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Four, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Four, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F5": {
+      "1": {
+        "quote": "TEST line (Flex Five, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Five): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Five, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Five, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Five, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F6": {
+      "1": {
+        "quote": "TEST line (Flex Six, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Six): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Six, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Six, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Six, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F7": {
+      "1": {
+        "quote": "TEST line (Flex Seven, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Seven): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Seven, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Seven, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Seven, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F8": {
+      "1": {
+        "quote": "TEST line (Flex Eight, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Eight): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Eight, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Eight, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Eight, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F9": {
+      "1": {
+        "quote": "TEST line (Flex Nine, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Nine): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Nine, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Nine, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Nine, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    },
+    "F10": {
+      "1": {
+        "quote": "TEST line (Flex Ten, arrivals): everything here is a rehearsal.",
+        "prompt": "Greet two guests by name."
+      },
+      "2": {
+        "reaction": "TEST reaction (Flex Ten): oh no, the test victim!"
+      },
+      "3": {
+        "quote": "TEST line (Flex Ten, investigation): ask someone a nosy question.",
+        "prompt": "Examine an exhibit."
+      },
+      "4": {
+        "quote": "TEST line (Flex Ten, keystone): the evidence is closing in.",
+        "prompt": "Defend or accuse someone."
+      },
+      "5": {
+        "quote": "TEST line (Flex Ten, accusation): name your suspect.",
+        "prompt": "Cast your final vote."
+      }
+    }
+  },
+  "findHints": {
+    "P1": {
+      "ph3": "TEST private hint: look for exhibit 21 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 21 has not been found yet."
+    },
+    "P2": {
+      "ph3": "TEST private hint: look for exhibit 22 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 22 has not been found yet."
+    },
+    "P3": {
+      "ph3": "TEST private hint: look for exhibit 23 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 23 has not been found yet."
+    },
+    "P4": {
+      "ph3": "TEST private hint: look for exhibit 24 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 24 has not been found yet."
+    },
+    "P5": {
+      "ph3": "TEST private hint: look for exhibit 25 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 25 has not been found yet."
+    },
+    "P6": {
+      "ph3": "TEST private hint: look for exhibit 26 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 26 has not been found yet."
+    },
+    "P7": {
+      "ph3": "TEST private hint: look for exhibit 27 somewhere plausible.",
+      "ph4": "TEST [SCREEN] hint: exhibit 27 has not been found yet."
+    }
+  },
+  "fairnessDisclosure": "TEST: some exhibits hold truths, some hold nothing. Tap a tag or type its exhibit number. Dummy rehearsal copy.",
   "generatedFrom": {
     "checksum": "TEST",
     "byteLength": 0

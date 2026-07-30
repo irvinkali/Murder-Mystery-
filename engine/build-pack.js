@@ -33,6 +33,9 @@ function main() {
     variants: pack.variants,
     branching: pack.branching,
     branchingData: pack.branchingData,
+    scriptLines: pack.scriptLines,
+    findHints: pack.findHints,
+    fairnessDisclosure: pack.fairnessDisclosure,
     fairnessRules: pack.fairnessRules,
   };
 

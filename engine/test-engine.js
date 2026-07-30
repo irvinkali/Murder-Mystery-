@@ -74,8 +74,8 @@ async function main() {
   const st = await j(state(GET({ partyCode, personalCode: codes[0] })));
   assert('public state hides the variant', !('variant' in st.state));
   assert('player sees their own character brief', !!(st.you && st.you.character && st.you.character.brief));
-  assert('roster is public but carries no secrets',
-    st.state.roster.length === 10 && st.state.roster.every((c) => !('brief' in c)));
+  assert('roster shows character + first name, never secrets',
+    st.state.roster.length >= 10 && st.state.roster.every((c) => c.characterName && ('firstName' in c) && !('brief' in c)));
 
   // 3b. Hybrid-killer unlock: hidden until Phase 3, then ONLY the killer sees it.
   const { resolveKillerId } = require('./lib/runtime');
@@ -130,8 +130,10 @@ async function main() {
   assert('at least one variant exposes its keystone via a prop', sweepProps >= 1);
 
   // 4c. Idle-rescue nudge — absent for an active player, present once idle.
+  //     Use a player who did NOT receive a Phase-3 find-hint (those two players
+  //     have their idle rescue covered by the hint, which suppresses the nudge).
   {
-    const freshCode = codes[1];
+    const freshCode = codes[5];
     const s1 = await j(state(GET({ partyCode, personalCode: freshCode })));
     assert('no nudge for a recently-active player', !(s1.you && s1.you.nudge));
     // Backdate this player's activity well past the threshold.

@@ -8,9 +8,14 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="nav">
+    <a class="ghost" href="/">← Home</a>
+    <span class="spacer"></span>
+    <span class="pill" id="navCode"></span>
+  </div>
   <div class="eyebrow">Host controls</div>
   <h1>The Last Exhibit</h1>
-  <p class="muted">You run the tempo. The app keeps the secret — the solution is sealed and hidden from you until the reveal, so you can play too.</p>
+  <p class="muted">You set the tempo; the app runs the beats. The solution stays sealed and hidden from you until the reveal.</p>
 
   <div class="card" id="setup">
     <h2>Start a party</h2>
@@ -20,115 +25,125 @@
 
   <div class="card" id="live" style="display:none">
     <h2>Party <span id="code" class="serif" style="color:var(--gold-2)"></span></h2>
-    <p class="muted">Guests join at this site with the code. Put the Gallery Screen on the TV:</p>
-    <p><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
+    <p class="muted"><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
     <div class="divider"></div>
 
-    <label>Phase</label>
+    <div class="row" style="align-items:baseline">
+      <div style="flex:2">
+        <div class="serif" style="font-size:22px" id="phaseTitle">Phase —</div>
+        <div class="muted" id="phaseDetail"></div>
+        <div class="muted clock" id="phaseClock"></div>
+      </div>
+      <div style="flex:1;text-align:right">
+        <div class="serif" id="nextUp" style="color:var(--gold-2)"></div>
+      </div>
+    </div>
     <div class="row">
-      <span class="pill on" id="phasePill">Phase 1</span>
-      <button id="advBtn" style="margin-top:0">Advance phase →</button>
+      <button id="pauseBtn" class="ghost" style="flex:1">Pause</button>
+      <button id="advBtn" style="flex:2">Advance phase →</button>
     </div>
 
     <div class="divider"></div>
-    <h3>Run a poll</h3>
-    <label>Poll type</label>
-    <select id="branch">
-      <option value="">Ordinary poll</option>
-      <option value="benefits">Special · "Who benefits most?" (Phase 3 — arms the suspected guest)</option>
-      <option value="subpoena">Special · "Subpoena the files?" (Phase 4 — the medical reveal)</option>
-    </select>
-    <label>Question</label>
-    <input id="pq" placeholder="Type your question for the room" />
-    <label>Options (comma-separated)</label>
-    <input id="po" placeholder="For the special polls, use guest names / Yes, No" />
-    <button id="pollBtn">Open poll</button>
-    <p class="muted" id="branchHint" style="font-size:12px"></p>
-    <div class="list" id="pollList" style="margin-top:14px"></div>
+    <h3>Polls this phase</h3>
+    <div class="list" id="pollList"><span class="muted">—</span></div>
+    <details style="margin-top:10px"><summary class="muted">Run an extra poll</summary>
+      <label>Question</label><input id="pq" placeholder="Type your question" />
+      <label>Options (comma-separated)</label><input id="po" placeholder="Option one, Option two" />
+      <button id="pollBtn">Open extra poll</button>
+    </details>
 
     <div class="divider"></div>
     <h3>The 6:40 question</h3>
-    <p class="muted">Ask the room aloud; guests answer on their phones during Phase 3. Then resolve — the app privately flags a contradiction if there is one. You won't be told who.</p>
+    <p class="muted">Ask the room aloud in Phase 3; guests answer on their phones. Then resolve — a contradiction is flagged privately. You won't be told who.</p>
     <button id="alibiBtn" class="ghost">Resolve the 6:40 flag</button>
 
     <div class="divider"></div>
     <h3>The reveal</h3>
-    <p class="muted">Unlocks in Phase 6. This is the only place the sealed solution appears.</p>
-    <button id="revealBtn" class="ghost">Reveal the solution</button>
-    <div class="reveal" id="revealBox" style="display:none;margin-top:14px"></div>
+    <p class="muted">Unlocks in Phase 6, once the final vote has closed. It plays on the gallery screen for everyone.</p>
+    <button id="revealBtn" class="ghost">Play the reveal</button>
+    <div class="note" id="revealBox" style="display:none"></div>
   </div>
   <div class="center"><button class="ghost" id="reset">Forget this party on this device</button></div>
 </div>
 <script src="/app.js"></script>
 <script>
-let phase = 1;
+const PHASE_NAMES = ['', 'Arrivals', 'The Unveiling', 'Investigation', 'The Keystone', 'Accusation', 'The Reveal'];
+const SCHED = { 3:['benefits'], 4:['subpoena'], 5:['final'] };
+const SCHED_LABEL = { benefits:'“Who benefits?” vote', subpoena:'“Open the files?” vote', final:'Final “who did it?” vote' };
+let cur = { phase: 1, paused: false };
+
 function showLive() {
-  el('#setup').style.display = 'none';
-  el('#live').style.display = 'block';
-  el('#code').textContent = Store.party;
+  el('#setup').style.display = 'none'; el('#live').style.display = 'block';
+  el('#code').textContent = Store.party; el('#navCode').textContent = Store.party;
   const g = `${location.origin}/gallery?party=${Store.party}`;
   el('#galleryLink').href = g; el('#galleryLink').textContent = g;
 }
+function fmt(ms){ const s=Math.max(0,Math.round(ms/1000)); const m=Math.floor(s/60); return `${m}:${String(s%60).padStart(2,'0')}`; }
+
+function renderClock(timing) {
+  if (!timing || !timing.phaseStartedAt) { el('#phaseClock').textContent=''; return; }
+  const start = Date.parse(timing.phaseStartedAt);
+  const paused = timing.paused ? (Date.now() - (timing.pausedAt? Date.parse(timing.pausedAt):Date.now())) : 0;
+  const elapsed = Date.now() - start - (timing.pauseAccumMs||0) - paused;
+  const suggested = (timing.suggestedMinutes||0)*60000;
+  const remaining = suggested - elapsed;
+  el('#phaseClock').textContent = suggested
+    ? `${fmt(elapsed)} elapsed · ${remaining>=0?fmt(remaining)+' left':'over by '+fmt(-remaining)} (suggested ${timing.suggestedMinutes}m)${timing.paused?' · PAUSED':''}`
+    : `${fmt(elapsed)} elapsed`;
+}
+
 async function tick() {
   if (!Store.party) return;
   try {
     const { state } = await api(`state?partyCode=${Store.party}`);
-    phase = state.phase;
-    el('#phasePill').textContent = `Phase ${state.phase} · ${state.phaseName}`;
-    el('#pollList').innerHTML = (state.polls||[]).map(p =>
-      `<div class="barrow"><span>${esc(p.question||p.id)}</span><span class="muted">${p.total} votes</span>${p.closed?'<span class="pill">closed</span>':`<button data-close="${esc(p.id)}" style="margin:0">Close</button>`}</div>`).join('');
-    document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', async () => {
-      const r = await api('poll', { action:'close', partyCode: Store.party, hostToken: Store.host, id: b.dataset.close });
-      alert('Results: ' + Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   '));
-    }));
+    cur.phase = state.phase; cur.paused = state.timing && state.timing.paused;
+    el('#phaseTitle').textContent = `Phase ${state.phase} · ${state.phaseName}`;
+    el('#nextUp').textContent = state.phase < 6 ? `Next: ${PHASE_NAMES[state.phase+1]}` : 'Final phase';
+    const openPolls = (state.polls||[]).filter(p=>!p.closed).map(p=>p.question);
+    el('#phaseDetail').textContent = openPolls.length ? `Running: ${openPolls.join('; ')}` : 'No poll open right now.';
+    el('#pauseBtn').textContent = cur.paused ? 'Resume' : 'Pause';
+    renderClock(state.timing);
+
+    // Poll controls: open scheduled polls + any ad-hoc, with close/extend; plus open-early/skip for this phase's scheduled ones.
+    const rows = [];
+    for (const p of (state.polls||[])) {
+      rows.push(`<div class="barrow"><span>${esc(p.question)}${p.mandatory?' <span class="pill">final</span>':''}</span><span class="muted">${p.total} votes ${p.closed?'· closed':''}</span>`+
+        (p.closed?'':`<span><button data-close="${esc(p.id)}" style="margin:0">Close</button> <button class="ghost" data-extend="${esc(p.id)}" style="margin:0">Extend</button></span>`)+`</div>`);
+    }
+    for (const id of (SCHED[state.phase]||[])) {
+      if (!(state.polls||[]).some(p=>p.id===id)) rows.push(`<div class="barrow"><span>${esc(SCHED_LABEL[id]||id)} <span class="muted">(not open)</span></span><span></span><span><button data-open="${id}" style="margin:0">Open now</button> <button class="ghost" data-skip="${id}" style="margin:0">Skip</button></span></div>`);
+    }
+    el('#pollList').innerHTML = rows.join('') || '<span class="muted">—</span>';
+    document.querySelectorAll('[data-close]').forEach(b=>b.onclick=async()=>{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.close}); if(r.counts) alert('Results — '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); tick(); });
+    document.querySelectorAll('[data-extend]').forEach(b=>b.onclick=async()=>{ await api('poll',{action:'extend',partyCode:Store.party,hostToken:Store.host,id:b.dataset.extend}); tick(); });
+    document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{ await api('poll',{action:'open',partyCode:Store.party,hostToken:Store.host,id:b.dataset.open}); tick(); });
+    document.querySelectorAll('[data-skip]').forEach(b=>b.onclick=async()=>{ if(confirm('Skip this scheduled poll?')){ await api('poll',{action:'skip',partyCode:Store.party,hostToken:Store.host,id:b.dataset.skip}); tick(); } });
   } catch(e) {}
 }
 
 el('#createBtn').addEventListener('click', async () => {
   el('#createBtn').disabled = true;
-  try {
-    const r = await api('create-game', { hostName: 'Host' });
-    Store.party = r.partyCode; Store.host = r.hostToken;
-    showLive(); tick();
-  } catch(e){ el('#err').textContent = e.message; el('#createBtn').disabled = false; }
+  try { const r = await api('create-game', { hostName:'Host' }); Store.party=r.partyCode; Store.host=r.hostToken;
+    await api('advance', { partyCode:Store.party, hostToken:Store.host, phase:1 }); // fire Phase 1 narration
+    showLive(); tick(); }
+  catch(e){ el('#err').textContent=e.message; el('#createBtn').disabled=false; }
 });
-el('#advBtn').addEventListener('click', async () => {
-  try { const r = await api('advance', { partyCode: Store.party, hostToken: Store.host }); phase = r.phase; tick(); } catch(e){ alert(e.message); }
-});
-const BRANCH_PRESETS = {
-  benefits: { q: 'Who benefits most from her death?', hint: 'Options = guest names. On close, the top-voted guest gets a private, engagement-keeping drop (Phase 3).' },
-  subpoena: { q: 'Should the files be subpoenaed?', hint: 'Options = Yes, No. On close, the medical evidence surfaces per the vote (Phase 4).' },
-};
-el('#branch').addEventListener('change', () => {
-  const p = BRANCH_PRESETS[el('#branch').value];
-  el('#branchHint').textContent = p ? p.hint : '';
-  if (p && !el('#pq').value) el('#pq').value = p.q;
-  if (el('#branch').value === 'subpoena') el('#po').value = el('#po').value || 'Yes, No';
-});
+el('#advBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host}); tick(); } catch(e){ alert(e.message); } });
+el('#pauseBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,pause:!cur.paused}); tick(); } catch(e){ alert(e.message); } });
 el('#pollBtn').addEventListener('click', async () => {
-  const question = el('#pq').value.trim();
-  const options = el('#po').value.split(',').map(s=>s.trim()).filter(Boolean);
-  if (options.length < 2) { alert('Give at least two options.'); return; }
-  const branch = el('#branch').value || undefined;
-  const id = 'p' + Date.now();
-  try { await api('poll', { action:'create', partyCode: Store.party, hostToken: Store.host, id, question, options, branch }); el('#pq').value=''; el('#po').value=''; el('#branch').value=''; el('#branchHint').textContent=''; tick(); } catch(e){ alert(e.message); }
+  const question=el('#pq').value.trim(); const options=el('#po').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if(options.length<2){ alert('Give at least two options.'); return; }
+  try { await api('poll',{action:'create',partyCode:Store.party,hostToken:Store.host,id:'x'+Date.now(),question,options}); el('#pq').value='';el('#po').value=''; tick(); } catch(e){ alert(e.message); }
 });
-el('#alibiBtn').addEventListener('click', async () => {
-  try { await api('alibi', { action:'resolve', partyCode: Store.party, hostToken: Store.host }); alert('Resolved. Any contradiction has been flagged privately.'); } catch(e){ alert(e.message); }
-});
+el('#alibiBtn').addEventListener('click', async () => { try { await api('alibi',{action:'resolve',partyCode:Store.party,hostToken:Store.host}); alert('Resolved. Any contradiction has been flagged privately.'); } catch(e){ alert(e.message); } });
 el('#revealBtn').addEventListener('click', async () => {
-  try {
-    const r = await api('reveal', { partyCode: Store.party, hostToken: Store.host });
-    const box = el('#revealBox'); box.style.display='block';
-    box.innerHTML = `<div class="serif" style="font-size:22px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div>`+
-      `<p><b>Motive.</b> ${esc(r.motive)}</p><p><b>Method.</b> ${esc(r.method)}</p>`+
-      `<div class="list">${r.evidence.map(e=>`<div>${esc('E'+e.n)}${e.keystone?' · KEYSTONE':''}: ${esc(e.text)}</div>`).join('')}</div>`;
-  } catch(e){ alert(e.message); }
+  try { const r = await api('reveal',{partyCode:Store.party,hostToken:Store.host}); const box=el('#revealBox'); box.style.display='block';
+    box.innerHTML=`<div class="kicker">Now on the gallery screen</div><div class="serif" style="font-size:20px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div><p>${esc(r.method||'')}</p>`; }
+  catch(e){ alert(e.message); }
 });
 el('#reset').addEventListener('click', () => { Store.clear(); location.reload(); });
-
 if (Store.party && Store.host) { showLive(); tick(); }
-setInterval(tick, 5000);
+setInterval(tick, 4000);
 </script>
 </body>
 </html>

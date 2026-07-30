@@ -74,3 +74,43 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
 a { color: var(--gold-2); }
 footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; }
+
+/* In-world private note — every private drop, unlock, line, or hint uses this. */
+.note {
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(201,162,90,.10) 28px),
+    linear-gradient(180deg, #171320, #120f19);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 12px 0;
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.note .kicker { font-family: var(--sans); font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+.note .action { font-family: var(--sans); font-size: 14px; color: var(--muted); margin-top: 10px; }
+.note.secret { border-left-color: var(--blood); }
+.note.secret .kicker { color: #e79aa4; }
+
+/* Gallery narrator card — full-screen styled story beat. */
+.narrator {
+  text-align: center;
+  font-family: var(--font);
+  font-size: clamp(24px, 4vw, 44px);
+  line-height: 1.35;
+  padding: 6vh 4vw;
+  white-space: pre-wrap;
+}
+.narrator .beat { color: var(--gold-2); letter-spacing: .02em; }
+
+/* Host persistent navigation. */
+.nav { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.nav a, .nav button { width: auto; margin: 0; padding: 8px 14px; font-size: 13px; }
+.nav .spacer { flex: 1; }
+
+.guidance { font-size: 13px; color: var(--muted); margin: 4px 0 8px; }
+.clock { font-variant-numeric: tabular-nums; }
+.audio-btn { width: auto; margin: 0; padding: 8px 14px; font-size: 13px; }

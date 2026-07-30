@@ -13,49 +13,91 @@
     <h1>The Last Exhibit</h1>
     <div class="big" id="phase">—</div>
     <p class="muted" id="phaseName"></p>
+    <button class="audio-btn ghost" id="audioBtn">▶ Enable ambient sound</button>
   </div>
 
-  <div class="card">
-    <p class="serif" id="victim" style="font-size:22px"></p>
+  <!-- Phase-6 reveal takes over the screen when present -->
+  <div class="card" id="revealBox" style="display:none;border-color:var(--gold)">
+    <div class="narrator"><div class="eyebrow">The Reveal</div>
+      <div class="beat" id="revealTitle"></div>
+      <p id="revealBody" style="font-size:22px"></p>
+    </div>
   </div>
 
-  <div class="card" id="screenBox" style="display:none;border-color:var(--gold)">
-    <div class="eyebrow">Announcement</div>
-    <p class="big" id="screenText" style="font-size:clamp(28px,5vw,52px)"></p>
+  <div id="mainStage">
+    <div class="card"><div class="narrator" id="narration"></div></div>
+
+    <div class="card" id="screenBox" style="display:none">
+      <div class="narrator beat" id="screenText"></div>
+    </div>
+
+    <div class="card">
+      <h2>The guests</h2>
+      <div class="grid" id="roster"></div>
+    </div>
+
+    <div class="card" id="resultsBox" style="display:none">
+      <h2>The room has spoken</h2>
+      <div class="list" id="results"></div>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>The guests</h2>
-    <div class="grid" id="roster"></div>
-  </div>
-
-  <div class="card" id="pollCard" style="display:none">
-    <h2 id="pollQ"></h2>
-    <div class="list" id="pollBars"></div>
-  </div>
-
-  <footer>No accounts · No personal data on this screen · Join with the party code on your phone</footer>
+  <footer>No accounts · No personal data beyond first names · Join with the party code on your phone</footer>
 </div>
+<audio id="ambient" loop></audio>
 <script src="/app.js"></script>
 <script>
 const party = qs('party') || Store.party;
+const AUDIO = { 1:'arrivals', 2:'unveiling', 3:'investigation', 4:'keystone', 5:'accusation', 6:'reveal' };
+let audioOn = false, curTrack = null;
+el('#audioBtn').addEventListener('click', () => {
+  audioOn = !audioOn;
+  el('#audioBtn').textContent = audioOn ? '⏸ Ambient sound on' : '▶ Enable ambient sound';
+  const a = el('#ambient');
+  if (!audioOn) { a.pause(); } else if (curTrack) { a.play().catch(()=>{}); }
+});
+function setTrack(phase) {
+  const name = AUDIO[phase]; if (!name || name === curTrack) return;
+  curTrack = name;
+  const a = el('#ambient');
+  a.src = `/assets/audio/${name}.mp3`;   // optional; missing files simply stay silent
+  if (audioOn) a.play().catch(()=>{});
+}
+
 async function refresh() {
   if (!party) { el('#phaseName').textContent = 'Add ?party=CODE to this URL'; return; }
   try {
     const { state } = await api(`state?partyCode=${party}`);
     el('#phase').textContent = state.phase;
     el('#phaseName').textContent = state.phaseName;
-    el('#victim').textContent = state.victim || '';
-    if (state.screen) { el('#screenBox').style.display = 'block'; el('#screenText').textContent = state.screen; }
-    else { el('#screenBox').style.display = 'none'; }
+    setTrack(state.phase);
+
+    // Reveal takes over.
+    if (state.reveal) {
+      el('#revealBox').style.display = 'block'; el('#mainStage').style.display = 'none';
+      el('#revealTitle').textContent = `Variant ${state.reveal.variant} — ${state.reveal.killer}`;
+      el('#revealBody').textContent = state.reveal.method || '';
+      return;
+    }
+    el('#revealBox').style.display = 'none'; el('#mainStage').style.display = 'block';
+
+    el('#narration').textContent = state.narration || '';
+    const latest = (state.screenCards || [])[0];
+    if (latest) { el('#screenBox').style.display = 'block'; el('#screenText').textContent = latest.text; }
+    else el('#screenBox').style.display = 'none';
+
     el('#roster').innerHTML = state.roster.map(c =>
-      `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'present':'—'}</span></div>`).join('');
-    const open = (state.polls||[]).find(p => !p.closed);
-    if (open) {
-      el('#pollCard').style.display = 'block';
-      el('#pollQ').textContent = open.question;
-      el('#pollBars').innerHTML = `<p class="muted">${open.total} response(s) — vote on your phone</p>`;
-    } else { el('#pollCard').style.display = 'none'; }
+      `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
+
+    // Aggregate-only results for closed anonymous polls.
+    const res = state.pollResults || [];
+    el('#resultsBox').style.display = res.length ? 'block' : 'none';
+    el('#results').innerHTML = res.map(r => {
+      const total = Object.values(r.counts).reduce((a,b)=>a+b,0) || 1;
+      const rows = Object.entries(r.counts).sort((a,b)=>b[1]-a[1]).map(([opt,n]) =>
+        `<div class="barrow"><span>${esc(opt)}</span><span class="bar"><span style="width:${Math.round(100*n/total)}%"></span></span><span class="muted">${n}</span></div>`).join('');
+      return `<div style="margin-bottom:14px"><div class="serif" style="font-size:18px">${esc(r.question)}</div>${rows}</div>`;
+    }).join('');
   } catch (e) { el('#phaseName').textContent = e.message; }
 }
 refresh(); setInterval(refresh, 4000);

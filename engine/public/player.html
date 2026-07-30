@@ -14,25 +14,23 @@
     <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
   </div>
 
-  <div class="card" id="killerBox" style="display:none;border-color:var(--blood);box-shadow:0 0 0 1px var(--blood), 0 20px 60px rgba(124,31,43,.35)">
-    <div class="eyebrow" style="color:#e79aa4">A private message · for your eyes only</div>
-    <h2 style="color:#e79aa4">It was you.</h2>
-    <p class="brief" id="killerWhat"></p>
-    <div class="divider"></div>
-    <div class="list" id="killerGuide"></div>
-  </div>
+  <!-- What happens now (all players) -->
+  <div class="narrator note" id="narration" style="display:none"></div>
 
-  <div class="card" id="nudgeBox" style="display:none;border-color:var(--gold)">
-    <div class="eyebrow">A quiet word</div>
-    <p class="serif" id="nudgeText" style="font-size:19px;margin:6px 0 0"></p>
+  <!-- Private in-world messages: killer unlock, branching drops, find-hints -->
+  <div id="notes"></div>
+
+  <!-- The current phase's private script line -->
+  <div class="note" id="linesBox" style="display:none">
+    <div class="kicker">Your lines · this moment</div>
+    <div id="lineQuote"></div>
+    <div class="action" id="linePrompt"></div>
   </div>
 
   <div class="card">
     <h2>Your dossier</h2>
     <div class="brief" id="brief">Loading…</div>
   </div>
-
-  <div id="dropsBox"></div>
 
   <div class="card" id="alibiBox" style="display:none;border-color:var(--gold)">
     <h2>Where were you at 6:40?</h2>
@@ -43,17 +41,20 @@
   </div>
 
   <div class="card">
+    <h2>I found something</h2>
+    <p class="muted">Tap an exhibit's tag with your phone, or type the <b>exhibit number</b> printed on its placard.</p>
+    <div class="row">
+      <input id="exInput" inputmode="numeric" placeholder="Exhibit number" style="flex:2" />
+      <button id="exBtn" style="flex:1;margin-top:0">Examine</button>
+    </div>
+    <div class="note" id="findBox" style="display:none"></div>
+  </div>
+
+  <div class="card">
     <h2>The room</h2>
     <p class="muted" id="victim"></p>
     <div class="divider"></div>
     <div class="grid" id="roster"></div>
-  </div>
-
-  <div class="card">
-    <h2>I found something</h2>
-    <p class="muted">Tap a prop's tag with your phone, or pick its exhibit number here.</p>
-    <div class="grid" id="props"></div>
-    <div class="reveal" id="revealBox" style="display:none;margin-top:16px"></div>
   </div>
 
   <div class="card" id="pollCard" style="display:none">
@@ -67,14 +68,36 @@
 <script src="/app.js"></script>
 <script>
 if (!Store.party || !Store.code) location.href = '/';
-const props = ['P1','P2','P3','P4','P5','P6','P7'];
+
+function renderNotes(you) {
+  const parts = [];
+  if (you.killer) {
+    parts.push(`<div class="note secret"><div class="kicker">A note, for your eyes only</div>${esc(you.killer.whatYouDid||'')}` +
+      (you.killer.guidance? `<div class="action">${you.killer.guidance.map(esc).join('<br>')}</div>`:'') + `</div>`);
+  }
+  for (const d of (you.drops||[])) {
+    const kick = d.kind === 'hint' ? 'Something catches your eye' : d.kind && d.kind.indexOf('medical')===0 ? 'Word travels' : 'A note passed to you';
+    parts.push(`<div class="note"><div class="kicker">${esc(kick)}</div>${esc(d.text||'')}</div>`);
+  }
+  if (you.nudge) parts.push(`<div class="note"><div class="kicker">A quiet word</div>${esc(you.nudge.text)}</div>`);
+  el('#notes').innerHTML = parts.join('');
+}
+
+function renderLines(you) {
+  const L = you.lines;
+  if (!L) { el('#linesBox').style.display = 'none'; return; }
+  el('#linesBox').style.display = 'block';
+  el('#lineQuote').textContent = L.reaction ? '“' + L.reaction + '”' : '“' + (L.quote||'') + '”';
+  el('#linePrompt').textContent = L.prompt ? ('To do: ' + L.prompt) : '';
+}
 
 function renderPolls(list) {
   const open = list.filter(p => !p.closed);
   el('#pollCard').style.display = open.length ? 'block' : 'none';
   el('#polls').innerHTML = open.map(p => `
-    <div style="margin-bottom:14px">
+    <div style="margin-bottom:16px">
       <div class="serif" style="font-size:18px">${esc(p.question)}</div>
+      <div class="guidance">${esc(p.guidance||'')}</div>
       <div class="row">${p.options.map(o => `<button data-poll="${esc(p.id)}" data-choice="${esc(o)}">${esc(o)}</button>`).join('')}</div>
     </div>`).join('');
   document.querySelectorAll('[data-poll]').forEach(b => b.addEventListener('click', async () => {
@@ -88,63 +111,39 @@ async function refresh() {
     const { state, you } = await api(`state?partyCode=${Store.party}&personalCode=${Store.code}`);
     el('#phasePill').textContent = `Phase ${state.phase} · ${state.phaseName}`;
     el('#victim').textContent = state.victim || '';
-    if (you && you.character) {
-      el('#charName').textContent = you.character.name;
-      el('#brief').textContent = you.character.brief;
-    }
-    if (you && you.killer) {
-      el('#killerBox').style.display = 'block';
-      el('#killerWhat').textContent = you.killer.whatYouDid || '';
-      el('#killerGuide').innerHTML = you.killer.guidance.map(g => `<div>— ${esc(g)}</div>`).join('');
-    } else {
-      el('#killerBox').style.display = 'none';
-    }
-    if (you && you.nudge) {
-      el('#nudgeBox').style.display = 'block';
-      el('#nudgeText').textContent = you.nudge.text;
-    } else {
-      el('#nudgeBox').style.display = 'none';
-    }
-    // Private branching drops.
-    const drops = (you && you.drops) || [];
-    el('#dropsBox').innerHTML = drops.map(d =>
-      `<div class="card" style="border-color:var(--gold)"><div class="eyebrow">New information · for you</div><p class="brief" style="font-size:18px;margin:6px 0 0">${esc(d.text)}</p></div>`).join('');
-    // The 6:40 question, during Phase 3, until this player has answered.
+    if (state.narration) { el('#narration').style.display = 'block'; el('#narration').textContent = state.narration; }
+    else el('#narration').style.display = 'none';
+    if (you && you.character) { el('#charName').textContent = you.character.name; el('#brief').textContent = you.character.brief; }
+    if (you) { renderNotes(you); renderLines(you); }
+    el('#roster').innerHTML = state.roster.map(c =>
+      `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
+    renderPolls(state.polls || []);
     const showAlibi = you && state.phase === 3 && !you.alibiSubmitted;
     el('#alibiBox').style.display = showAlibi ? 'block' : 'none';
-    el('#roster').innerHTML = state.roster.map(c =>
-      `<div class="tile"><b>${esc(c.name)}</b><span class="pill ${c.claimed?'on':''}">${c.claimed?'in play':'—'}</span></div>`).join('');
-    renderPolls(state.polls || []);
   } catch (e) { el('#err').textContent = e.message; }
 }
 
-function renderProps() {
-  el('#props').innerHTML = props.map(p => `<button class="tile" data-prop="${p}"><b>Exhibit ${p.slice(1)}</b><span class="muted">tap to examine</span></button>`).join('');
-  document.querySelectorAll('[data-prop]').forEach(b => b.addEventListener('click', () => examine(b.dataset.prop)));
-}
-async function examine(propId) {
-  const box = el('#revealBox'); box.style.display = 'block'; box.className = 'reveal'; box.textContent = 'Examining…';
+async function examine(value) {
+  const box = el('#findBox'); box.style.display = 'block'; box.textContent = 'Examining…';
   try {
-    const { reveal } = await api('scan', { partyCode: Store.party, personalCode: Store.code, propId });
-    let html = `<div class="serif" style="font-size:20px">${esc(reveal.label || propId)}</div><p class="muted">${esc(reveal.blurb||'')}</p>`;
-    if (reveal.locked) { box.className = 'reveal locked'; html += `<p>${esc(reveal.lockedHint||'Not yet.')}</p>`; }
-    else if (reveal.extra) { html += `<p>${esc(reveal.extra.text)}</p>`; }
-    else { html += `<p class="muted">Nothing more reveals itself — for now.</p>`; }
+    const { reveal } = await api('scan', { partyCode: Store.party, personalCode: Store.code, exhibit: value });
+    if (reveal.unknown) { box.innerHTML = `<div class="muted">${esc(reveal.message||'Nothing matches that number.')}</div>`; return; }
+    let html = `<div class="kicker">You found something</div><div class="serif" style="font-size:20px">${esc(reveal.label||'')}</div><p class="muted">${esc(reveal.blurb||'')}</p>`;
+    if (reveal.locked) { box.className = 'note secret'; html += `<p>${esc(reveal.lockedHint||'Not yet.')}</p>`; }
+    else { box.className = 'note'; if (reveal.extra) html += `<p>${esc(reveal.extra.text)}</p>`; else html += `<p class="muted">Nothing more reveals itself — for now.</p>`; }
     box.innerHTML = html;
   } catch (e) { box.textContent = e.message; }
 }
 
+el('#exBtn').addEventListener('click', () => { const v = el('#exInput').value.trim(); if (v) examine(v); });
 el('#alibiBtn').addEventListener('click', async () => {
   const answer = el('#alibiInput').value.trim();
   if (!answer) { el('#alibiErr').textContent = 'Say something.'; return; }
-  try {
-    await api('alibi', { action:'submit', partyCode: Store.party, personalCode: Store.code, answer });
-    el('#alibiBox').style.display = 'none';
-    refresh();
-  } catch (e) { el('#alibiErr').textContent = e.message; }
+  try { await api('alibi', { action:'submit', partyCode: Store.party, personalCode: Store.code, answer });
+    el('#alibiBox').style.display = 'none'; refresh(); } catch (e) { el('#alibiErr').textContent = e.message; }
 });
 el('#leave').addEventListener('click', () => { Store.clear(); location.href = '/'; });
-renderProps(); refresh(); setInterval(refresh, 5000);
+refresh(); setInterval(refresh, 5000);
 </script>
 </body>
 </html>

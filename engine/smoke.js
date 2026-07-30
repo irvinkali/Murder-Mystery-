@@ -45,9 +45,11 @@ async function main() {
     // Reveal gating over HTTP.
     const early = await post('/api/reveal', { partyCode: created.partyCode, hostToken: created.hostToken });
     assert('reveal is forbidden before Phase 6 (HTTP 403)', early.status === 403);
+    // Route through Phase 5 (opens the mandatory final vote) then 6 (auto-closes it).
+    await post('/api/advance', { partyCode: created.partyCode, hostToken: created.hostToken, phase: 5 });
     await post('/api/advance', { partyCode: created.partyCode, hostToken: created.hostToken, phase: 6 });
     const rev = await (await post('/api/reveal', { partyCode: created.partyCode, hostToken: created.hostToken })).json();
-    assert('reveal at Phase 6 returns the sealed solution to the host', !!(rev.killer && rev.variant));
+    assert('reveal at Phase 6 (after final vote) returns the sealed solution', !!(rev.killer && rev.variant));
   } finally {
     server.close();
   }

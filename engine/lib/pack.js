@@ -252,6 +252,69 @@ function loadBranching(b64Path) {
 }
 
 /**
+ * Parse the per-phase script lines + escalating find-hints + fairness
+ * disclosure. Pure structure — no plot literals; text flows from the source.
+ * Returns { scriptLines, findHints, fairnessDisclosure }.
+ *   scriptLines[charId][phaseNumber] = { quote, prompt } | { reaction }
+ *   findHints[propId] = { ph3, ph4 }
+ */
+function parseScriptLines(text) {
+  if (!text) return null;
+  const t = text.replace(/[“”]/g, '"');
+  const section = (n, next) => {
+    const re = next
+      ? new RegExp('## SECTION ' + n + '[\\s\\S]*?(?=## SECTION ' + next + ')')
+      : new RegExp('## SECTION ' + n + '[\\s\\S]*$');
+    return (t.match(re) || [''])[0];
+  };
+
+  // §1 per-phase lines, grouped by character block.
+  const s1 = section(1, 2);
+  const scriptLines = {};
+  const headRe = /^###\s+([CF]\d+)\b[^\n]*$/gm;
+  const marks = [];
+  let hm;
+  while ((hm = headRe.exec(s1)) !== null) marks.push({ id: hm[1], at: hm.index, after: headRe.lastIndex });
+  const lineRe = /^-\s*PH([1-5])\s+(QUOTE|REACTION):\s*"([^"]*)"(?:\s*\|\s*PROMPT:\s*([^\n]+))?/gm;
+  for (let i = 0; i < marks.length; i++) {
+    const end = i + 1 < marks.length ? marks[i + 1].at : s1.length;
+    const body = s1.slice(marks[i].after, end);
+    const byPhase = {};
+    let lm;
+    lineRe.lastIndex = 0;
+    while ((lm = lineRe.exec(body)) !== null) {
+      const phase = Number(lm[1]);
+      if (lm[2] === 'REACTION') byPhase[phase] = { reaction: lm[3].trim() };
+      else byPhase[phase] = { quote: lm[3].trim(), prompt: (lm[4] || '').trim() };
+    }
+    scriptLines[marks[i].id] = byPhase;
+  }
+  let m;
+
+  // §2 find-hints per prop.
+  const s2 = section(2, 3);
+  const findHints = {};
+  const hintRe = /^-\s*(P[1-7])\b[^—\n]*—\s*PH3:\s*"([^"]*)"\s*\|\s*PH4\s*\[SCREEN\]:\s*"([^"]*)"/gm;
+  while ((m = hintRe.exec(s2)) !== null) {
+    findHints[m[1]] = { ph3: m[2].trim(), ph4: m[3].trim() };
+  }
+
+  // §3 fairness disclosure (engine copy, name-free).
+  const s3 = section(3, null);
+  const disc = s3.match(/must include:\s*"([^"]*)"/i);
+  const fairnessDisclosure = disc ? disc[1].trim() : null;
+
+  return { scriptLines, findHints, fairnessDisclosure };
+}
+
+/** Load script-lines data from an optional radioactive file (in memory only). */
+function loadScriptLines(b64Path) {
+  if (!b64Path || !fs.existsSync(b64Path)) return null;
+  const text = Buffer.from(fs.readFileSync(b64Path, 'utf8'), 'base64').toString('utf8');
+  return parseScriptLines(text);
+}
+
+/**
  * Load and parse a pack bible into a structured object.
  * @param {string} b64Path path to the radioactive *.b64 bible
  */
@@ -280,6 +343,9 @@ function loadPack(b64Path) {
   // Branching consequences live in an optional sibling file; null until authored.
   const branchingData = loadBranching(path.join(path.dirname(b64Path), 'branching.md.b64'));
 
+  // Script lines + find-hints live in an optional sibling file; null until authored.
+  const scriptData = loadScriptLines(path.join(path.dirname(b64Path), 'script-lines.md.b64'));
+
   // Distinct prop ids referenced by the matrix.
   const props = Object.keys(matrix).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
 
@@ -296,6 +362,9 @@ function loadPack(b64Path) {
     fairnessRules,
     branching: findSection('BRANCH').trim(),
     branchingData,
+    scriptLines: scriptData ? scriptData.scriptLines : null,
+    findHints: scriptData ? scriptData.findHints : null,
+    fairnessDisclosure: scriptData ? scriptData.fairnessDisclosure : null,
   };
 }
 
@@ -305,6 +374,8 @@ module.exports = {
   loadFlex,
   loadBranching,
   parseBranching,
+  loadScriptLines,
+  parseScriptLines,
   parseRoster,
   md5,
   // exported for unit-level reuse if ever needed

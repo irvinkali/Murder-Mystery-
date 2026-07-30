@@ -30,6 +30,25 @@ const PHASES = [
 ];
 const KEYSTONE_PHASE = 4;
 const KILLER_UNLOCK_PHASE = 3; // the hybrid killer learns the truth mid-game
+// Suggested minutes per phase (host guidance only — never auto-advances).
+const PHASE_MINUTES = { 1: 20, 2: 10, 3: 35, 4: 25, 5: 20, 6: 10 };
+
+// Player-facing exhibit numbers (printed on placards / written into NFC tags).
+// Internal prop IDs (P1..P7) are NEVER shown to players; this is the mapping.
+const EXHIBIT_NUMBERS = { P1: '21', P2: '22', P3: '23', P4: '24', P5: '25', P6: '26', P7: '27' };
+function exhibitNumber(propId) { return EXHIBIT_NUMBERS[propId] || null; }
+/** Resolve a player input (typed exhibit number, or NFC value) to an internal prop id. */
+function propIdFromInput(input) {
+  if (input == null) return null;
+  const t = String(input).trim().toUpperCase();
+  if (/^P[1-7]$/.test(t)) return t; // tolerate internal id (dev / legacy NFC)
+  const num = t.replace(/[^0-9]/g, '');
+  if (!num) return null;
+  for (const [pid, n] of Object.entries(EXHIBIT_NUMBERS)) {
+    if (n === num || String(Number(n)) === String(Number(num))) return pid;
+  }
+  return null;
+}
 
 // Safe physical descriptions (identical to the props guide Kali already has).
 const PROP_CATALOG = {
@@ -232,8 +251,12 @@ module.exports = {
   PHASES,
   KEYSTONE_PHASE,
   KILLER_UNLOCK_PHASE,
+  PHASE_MINUTES,
   NUDGE_THRESHOLD_MS,
   PROP_CATALOG,
+  EXHIBIT_NUMBERS,
+  exhibitNumber,
+  propIdFromInput,
   loadRuntimePack,
   selectVariant,
   getVariant,

@@ -96,9 +96,34 @@ for (const L of LETTERS) {
   };
 }
 
+// Script lines — every character, all five phases (PH2 = reaction only).
+const scriptLines = {};
+for (const c of [...cast, ...flex]) {
+  scriptLines[c.id] = {
+    1: { quote: `TEST line (${c.name}, arrivals): everything here is a rehearsal.`, prompt: 'Greet two guests by name.' },
+    2: { reaction: `TEST reaction (${c.name}): oh no, the test victim!` },
+    3: { quote: `TEST line (${c.name}, investigation): ask someone a nosy question.`, prompt: 'Examine an exhibit.' },
+    4: { quote: `TEST line (${c.name}, keystone): the evidence is closing in.`, prompt: 'Defend or accuse someone.' },
+    5: { quote: `TEST line (${c.name}, accusation): name your suspect.`, prompt: 'Cast your final vote.' },
+  };
+}
+
+// Find-hints — both tiers, per prop.
+const findHints = {};
+PROPS.forEach((p, i) => {
+  const n = 21 + i; // matches the engine's exhibit numbering for props
+  findHints[p] = {
+    ph3: `TEST private hint: look for exhibit ${n} somewhere plausible.`,
+    ph4: `TEST [SCREEN] hint: exhibit ${n} has not been found yet.`,
+  };
+});
+
 const pack = {
   schema: 'mystery-engine/pack@1',
   id: 'test-rehearsal',
+  scriptLines,
+  findHints,
+  fairnessDisclosure: 'TEST: some exhibits hold truths, some hold nothing. Tap a tag or type its exhibit number. Dummy rehearsal copy.',
   generatedFrom: { checksum: 'TEST', byteLength: 0 },
   victim: '**Vera Victim**, 99, a fictional test-artist. Public knowledge at game start: Vera Victim died at her own test-exhibition; everyone is a suspect. This is dummy content for rehearsal.',
   timeline: 'TEST TIMELINE: things happened at a fictional test hour. Dummy content.',
