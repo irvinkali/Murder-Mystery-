@@ -13,6 +13,7 @@
  */
 
 const { matchCharByLabel, computeDefense, computeMedical, mergeDrops } = require('./branching');
+const { audioName, AUDIO_KEYS } = require('./runtime');
 
 const KEYSTONE_PHASE = 4;
 
@@ -98,9 +99,10 @@ function resolvePollBranch(pack, game, poll, counts) {
     const { drops, screen } = computeMedical(pack, game, outcome);
     mergeDrops(game, drops);
     if (screen) {
+      const medAudio = audioName(AUDIO_KEYS.medical());
       game.screen = { text: screen, at: new Date().toISOString() };
       game.screenCards = game.screenCards || [];
-      game.screenCards.push({ kind: 'medical', text: screen, at: new Date().toISOString() });
+      game.screenCards.push({ kind: 'medical', text: screen, audio: medAudio, at: new Date().toISOString() });
     }
     game.branchFired.medical = outcome;
     return 'medical:' + outcome;

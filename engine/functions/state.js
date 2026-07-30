@@ -33,7 +33,7 @@ exports.handler = async (event) => {
   }));
 
   // Gallery narrator cards (most recent first): find-hints, medical, etc.
-  const screenCards = (game.screenCards || []).slice(-6).reverse().map((c) => ({ kind: c.kind, text: c.text }));
+  const screenCards = (game.screenCards || []).slice(-6).reverse().map((c) => ({ kind: c.kind, text: c.text, audio: c.audio || null }));
 
   // Aggregate-only results for closed anonymous polls (for the gallery).
   const pollResults = Object.entries(game.pollResults || {}).map(([id, r]) => ({ id, question: r.question, counts: r.counts }));
@@ -46,6 +46,7 @@ exports.handler = async (event) => {
     victim: publicVictimBlurb(pack),
     roster,
     narration: game.narration ? game.narration.text : null,
+    narrationAudio: game.narration ? game.narration.audio : null,
     screenCards,
     pollResults,
     reveal: game.reveal || null, // set only after the Phase-6 reveal

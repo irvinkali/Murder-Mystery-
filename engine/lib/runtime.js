@@ -61,6 +61,21 @@ const PROP_CATALOG = {
   P7: { label: 'Gallery key fob', blurb: 'A staff key fob on a snapped lanyard — "GALERIE NOIR — STAFF".' },
 };
 
+// --- Narration audio (opaque filenames; no plot in the name) --------------
+// A logical key ("phase.3", "reveal.A.method", …) hashes to an opaque mp3 name.
+// The generator and the server compute this identically (sha256), so files line
+// up without a manifest. Keys and prop IDs never reach the client — only hashes.
+function audioName(key) {
+  return crypto.createHash('sha256').update('narration:' + key).digest('hex').slice(0, 20) + '.mp3';
+}
+const AUDIO_KEYS = {
+  phase: (n) => 'phase.' + n,
+  screenHint: (propId) => 'hint.' + propId + '.ph4',
+  medical: () => 'screen.medical',
+  revealTitle: (v) => 'reveal.' + v + '.title',
+  revealMethod: (v) => 'reveal.' + v + '.method',
+};
+
 let _cache = null;
 let _cacheKey = null;
 
@@ -257,6 +272,8 @@ module.exports = {
   EXHIBIT_NUMBERS,
   exhibitNumber,
   propIdFromInput,
+  audioName,
+  AUDIO_KEYS,
   loadRuntimePack,
   selectVariant,
   getVariant,

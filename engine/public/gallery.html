@@ -13,10 +13,9 @@
     <h1>The Last Exhibit</h1>
     <div class="big" id="phase">—</div>
     <p class="muted" id="phaseName"></p>
-    <button class="audio-btn ghost" id="audioBtn">▶ Enable ambient sound</button>
+    <button class="audio-btn ghost" id="audioBtn">▶ Enable sound &amp; narration</button>
   </div>
 
-  <!-- Phase-6 reveal takes over the screen when present -->
   <div class="card" id="revealBox" style="display:none;border-color:var(--gold)">
     <div class="narrator"><div class="eyebrow">The Reveal</div>
       <div class="beat" id="revealTitle"></div>
@@ -26,43 +25,81 @@
 
   <div id="mainStage">
     <div class="card"><div class="narrator" id="narration"></div></div>
-
-    <div class="card" id="screenBox" style="display:none">
-      <div class="narrator beat" id="screenText"></div>
-    </div>
-
-    <div class="card">
-      <h2>The guests</h2>
-      <div class="grid" id="roster"></div>
-    </div>
-
-    <div class="card" id="resultsBox" style="display:none">
-      <h2>The room has spoken</h2>
-      <div class="list" id="results"></div>
-    </div>
+    <div class="card" id="screenBox" style="display:none"><div class="narrator beat" id="screenText"></div></div>
+    <div class="card"><h2>The guests</h2><div class="grid" id="roster"></div></div>
+    <div class="card" id="resultsBox" style="display:none"><h2>The room has spoken</h2><div class="list" id="results"></div></div>
   </div>
 
   <footer>No accounts · No personal data beyond first names · Join with the party code on your phone</footer>
 </div>
 <audio id="ambient" loop></audio>
+<audio id="narr"></audio>
 <script src="/app.js"></script>
 <script>
 const party = qs('party') || Store.party;
 const AUDIO = { 1:'arrivals', 2:'unveiling', 3:'investigation', 4:'keystone', 5:'accusation', 6:'reveal' };
-let audioOn = false, curTrack = null;
-el('#audioBtn').addEventListener('click', () => {
-  audioOn = !audioOn;
-  el('#audioBtn').textContent = audioOn ? '⏸ Ambient sound on' : '▶ Enable ambient sound';
-  const a = el('#ambient');
-  if (!audioOn) { a.pause(); } else if (curTrack) { a.play().catch(()=>{}); }
-});
+const NARR_DIR = '/assets/narration/';
+let audioReady = false, curTrack = null, docentVoice = null;
+const spoken = new Set();      // keys already narrated (dedupe)
+const queue = [];              // pending { text, file }
+let speaking = false, missing = {};
+
+// --- ambient ---
 function setTrack(phase) {
   const name = AUDIO[phase]; if (!name || name === curTrack) return;
-  curTrack = name;
-  const a = el('#ambient');
-  a.src = `/assets/audio/${name}.mp3`;   // optional; missing files simply stay silent
-  if (audioOn) a.play().catch(()=>{});
+  curTrack = name; const a = el('#ambient'); a.src = `/assets/audio/${name}.mp3`;
+  if (audioReady) a.play().catch(()=>{});
 }
+function duck(on){ const a = el('#ambient'); a.volume = on ? 0.15 : 1.0; }
+
+// --- narration queue ---
+function pickVoice(){
+  if (!('speechSynthesis' in window)) return null;
+  const vs = speechSynthesis.getVoices();
+  return vs.find(v=>/Daniel|Arthur|George|Roger|Ryan|en-GB/i.test(v.name+v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+}
+function synth(text, done){
+  if (!('speechSynthesis' in window) || !text){ done(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  if (docentVoice) u.voice = docentVoice;
+  u.rate = 0.95; u.pitch = 0.9;               // low, calm, slightly formal
+  u.onend = done; u.onerror = done;
+  speechSynthesis.speak(u);
+}
+function playOne(item, done){
+  duck(true);
+  if (item.file && !missing[item.file]) {
+    const n = el('#narr');
+    n.src = NARR_DIR + item.file;
+    n.onended = done;
+    n.onerror = () => { missing[item.file] = true; synth(item.text, done); }; // file missing → browser voice
+    const p = n.play();
+    if (p && p.catch) p.catch(()=>{ missing[item.file]=true; synth(item.text, done); });
+  } else {
+    synth(item.text, done);
+  }
+}
+function pump(){
+  if (speaking) return;
+  const item = queue.shift();
+  if (!item){ duck(false); return; }
+  speaking = true;
+  playOne(item, () => { speaking = false; if (!queue.length) duck(false); pump(); });
+}
+function enqueue(key, text, file){
+  if (!audioReady || spoken.has(key)) return;
+  spoken.add(key);
+  queue.push({ text: text||'', file: file||null });
+  pump();
+}
+
+el('#audioBtn').addEventListener('click', () => {
+  audioReady = !audioReady;
+  el('#audioBtn').textContent = audioReady ? '⏸ Sound on' : '▶ Enable sound & narration';
+  if (audioReady){ docentVoice = pickVoice(); if (curTrack) el('#ambient').play().catch(()=>{}); pump(); }
+  else { el('#ambient').pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+});
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { docentVoice = pickVoice(); };
 
 async function refresh() {
   if (!party) { el('#phaseName').textContent = 'Add ?party=CODE to this URL'; return; }
@@ -72,24 +109,28 @@ async function refresh() {
     el('#phaseName').textContent = state.phaseName;
     setTrack(state.phase);
 
-    // Reveal takes over.
     if (state.reveal) {
       el('#revealBox').style.display = 'block'; el('#mainStage').style.display = 'none';
-      el('#revealTitle').textContent = `Variant ${state.reveal.variant} — ${state.reveal.killer}`;
-      el('#revealBody').textContent = state.reveal.method || '';
+      const title = `Variant ${state.reveal.variant} — ${state.reveal.killer}`;
+      el('#revealTitle').textContent = title; el('#revealBody').textContent = state.reveal.method || '';
+      const af = state.reveal.audio || [];
+      enqueue('reveal.title', `Variant ${state.reveal.variant}. ${state.reveal.killer}.`, af[0]);
+      enqueue('reveal.method', state.reveal.method || '', af[1]);
       return;
     }
     el('#revealBox').style.display = 'none'; el('#mainStage').style.display = 'block';
 
     el('#narration').textContent = state.narration || '';
+    if (state.narration) enqueue('narr:'+(state.narrationAudio||state.phase), state.narration, state.narrationAudio);
+
     const latest = (state.screenCards || [])[0];
-    if (latest) { el('#screenBox').style.display = 'block'; el('#screenText').textContent = latest.text; }
-    else el('#screenBox').style.display = 'none';
+    if (latest) { el('#screenBox').style.display='block'; el('#screenText').textContent = latest.text;
+      enqueue('card:'+(latest.audio||latest.text), latest.text, latest.audio); }
+    else el('#screenBox').style.display='none';
 
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
 
-    // Aggregate-only results for closed anonymous polls.
     const res = state.pollResults || [];
     el('#resultsBox').style.display = res.length ? 'block' : 'none';
     el('#results').innerHTML = res.map(r => {

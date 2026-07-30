@@ -10,6 +10,11 @@ packs/**/*.md
 !README.md
 !STATE.md
 
+# Generated narration audio is radioactive (reveal audio speaks the killer).
+# Never commit it — it is rendered at deploy time and served, never browsed.
+engine/public/assets/narration/*.mp3
+engine/public/assets/narration/*.wav
+
 # Node / build
 node_modules/
 .netlify/

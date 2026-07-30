@@ -8,6 +8,7 @@
     "validate": "node validate.js",
     "build-pack": "node build-pack.js",
     "test-pack": "node make-test-pack.js",
+    "tts": "node tts/generate.js",
     "rehearse": "node dev-server.js",
     "test": "node test-engine.js && node test-branching.js",
     "smoke": "node smoke.js",

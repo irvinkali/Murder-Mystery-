@@ -178,6 +178,35 @@ async function main() {
   assert('revealed variant matches the sealed one', revealed.variant === sealed);
   assert('reveal rejects a non-host', !!(await j(reveal(POST({ partyCode, hostToken: 'bad' })))).error);
 
+  // 8. Narration audio wiring — opaque hashes match the generator's scheme.
+  {
+    const { audioName, AUDIO_KEYS } = require('./lib/runtime');
+    const { narrationInventory } = require('./lib/phases');
+    const c = await j(createGame(POST({})));
+    for (let i = 0; i < 4; i++) await j(join(POST({ partyCode: c.partyCode, name: 'N' + i })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 4 })));
+    const s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('narration card carries its opaque audio hash',
+      s.state.narrationAudio === audioName(AUDIO_KEYS.phase(4)));
+    assert('phase-4 [SCREEN] hints carry opaque audio hashes',
+      (s.state.screenCards || []).some((cd) => cd.kind === 'hint' && /^[0-9a-f]{20}\.mp3$/.test(cd.audio || '')));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
+    await j(reveal(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+    const sealed = (await getGame(c.partyCode)).variant;
+    const s6 = await j(state(GET({ partyCode: c.partyCode })));
+    assert('reveal audio references ONLY the active variant\'s files',
+      s6.state.reveal && Array.isArray(s6.state.reveal.audio) &&
+      s6.state.reveal.audio[0] === audioName(AUDIO_KEYS.revealTitle(sealed)) &&
+      s6.state.reveal.audio[1] === audioName(AUDIO_KEYS.revealMethod(sealed)));
+    const inv = narrationInventory(pack);
+    const names = new Set(inv.map((it) => audioName(it.key)));
+    assert('narration inventory is complete and every filename is opaque',
+      inv.length >= 6 + 1 + pack.variants.length * 2 &&
+      names.size === inv.length &&
+      [...names].every((n) => /^[0-9a-f]{20}\.mp3$/.test(n)));
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

@@ -19,6 +19,7 @@
  */
 
 const { mergeDrops } = require('./branching');
+const { audioName, AUDIO_KEYS } = require('./runtime');
 
 // In-world narration beats (engine copy; funny-dark gallery tone per design-doc).
 const NARRATION = {
@@ -57,8 +58,13 @@ function unfoundProps(pack, game) {
 function applyPhaseTransition(pack, game, newPhase) {
   game.phase = newPhase;
 
-  // 1) Narration to all + gallery.
-  game.narration = { phase: newPhase, text: narrationFor(pack, newPhase), at: new Date().toISOString() };
+  // 1) Narration to all + gallery (with its opaque audio filename).
+  game.narration = {
+    phase: newPhase,
+    text: narrationFor(pack, newPhase),
+    audio: audioName(AUDIO_KEYS.phase(newPhase)),
+    at: new Date().toISOString(),
+  };
 
   // 2) Script lines are served LIVE per phase (see state.js `you.lines`) so a
   //    player only ever sees the current phase's line — never future phases.
@@ -87,7 +93,7 @@ function applyPhaseTransition(pack, game, newPhase) {
       for (const propId of unfound) {
         const h = pack.findHints[propId];
         if (!h || !h.ph4) continue;
-        game.screenCards.push({ kind: 'hint', text: h.ph4, at: new Date().toISOString() });
+        game.screenCards.push({ kind: 'hint', text: h.ph4, audio: audioName(AUDIO_KEYS.screenHint(propId)), at: new Date().toISOString() });
         hintCount++;
       }
     }
@@ -96,4 +102,25 @@ function applyPhaseTransition(pack, game, newPhase) {
   return { phase: newPhase, hintCount, unfound: unfound.length };
 }
 
-module.exports = { NARRATION, narrationFor, leastActive, unfoundProps, applyPhaseTransition };
+/**
+ * Every gallery narration string with its logical audio key — the generator
+ * uses this to render one opaque mp3 per line. Returns [{ key, text }].
+ * (Text is returned for synthesis only; callers must never print it.)
+ */
+function narrationInventory(pack) {
+  const items = [];
+  for (let n = 1; n <= 6; n++) items.push({ key: AUDIO_KEYS.phase(n), text: narrationFor(pack, n) });
+  if (pack.findHints) {
+    for (const [propId, h] of Object.entries(pack.findHints)) {
+      if (h && h.ph4) items.push({ key: AUDIO_KEYS.screenHint(propId), text: h.ph4 });
+    }
+  }
+  items.push({ key: AUDIO_KEYS.medical(), text: 'The files are open.' });
+  for (const v of pack.variants || []) {
+    items.push({ key: AUDIO_KEYS.revealTitle(v.letter), text: `Variant ${v.letter}. ${v.killer}.` });
+    if (v.method) items.push({ key: AUDIO_KEYS.revealMethod(v.letter), text: v.method });
+  }
+  return items;
+}
+
+module.exports = { NARRATION, narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory };
