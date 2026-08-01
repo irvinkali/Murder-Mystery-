@@ -14,6 +14,10 @@
     <div class="big" id="phase">—</div>
     <p class="muted" id="phaseName"></p>
     <button class="audio-btn ghost" id="audioBtn">▶ Enable sound &amp; narration</button>
+    <div id="voiceRow" style="display:none;margin-top:10px">
+      <label for="voiceSel" class="muted" style="display:inline;font-size:12px">Narrator voice&nbsp;</label>
+      <select id="voiceSel" style="width:auto;display:inline-block;padding:6px 10px;font-size:13px"></select>
+    </div>
   </div>
 
   <div class="card" id="revealBox" style="display:none;border-color:var(--gold)">
@@ -80,36 +84,54 @@ function duck(on){ const a = el('#ambient'); a.volume = on ? 0.15 : 1.0; }
 function pickVoice(){
   if (!('speechSynthesis' in window)) return null;
   const vs = speechSynthesis.getVoices();
-  // Prefer a rich female English voice (Edge "Natural" voices first, then
-  // common Windows/macOS female voices), before any generic English voice.
-  return vs.find(v=>/Sonia|Libby|Aria|Jenny|Michelle|Emma/i.test(v.name) && /Natural/i.test(v.name))
-      || vs.find(v=>/Sonia|Libby|Hazel|Zira|Aria|Jenny|Michelle|Samantha|Kate|Serena|Susan|Female/i.test(v.name))
-      || vs.find(v=>/en-GB/i.test(v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+  // 1) A voice the host explicitly chose from the picker, if any.
+  const saved = localStorage.getItem('narrVoice');
+  if (saved){ const hit = vs.find(v=>v.name===saved); if (hit) return hit; }
+  // 2) The original default selection (the first voice this game shipped with).
+  return vs.find(v=>/Daniel|Arthur|George|Roger|Ryan|en-GB/i.test(v.name+v.lang))
+      || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+}
+function fillVoicePicker(){
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));
+  if (!vs.length) return;
+  const sel = el('#voiceSel');
+  const current = (docentVoice && docentVoice.name) || localStorage.getItem('narrVoice') || '';
+  sel.innerHTML = vs.map(v=>`<option value="${esc(v.name)}"${v.name===current?' selected':''}>${esc(v.name.replace(/Microsoft |Online \(Natural\) - English| - English/g,'').trim())}</option>`).join('');
 }
 function synth(text, done){
   if (!('speechSynthesis' in window) || !text){ done(); return; }
   // Perform, don't read: ellipses and em-dashes become real beats of silence.
   const parts = text.split(/\.\.\.|…|—/).map(s=>s.trim()).filter(Boolean);
-  let i = 0;
+  let i = 0, finished = false;
+  const finish = () => { if (!finished){ finished = true; done(); } };
   (function next(){
-    if (i >= parts.length){ done(); return; }
+    if (i >= parts.length){ finish(); return; }
     const u = new SpeechSynthesisUtterance(parts[i++]);
     if (docentVoice) u.voice = docentVoice;
-    u.rate = 0.88; u.pitch = 0.85;            // low, unhurried, a little grand
-    u.onend = () => setTimeout(next, i < parts.length ? 550 : 0);
-    u.onerror = () => setTimeout(next, 200);
+    u.rate = 0.95; u.pitch = 0.9;             // the original calm docent delivery
+    let advanced = false;                     // onend AND onerror can both fire —
+    const step = (ms) => { if (advanced) return; advanced = true; setTimeout(next, ms); };
+    u.onend = () => step(i < parts.length ? 500 : 0);
+    u.onerror = () => step(200);
     speechSynthesis.speak(u);
   })();
 }
 // Play one piece of speech: the pre-rendered file, else the browser voice.
+// `settled` guards the fallback: on a missing file BOTH the element's onerror
+// and the play() rejection fire — without the guard they each started their
+// own reading, interleaving every sentence twice.
 function playMedia(file, text, done){
   if (file && !missing[file]) {
+    let settled = false;
     const n = el('#narr');
+    const fail = () => { if (settled) return; settled = true; missing[file] = true; synth(text, done); };
+    const finish = () => { if (settled) return; settled = true; done(); };
     n.src = NARR_DIR + file;
-    n.onended = done;
-    n.onerror = () => { missing[file] = true; synth(text, done); };  // file missing → browser voice
+    n.onended = finish;
+    n.onerror = fail;
     const p = n.play();
-    if (p && p.catch) p.catch(()=>{ missing[file]=true; synth(text, done); });
+    if (p && p.catch) p.catch(fail);
   } else {
     synth(text, done);
   }
@@ -142,11 +164,18 @@ el('#audioBtn').addEventListener('click', () => {
   el('#audioBtn').textContent = audioReady ? '⏸ Sound on' : '▶ Enable sound & narration';
   if (audioReady){
     try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch(e){}
-    docentVoice = pickVoice(); if (curTrack) el('#ambient').play().catch(()=>{}); pump();
+    docentVoice = pickVoice(); fillVoicePicker(); el('#voiceRow').style.display = 'block';
+    if (curTrack) el('#ambient').play().catch(()=>{}); pump();
   }
-  else { el('#ambient').pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
+  else { el('#ambient').pause(); el('#voiceRow').style.display = 'none'; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 });
-if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { docentVoice = pickVoice(); };
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { docentVoice = pickVoice(); if (audioReady) fillVoicePicker(); };
+el('#voiceSel').addEventListener('change', () => {
+  localStorage.setItem('narrVoice', el('#voiceSel').value);
+  docentVoice = pickVoice();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  synth('Good evening, my darlings. Shall I narrate?', ()=>{});   // instant audition
+});
 
 async function refresh() {
   if (!party) { el('#phaseName').textContent = 'Add ?party=CODE to this URL'; return; }
