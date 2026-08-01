@@ -14,6 +14,7 @@
 
 const { matchCharByLabel, computeDefense, computeMedical, mergeDrops } = require('./branching');
 const { audioName, AUDIO_KEYS } = require('./runtime');
+const { pushNarrator, suspectLine, subpoenaLine, finalClosedLine } = require('./narrator');
 
 const KEYSTONE_PHASE = 4;
 
@@ -110,7 +111,8 @@ function resolvePollBranch(pack, game, poll, counts) {
   return null;
 }
 
-/** Close a poll: tally, resolve its branch, publish aggregate results. */
+/** Close a poll: tally, resolve its branch, publish aggregate results, and let
+ *  the narrator react to it out loud. */
 function closePoll(pack, game, pollId) {
   const poll = game.polls && game.polls[pollId];
   if (!poll || poll.closed) return null;
@@ -121,6 +123,19 @@ function closePoll(pack, game, pollId) {
   if (poll.kind === 'anonymous') {
     game.pollResults = game.pollResults || {};
     game.pollResults[pollId] = { question: poll.question, counts, at: new Date().toISOString() };
+  }
+  // Narrator interjections — names come from the pack at runtime; the audio
+  // key is the character ID so the line is pre-renderable per cast member.
+  const anyVotes = Object.values(counts).some((n) => n > 0);
+  if (pollId === 'benefits' && anyVotes) {
+    const win = winningOption(counts);
+    const winId = matchCharByLabel(pack, win);
+    if (winId) pushNarrator(game, 'suspect.' + winId, suspectLine(win));
+  } else if (pollId === 'subpoena' && typeof fired === 'string' && fired.startsWith('medical:')) {
+    const outcome = fired.slice('medical:'.length);
+    pushNarrator(game, 'subpoena.' + outcome, subpoenaLine(outcome));
+  } else if (pollId === 'final' && anyVotes) {
+    pushNarrator(game, 'final.closed', finalClosedLine());
   }
   return { counts, fired };
 }

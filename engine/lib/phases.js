@@ -20,16 +20,11 @@
 
 const { mergeDrops } = require('./branching');
 const { audioName, AUDIO_KEYS } = require('./runtime');
+const { MONOLOGUES, narratorInventory } = require('./narrator');
 
-// In-world narration beats (engine copy; funny-dark gallery tone per design-doc).
-const NARRATION = {
-  1: 'Welcome to Galerie Noir — opening night. Mingle, charm, and lie a little; everyone here has something framed and something hidden.',
-  2: 'The final piece is unveiled — and the guest of honour will not be joining us. The doors lock. No one leaves this gallery until we know who.',
-  3: 'Investigation. Work the room, examine whatever catches your eye, and trust no one’s first answer. The house is now taking questions.',
-  4: 'The Keystone. The evidence sharpens. Something decisive is within reach tonight — if you know where to look.',
-  5: 'Accusation. Say your piece, then everyone votes in private on who did it. Choose carefully; the room is listening.',
-  6: 'The Reveal. The gallery gives up its last secret. Watch the screen.',
-};
+// In-world narration beats — the velvet emcee's phase monologues (see
+// lib/narrator.js; engine copy, paced and theatrical, no plot content).
+const NARRATION = MONOLOGUES;
 
 /** Build the phase narration card (Phase 1 appends the fairness disclosure). */
 function narrationFor(pack, phase) {
@@ -65,6 +60,7 @@ function applyPhaseTransition(pack, game, newPhase) {
     audio: audioName(AUDIO_KEYS.phase(newPhase)),
     at: new Date().toISOString(),
   };
+  game.lastNarratorAt = Date.now(); // a monologue counts as narrator activity
 
   // 2) Script lines are served LIVE per phase (see state.js `you.lines`) so a
   //    player only ever sees the current phase's line — never future phases.
@@ -120,6 +116,9 @@ function narrationInventory(pack) {
     items.push({ key: AUDIO_KEYS.revealTitle(v.letter), text: `Variant ${v.letter}. ${v.killer}.` });
     if (v.method) items.push({ key: AUDIO_KEYS.revealMethod(v.letter), text: v.method });
   }
+  // The narrator's live interjections are enumerable too (props × cast × votes
+  // × asides), so they pre-render in the docent voice like everything else.
+  items.push(...narratorInventory(pack));
   return items;
 }
 

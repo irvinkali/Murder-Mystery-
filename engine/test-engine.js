@@ -207,6 +207,59 @@ async function main() {
       [...names].every((n) => /^[0-9a-f]{20}\.mp3$/.test(n)));
   }
 
+  // 9. The living narrator — discovery reactions, vote reactions, asides.
+  {
+    const { exhibitNumber } = require('./lib/runtime');
+    const { narratorInventory, shouldAside, maybeAside } = require('./lib/narrator');
+    const { updateGame } = require('./lib/store');
+    const c = await j(createGame(POST({})));
+    const codes2 = [];
+    for (let i = 0; i < 4; i++) { const r = await j(join(POST({ partyCode: c.partyCode, name: 'V' + i }))); codes2.push(r.personalCode); }
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 2 })));
+
+    // First find speaks; the second find of the SAME exhibit stays silent.
+    await j(scan(POST({ partyCode: c.partyCode, personalCode: codes2[0], exhibit: exhibitNumber('P6') })));
+    await j(scan(POST({ partyCode: c.partyCode, personalCode: codes2[1], exhibit: exhibitNumber('P6') })));
+    let g = await getGame(c.partyCode);
+    const foundEntries = (g.narratorFeed || []).filter((n) => n.key === 'found.P6');
+    assert('narrator reacts to a discovery exactly once', foundEntries.length === 1);
+    assert('narrator feed entries carry opaque audio names',
+      (g.narratorFeed || []).every((n) => /^[0-9a-f]{20}\.mp3$/.test(n.audio)));
+
+    // Benefits close → the suspicion lands, by name, with a per-cast audio key.
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+    const suspectName = pack.cast[3].name;
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: codes2[0], id: 'benefits', choice: suspectName })));
+    await j(poll(POST({ action: 'close', partyCode: c.partyCode, hostToken: c.hostToken, id: 'benefits' })));
+    g = await getGame(c.partyCode);
+    const sus = (g.narratorFeed || []).find((n) => n.key === 'suspect.' + pack.cast[3].id);
+    assert('narrator names the room\'s suspect after the benefits vote',
+      !!sus && sus.text.includes(suspectName));
+
+    // Quiet stretch → an aside fires (and only when actually quiet).
+    assert('no aside while the narrator has spoken recently', !shouldAside(g));
+    await updateGame(c.partyCode, (gg) => { gg.lastNarratorAt = Date.now() - 10 * 60 * 1000; return gg; });
+    const s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('a quiet stretch produces an atmospheric aside',
+      (s.state.narratorFeed || []).some((n) => /darlings|whisper|quiet|hands|drink|art/i.test(n.text)));
+
+    // The final vote closing gets its line.
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: codes2[0], id: 'final', choice: pack.cast[0].name })));
+    await j(poll(POST({ action: 'close', partyCode: c.partyCode, hostToken: c.hostToken, id: 'final' })));
+    g = await getGame(c.partyCode);
+    assert('narrator marks the final ballot closing',
+      (g.narratorFeed || []).some((n) => n.key === 'final.closed'));
+
+    // Inventory: every enumerable interjection pre-renders (props + cast + votes + asides).
+    const inv = narratorInventory(pack);
+    assert('narrator inventory covers all props, cast, votes, and asides',
+      inv.filter((i) => i.key.startsWith('found.')).length === 7 &&
+      inv.filter((i) => i.key.startsWith('suspect.')).length === pack.cast.length &&
+      inv.some((i) => i.key === 'subpoena.yes') && inv.some((i) => i.key === 'final.closed') &&
+      inv.filter((i) => i.key.startsWith('aside.')).length >= 6);
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

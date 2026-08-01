@@ -25,6 +25,9 @@
 
   <div id="mainStage">
     <div class="card"><div class="narrator" id="narration"></div></div>
+    <div class="card" id="interjectBox" style="display:none;border-color:var(--gold)">
+      <div class="narrator beat" id="interjectText" style="font-size:clamp(20px,3vw,32px)"></div>
+    </div>
     <div class="card" id="screenBox" style="display:none"><div class="narrator beat" id="screenText"></div></div>
     <div class="card"><h2>The guests</h2><div class="grid" id="roster"></div></div>
     <div class="card" id="resultsBox" style="display:none"><h2>The room has spoken</h2><div class="list" id="results"></div></div>
@@ -43,6 +46,7 @@ let audioReady = false, curTrack = null, docentVoice = null;
 const spoken = new Set();      // keys already narrated (dedupe)
 const queue = [];              // pending { text, file }
 let speaking = false, missing = {};
+let feedBaseline = null;       // don't replay interjection history on connect
 
 // --- ambient ---
 function setTrack(phase) {
@@ -60,11 +64,18 @@ function pickVoice(){
 }
 function synth(text, done){
   if (!('speechSynthesis' in window) || !text){ done(); return; }
-  const u = new SpeechSynthesisUtterance(text);
-  if (docentVoice) u.voice = docentVoice;
-  u.rate = 0.95; u.pitch = 0.9;               // low, calm, slightly formal
-  u.onend = done; u.onerror = done;
-  speechSynthesis.speak(u);
+  // Perform, don't read: ellipses and em-dashes become real beats of silence.
+  const parts = text.split(/\.\.\.|…|—/).map(s=>s.trim()).filter(Boolean);
+  let i = 0;
+  (function next(){
+    if (i >= parts.length){ done(); return; }
+    const u = new SpeechSynthesisUtterance(parts[i++]);
+    if (docentVoice) u.voice = docentVoice;
+    u.rate = 0.88; u.pitch = 0.85;            // low, unhurried, a little grand
+    u.onend = () => setTimeout(next, i < parts.length ? 550 : 0);
+    u.onerror = () => setTimeout(next, 200);
+    speechSynthesis.speak(u);
+  })();
 }
 function playOne(item, done){
   duck(true);
@@ -122,6 +133,16 @@ async function refresh() {
 
     el('#narration').textContent = state.narration || '';
     if (state.narration) enqueue('narr:'+(state.narrationAudio||state.phase), state.narration, state.narrationAudio);
+
+    // Live narrator interjections — speak only what happens after we connect.
+    const feed = state.narratorFeed || [];
+    if (feedBaseline === null) feedBaseline = feed.length ? feed[feed.length-1].id : 0;
+    for (const n of feed) {
+      if (n.id <= feedBaseline || spoken.has('feed:'+n.id)) continue;
+      el('#interjectBox').style.display = 'block';
+      el('#interjectText').textContent = n.text;
+      enqueue('feed:'+n.id, n.text, n.audio);
+    }
 
     const latest = (state.screenCards || [])[0];
     if (latest) { el('#screenBox').style.display='block'; el('#screenText').textContent = latest.text;

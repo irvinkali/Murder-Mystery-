@@ -10,14 +10,21 @@ const {
   loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES,
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
+const { shouldAside, maybeAside } = require('../lib/narrator');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   const q = event.queryStringParameters || {};
   if (!q.partyCode) return bad('partyCode required');
 
-  const game = await getGame(q.partyCode.toUpperCase());
+  let game = await getGame(q.partyCode.toUpperCase());
   if (!game) return notFound('no such party');
+
+  // If the room has gone quiet mid-game, the narrator drops an aside.
+  // (Re-checked inside the mutator so concurrent pollers don't double-fire.)
+  if (shouldAside(game)) {
+    game = (await updateGame(game.partyCode, (g) => { maybeAside(g); return g; })) || game;
+  }
 
   const pack = loadRuntimePack();
   const charName = (id) => {
@@ -47,6 +54,8 @@ exports.handler = async (event) => {
     roster,
     narration: game.narration ? game.narration.text : null,
     narrationAudio: game.narration ? game.narration.audio : null,
+    // Live narrator interjections (found exhibits, vote reactions, asides).
+    narratorFeed: (game.narratorFeed || []).slice(-8).map((n) => ({ id: n.id, text: n.text, audio: n.audio })),
     screenCards,
     pollResults,
     reveal: game.reveal || null, // set only after the Phase-6 reveal

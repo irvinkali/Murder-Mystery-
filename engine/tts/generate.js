@@ -35,9 +35,9 @@ const { narrationInventory } = require('../lib/phases');
 const { audioName } = require('../lib/runtime');
 
 const OUT = path.join(__dirname, '..', 'public', 'assets', 'narration');
-const VOICE = process.env.NARRATION_VOICE || 'en-US-RogerNeural'; // mature, calm, formal
-const RATE = process.env.NARRATION_RATE || '-8%';
-const PITCH = process.env.NARRATION_PITCH || '-4Hz';
+const VOICE = process.env.NARRATION_VOICE || 'en-GB-RyanNeural'; // velvet emcee: rich, wry, a little grand
+const RATE = process.env.NARRATION_RATE || '-12%';
+const PITCH = process.env.NARRATION_PITCH || '-5Hz';
 const FORCE = process.argv.includes('--force');
 
 function haveEdgeTts() {

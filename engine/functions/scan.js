@@ -6,6 +6,7 @@
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack, resolvePropScan, propIdFromInput } = require('../lib/runtime');
+const { pushNarrator, foundLine } = require('../lib/narrator');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
@@ -29,9 +30,13 @@ exports.handler = async (event) => {
   const reveal = { label: r.label, blurb: r.blurb, extra: r.extra || null, locked: !!r.locked, lockedHint: r.lockedHint || null };
 
   await updateGame(code, (g) => {
+    const first = !g.discovered[propId];
     const d = g.discovered[propId] || { count: 0, firstAt: new Date().toISOString() };
     d.count += 1;
     g.discovered[propId] = d;
+    // The narrator notices the FIRST discovery of each exhibit (from Phase 2 on
+    // — pre-game test taps stay silent). Finds surface as narration, not lists.
+    if (first && g.phase >= 2) pushNarrator(g, 'found.' + propId, foundLine(propId));
     if (g.players[b.personalCode]) {
       g.players[b.personalCode].lastActive = new Date().toISOString();
       g.players[b.personalCode].scanCount = (g.players[b.personalCode].scanCount || 0) + 1;
