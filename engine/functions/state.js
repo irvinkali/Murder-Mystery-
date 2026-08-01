@@ -10,7 +10,8 @@ const {
   loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES,
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
-const { shouldAside, maybeAside } = require('../lib/narrator');
+const { shouldAside, maybeAside, ATTENTION } = require('../lib/narrator');
+const { audioName } = require('../lib/runtime');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
@@ -54,8 +55,10 @@ exports.handler = async (event) => {
     roster,
     narration: game.narration ? game.narration.text : null,
     narrationAudio: game.narration ? game.narration.audio : null,
+    // The spoken call-to-attention played before major announcements.
+    attention: { text: ATTENTION, audio: audioName('attention') },
     // Live narrator interjections (found exhibits, vote reactions, asides).
-    narratorFeed: (game.narratorFeed || []).slice(-8).map((n) => ({ id: n.id, text: n.text, audio: n.audio })),
+    narratorFeed: (game.narratorFeed || []).slice(-8).map((n) => ({ id: n.id, text: n.text, audio: n.audio, major: !!n.major })),
     screenCards,
     pollResults,
     reveal: game.reveal || null, // set only after the Phase-6 reveal

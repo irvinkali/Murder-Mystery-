@@ -19,6 +19,11 @@
 
 const { audioName, PROP_CATALOG } = require('./runtime');
 
+// Spoken call-to-attention, played after the gallery bell and before any MAJOR
+// announcement — so a room mid-conversation has a beat to quiet down.
+// Pre-rendered once under the key 'attention'.
+const ATTENTION = 'Your attention, my darlings... if you please.';
+
 // ---------------------------------------------------------------------------
 // 1. PHASE MONOLOGUES — velvet emcee, funny-dark, paced for performance.
 // ---------------------------------------------------------------------------
@@ -89,12 +94,14 @@ function asideText(idx) {
 // ---------------------------------------------------------------------------
 
 /** Append a narrator interjection to the game's feed. `key` drives the opaque
- *  pre-rendered audio filename; text is the speech (and the fallback). */
-function pushNarrator(game, key, text) {
+ *  pre-rendered audio filename; text is the speech (and the fallback).
+ *  `major: true` makes the gallery ring the bell + speak the attention call
+ *  first (vote outcomes, verdicts). Ambient lines (finds, asides) stay minor. */
+function pushNarrator(game, key, text, major) {
   if (!text) return;
   game.narratorFeed = game.narratorFeed || [];
   game.narrSeq = (game.narrSeq || 0) + 1;
-  game.narratorFeed.push({ id: game.narrSeq, key, text, audio: audioName(key), at: new Date().toISOString() });
+  game.narratorFeed.push({ id: game.narrSeq, key, text, audio: audioName(key), major: !!major, at: new Date().toISOString() });
   game.lastNarratorAt = Date.now();
   if (game.narratorFeed.length > 24) game.narratorFeed = game.narratorFeed.slice(-24);
 }
@@ -122,6 +129,7 @@ function maybeAside(game, nowMs) {
 /** All narrator lines that can be pre-rendered (names/props are enumerable). */
 function narratorInventory(pack) {
   const items = [];
+  items.push({ key: 'attention', text: ATTENTION });
   for (const propId of Object.keys(PROP_CATALOG)) {
     const t = foundLine(propId);
     if (t) items.push({ key: 'found.' + propId, text: t });
@@ -137,7 +145,7 @@ function narratorInventory(pack) {
 }
 
 module.exports = {
-  MONOLOGUES, ASIDES, ASIDE_QUIET_MS,
+  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION,
   foundLine, suspectLine, subpoenaLine, finalClosedLine, asideText,
   pushNarrator, shouldAside, maybeAside, narratorInventory,
 };

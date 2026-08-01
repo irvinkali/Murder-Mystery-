@@ -130,12 +130,12 @@ function closePoll(pack, game, pollId) {
   if (pollId === 'benefits' && anyVotes) {
     const win = winningOption(counts);
     const winId = matchCharByLabel(pack, win);
-    if (winId) pushNarrator(game, 'suspect.' + winId, suspectLine(win));
+    if (winId) pushNarrator(game, 'suspect.' + winId, suspectLine(win), true);   // major: bell first
   } else if (pollId === 'subpoena' && typeof fired === 'string' && fired.startsWith('medical:')) {
     const outcome = fired.slice('medical:'.length);
-    pushNarrator(game, 'subpoena.' + outcome, subpoenaLine(outcome));
+    pushNarrator(game, 'subpoena.' + outcome, subpoenaLine(outcome), true);      // major
   } else if (pollId === 'final' && anyVotes) {
-    pushNarrator(game, 'final.closed', finalClosedLine());
+    pushNarrator(game, 'final.closed', finalClosedLine(), true);                 // major
   }
   return { counts, fired };
 }

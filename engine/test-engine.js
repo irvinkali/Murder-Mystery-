@@ -251,9 +251,21 @@ async function main() {
     assert('narrator marks the final ballot closing',
       (g.narratorFeed || []).some((n) => n.key === 'final.closed'));
 
+    // Attention tiers: vote outcomes ring the bell (major), ambient lines don't.
+    const feed = g.narratorFeed || [];
+    assert('vote-outcome interjections are marked major (bell + attention call)',
+      feed.filter((n) => /^(suspect\.|subpoena\.|final\.)/.test(n.key)).every((n) => n.major === true));
+    assert('discovery and aside interjections stay ambient (no bell)',
+      feed.filter((n) => /^(found\.|aside\.)/.test(n.key)).every((n) => !n.major));
+    const sAttn = await j(state(GET({ partyCode: c.partyCode })));
+    assert('state serves the spoken attention call with an opaque audio name',
+      !!(sAttn.state.attention && sAttn.state.attention.text) &&
+      /^[0-9a-f]{20}\.mp3$/.test(sAttn.state.attention.audio || ''));
+
     // Inventory: every enumerable interjection pre-renders (props + cast + votes + asides).
     const inv = narratorInventory(pack);
-    assert('narrator inventory covers all props, cast, votes, and asides',
+    assert('narrator inventory covers attention, props, cast, votes, and asides',
+      inv.some((i) => i.key === 'attention') &&
       inv.filter((i) => i.key.startsWith('found.')).length === 7 &&
       inv.filter((i) => i.key.startsWith('suspect.')).length === pack.cast.length &&
       inv.some((i) => i.key === 'subpoena.yes') && inv.some((i) => i.key === 'final.closed') &&

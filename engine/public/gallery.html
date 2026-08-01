@@ -44,9 +44,29 @@ const AUDIO = { 1:'arrivals', 2:'unveiling', 3:'investigation', 4:'keystone', 5:
 const NARR_DIR = '/assets/narration/';
 let audioReady = false, curTrack = null, docentVoice = null;
 const spoken = new Set();      // keys already narrated (dedupe)
-const queue = [];              // pending { text, file }
+const queue = [];              // pending { text, file, major }
 let speaking = false, missing = {};
 let feedBaseline = null;       // don't replay interjection history on connect
+let attn = { text: '', audio: null };  // the spoken call-to-attention (from state)
+let audioCtx = null;           // WebAudio, created on the enable click
+
+// A soft two-note gallery bell — generated live, no audio file needed.
+function bell(done){
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = audioCtx.currentTime;
+    [[880, 0], [659.25, 0.45]].forEach(([freq, dt]) => {   // A5 then E5
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0 + dt);
+      g.gain.exponentialRampToValueAtTime(0.22, t0 + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 1.1);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t0 + dt); o.stop(t0 + dt + 1.2);
+    });
+  } catch (e) { /* no WebAudio → skip the chime */ }
+  setTimeout(done, 1600);      // let the bell ring, then a breath before she speaks
+}
 
 // --- ambient ---
 function setTrack(phase) {
@@ -60,7 +80,11 @@ function duck(on){ const a = el('#ambient'); a.volume = on ? 0.15 : 1.0; }
 function pickVoice(){
   if (!('speechSynthesis' in window)) return null;
   const vs = speechSynthesis.getVoices();
-  return vs.find(v=>/Daniel|Arthur|George|Roger|Ryan|en-GB/i.test(v.name+v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+  // Prefer a rich female English voice (Edge "Natural" voices first, then
+  // common Windows/macOS female voices), before any generic English voice.
+  return vs.find(v=>/Sonia|Libby|Aria|Jenny|Michelle|Emma/i.test(v.name) && /Natural/i.test(v.name))
+      || vs.find(v=>/Sonia|Libby|Hazel|Zira|Aria|Jenny|Michelle|Samantha|Kate|Serena|Susan|Female/i.test(v.name))
+      || vs.find(v=>/en-GB/i.test(v.lang)) || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
 }
 function synth(text, done){
   if (!('speechSynthesis' in window) || !text){ done(); return; }
@@ -77,17 +101,26 @@ function synth(text, done){
     speechSynthesis.speak(u);
   })();
 }
+// Play one piece of speech: the pre-rendered file, else the browser voice.
+function playMedia(file, text, done){
+  if (file && !missing[file]) {
+    const n = el('#narr');
+    n.src = NARR_DIR + file;
+    n.onended = done;
+    n.onerror = () => { missing[file] = true; synth(text, done); };  // file missing → browser voice
+    const p = n.play();
+    if (p && p.catch) p.catch(()=>{ missing[file]=true; synth(text, done); });
+  } else {
+    synth(text, done);
+  }
+}
 function playOne(item, done){
   duck(true);
-  if (item.file && !missing[item.file]) {
-    const n = el('#narr');
-    n.src = NARR_DIR + item.file;
-    n.onended = done;
-    n.onerror = () => { missing[item.file] = true; synth(item.text, done); }; // file missing → browser voice
-    const p = n.play();
-    if (p && p.catch) p.catch(()=>{ missing[item.file]=true; synth(item.text, done); });
+  if (item.major) {
+    // Important announcement: bell → "Your attention…" → the line itself.
+    bell(() => playMedia(attn.audio, attn.text, () => setTimeout(() => playMedia(item.file, item.text, done), 350)));
   } else {
-    synth(item.text, done);
+    playMedia(item.file, item.text, done);
   }
 }
 function pump(){
@@ -97,17 +130,20 @@ function pump(){
   speaking = true;
   playOne(item, () => { speaking = false; if (!queue.length) duck(false); pump(); });
 }
-function enqueue(key, text, file){
+function enqueue(key, text, file, major){
   if (!audioReady || spoken.has(key)) return;
   spoken.add(key);
-  queue.push({ text: text||'', file: file||null });
+  queue.push({ text: text||'', file: file||null, major: !!major });
   pump();
 }
 
 el('#audioBtn').addEventListener('click', () => {
   audioReady = !audioReady;
   el('#audioBtn').textContent = audioReady ? '⏸ Sound on' : '▶ Enable sound & narration';
-  if (audioReady){ docentVoice = pickVoice(); if (curTrack) el('#ambient').play().catch(()=>{}); pump(); }
+  if (audioReady){
+    try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch(e){}
+    docentVoice = pickVoice(); if (curTrack) el('#ambient').play().catch(()=>{}); pump();
+  }
   else { el('#ambient').pause(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 });
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => { docentVoice = pickVoice(); };
@@ -119,20 +155,21 @@ async function refresh() {
     el('#phase').textContent = state.phase;
     el('#phaseName').textContent = state.phaseName;
     setTrack(state.phase);
+    if (state.attention) attn = state.attention;
 
     if (state.reveal) {
       el('#revealBox').style.display = 'block'; el('#mainStage').style.display = 'none';
       const title = `Variant ${state.reveal.variant} — ${state.reveal.killer}`;
       el('#revealTitle').textContent = title; el('#revealBody').textContent = state.reveal.method || '';
       const af = state.reveal.audio || [];
-      enqueue('reveal.title', `Variant ${state.reveal.variant}. ${state.reveal.killer}.`, af[0]);
+      enqueue('reveal.title', `Variant ${state.reveal.variant}. ${state.reveal.killer}.`, af[0], true); // bell first
       enqueue('reveal.method', state.reveal.method || '', af[1]);
       return;
     }
     el('#revealBox').style.display = 'none'; el('#mainStage').style.display = 'block';
 
     el('#narration').textContent = state.narration || '';
-    if (state.narration) enqueue('narr:'+(state.narrationAudio||state.phase), state.narration, state.narrationAudio);
+    if (state.narration) enqueue('narr:'+(state.narrationAudio||state.phase), state.narration, state.narrationAudio, true); // phase beats ring the bell
 
     // Live narrator interjections — speak only what happens after we connect.
     const feed = state.narratorFeed || [];
@@ -141,12 +178,14 @@ async function refresh() {
       if (n.id <= feedBaseline || spoken.has('feed:'+n.id)) continue;
       el('#interjectBox').style.display = 'block';
       el('#interjectText').textContent = n.text;
-      enqueue('feed:'+n.id, n.text, n.audio);
+      enqueue('feed:'+n.id, n.text, n.audio, n.major);
     }
 
     const latest = (state.screenCards || [])[0];
     if (latest) { el('#screenBox').style.display='block'; el('#screenText').textContent = latest.text;
-      enqueue('card:'+(latest.audio||latest.text), latest.text, latest.audio); }
+      // The medical verdict is already announced (with bell) via the narrator
+      // feed — display its card silently. Hint cards still speak.
+      if (latest.kind !== 'medical') enqueue('card:'+(latest.audio||latest.text), latest.text, latest.audio); }
     else el('#screenBox').style.display='none';
 
     el('#roster').innerHTML = state.roster.map(c =>
