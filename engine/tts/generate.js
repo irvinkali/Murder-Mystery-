@@ -36,8 +36,8 @@ const { audioName } = require('../lib/runtime');
 
 const OUT = path.join(__dirname, '..', 'public', 'assets', 'narration');
 const VOICE = process.env.NARRATION_VOICE || 'en-GB-SoniaNeural'; // velvet emcee: rich, wry, low female voice
-const RATE = process.env.NARRATION_RATE || '-12%';
-const PITCH = process.env.NARRATION_PITCH || '-4Hz';
+const RATE = process.env.NARRATION_RATE || '-6%';   // near-natural pace; heavy slowing sounded staged
+const PITCH = process.env.NARRATION_PITCH || '-2Hz';
 const FORCE = process.argv.includes('--force');
 
 function haveEdgeTts() {
