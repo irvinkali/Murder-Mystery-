@@ -31,6 +31,20 @@
 <body>
 <div class="wrap">
   <div class="card noprint">
+    <div class="eyebrow">Host tools · Step 0</div>
+    <h2>Find the date</h2>
+    <p class="muted">No date locked yet? Send this teaser poll first — it builds intrigue AND gets you availability. Type up to three candidate dates; the message updates live. Then either paste it with a poll in your group chat (WhatsApp: + → Poll · iMessage: + → More → Polls), or make a free grid poll at <b>when2meet.com</b> and add its link.</p>
+    <div class="row">
+      <div style="flex:1"><label>Date option 1</label><input id="d1" placeholder="Sat, Aug 23" /></div>
+      <div style="flex:1"><label>Date option 2</label><input id="d2" placeholder="Sat, Aug 30" /></div>
+      <div style="flex:1"><label>Date option 3</label><input id="d3" placeholder="Fri, Sep 5" /></div>
+    </div>
+    <label>Copy-paste date-poll message</label>
+    <div class="copybox" id="txtPoll"></div>
+    <button class="ghost" data-copy="txtPoll">Copy</button>
+  </div>
+
+  <div class="card noprint">
     <div class="eyebrow">Host tools</div>
     <h2>Invite kit</h2>
     <p class="muted">Fill in your details — the invite updates live. Then either <b>screenshot the card</b> for texts and group chats, <b>print it</b>, or copy the ready-made messages below. Nothing here reveals anything about the mystery.</p>
@@ -81,9 +95,20 @@
 </div>
 <script src="/app.js"></script>
 <script>
-const F = { fDate:'', fTime:'', fPlace:'', fRsvpBy:'', fRsvp:'' };
+const F = { fDate:'', fTime:'', fPlace:'', fRsvpBy:'', fRsvp:'', d1:'', d2:'', d3:'' };
 function v(id){ return el('#'+id).value.trim(); }
 function render(){
+  const dates = ['d1','d2','d3'].map(v).filter(Boolean);
+  const dateLines = (dates.length ? dates : ['[date option 1]','[date option 2]']).map(d=>'  🗓 '+d).join('\n');
+  el('#txtPoll').textContent =
+`🖤 SAVE A DATE (one of them, anyway)
+
+I'm hosting THE LAST EXHIBIT — a murder mystery party. An art gallery, an opening night, a body, and every guest playing a character with something to hide. No lines to learn; your phone runs your secrets. Yes, really. Yes, you.
+
+Which of these could you make? Vote for ALL that work:
+${dateLines}
+
+Best date wins — proper invite to follow. 🗡`;
   const date=v('fDate'), time=v('fTime'), place=v('fPlace'), by=v('fRsvpBy'), to=v('fRsvp');
   el('#cDate').textContent = date || '—';
   el('#cTime').textContent = time;
