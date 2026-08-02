@@ -23,6 +23,8 @@ exports.handler = async (event) => {
     hostToken,
     createdAt: new Date().toISOString(),
     phase: 1,
+    phaseStartedAt: new Date().toISOString(),
+    autoAdvance: true, // the app runs the clock; host can pause/extend/turn off
     variant: sealedVariant,
     hostName: hostName || 'Host',
     players: {},

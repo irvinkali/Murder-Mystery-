@@ -19,8 +19,8 @@
  */
 
 const { mergeDrops } = require('./branching');
-const { audioName, AUDIO_KEYS } = require('./runtime');
-const { MONOLOGUES, narratorInventory } = require('./narrator');
+const { audioName, AUDIO_KEYS, PHASE_MINUTES, PHASES } = require('./runtime');
+const { MONOLOGUES, narratorInventory, pushNarrator, WARN_2MIN } = require('./narrator');
 
 // In-world narration beats — the velvet emcee's phase monologues (see
 // lib/narrator.js; engine copy, paced and theatrical, no plot content).
@@ -98,6 +98,68 @@ function applyPhaseTransition(pack, game, newPhase) {
   return { phase: newPhase, hintCount, unfound: unfound.length };
 }
 
+// ---------------------------------------------------------------------------
+// Phase clock + auto-advance.
+// The app is the game master: phases change themselves on the schedule unless
+// the host pauses, extends, or turns auto off. There is no background job in
+// serverless — the check runs lazily on every state poll (every few seconds).
+// ---------------------------------------------------------------------------
+
+const WARN_BEFORE_MS = 2 * 60 * 1000;
+
+/** One complete phase change: close leaving polls, apply transition effects,
+ *  open the new phase's polls, reset the clock. Used by manual AND auto. */
+function performAdvance(pack, game, target) {
+  const { autoOpen, autoClose } = require('./pollsched'); // late require: no cycle at load
+  const from = game.phase;
+  if (target !== from) autoClose(pack, game, from);
+  applyPhaseTransition(pack, game, target);
+  autoOpen(pack, game, target);
+  game.phaseStartedAt = new Date().toISOString();
+  game.paused = false; game.pausedAt = null; game.pauseAccumMs = 0;
+  game.phaseExtraMs = 0; game.phaseWarned = false;
+  game.log.push({ at: new Date().toISOString(), kind: 'phase', phase: target });
+}
+
+/** Milliseconds of real play in the current phase (pauses excluded). */
+function phaseElapsedMs(game, nowMs) {
+  if (!game.phaseStartedAt) return 0;
+  const now = nowMs || Date.now();
+  const pausedNow = game.paused && game.pausedAt ? now - game.pausedAt : 0;
+  return now - Date.parse(game.phaseStartedAt) - (game.pauseAccumMs || 0) - pausedNow;
+}
+
+/** This phase's allotted time, including any host-added extension. */
+function phaseAllottedMs(game) {
+  const base = (PHASE_MINUTES[game.phase] || 0) * 60000;
+  return base ? base + (game.phaseExtraMs || 0) : 0;
+}
+
+/** Pure check: 'warn' | 'advance' | null. No mutation. */
+function autoAdvanceDue(game, nowMs) {
+  if (game.autoAdvance === false) return null;              // host turned auto off
+  if (game.paused || !game.phaseStartedAt) return null;
+  if (game.phase >= PHASES.length) return null;             // nothing after the reveal
+  const allotted = phaseAllottedMs(game);
+  if (!allotted) return null;
+  const remaining = allotted - phaseElapsedMs(game, nowMs);
+  if (remaining <= 0) return 'advance';
+  if (!game.phaseWarned && remaining <= WARN_BEFORE_MS) return 'warn';
+  return null;
+}
+
+/** Apply whatever autoAdvanceDue says. Mutates game; returns what fired. */
+function maybeAutoAdvance(pack, game, nowMs) {
+  const due = autoAdvanceDue(game, nowMs);
+  if (due === 'warn') {
+    game.phaseWarned = true;
+    pushNarrator(game, 'warn.2min', WARN_2MIN);             // ambient — no bell
+  } else if (due === 'advance') {
+    performAdvance(pack, game, game.phase + 1);
+  }
+  return due;
+}
+
 /**
  * Every gallery narration string with its logical audio key — the generator
  * uses this to render one opaque mp3 per line. Returns [{ key, text }].
@@ -122,4 +184,7 @@ function narrationInventory(pack) {
   return items;
 }
 
-module.exports = { NARRATION, narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory };
+module.exports = {
+  NARRATION, narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory,
+  performAdvance, phaseElapsedMs, phaseAllottedMs, autoAdvanceDue, maybeAutoAdvance, WARN_BEFORE_MS,
+};

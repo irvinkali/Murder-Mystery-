@@ -272,6 +272,61 @@ async function main() {
       inv.filter((i) => i.key.startsWith('aside.')).length >= 6);
   }
 
+  // 10. Auto-advance phase clock.
+  {
+    const { updateGame } = require('./lib/store');
+    const backdate = (pc, mins) => updateGame(pc, (g) => { g.phaseStartedAt = new Date(Date.now() - mins * 60000).toISOString(); return g; });
+    const mkParty = async () => {
+      const c = await j(createGame(POST({})));
+      await j(join(POST({ partyCode: c.partyCode, name: 'T' })));
+      return c;
+    };
+
+    // Time expires → the phase advances by itself on the next state poll.
+    let c = await mkParty();
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 2 }))); // 10-minute phase
+    await backdate(c.partyCode, 11);
+    let s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('phase auto-advances when its time runs out', s.state.phase === 3);
+
+    // Two-minute warning fires once, without advancing.
+    c = await mkParty();
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 2 })));
+    await backdate(c.partyCode, 9); // 1 minute left of 10
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('two-minute warning is spoken before an auto change',
+      s.state.phase === 2 && (s.state.narratorFeed || []).some((n) => /two minutes/i.test(n.text)));
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('the warning does not repeat',
+      (s.state.narratorFeed || []).filter((n) => /two minutes/i.test(n.text)).length === 1);
+
+    // Pause stops the clock.
+    c = await mkParty();
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 2 })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, pause: true })));
+    await backdate(c.partyCode, 30);
+    await updateGame(c.partyCode, (g) => { g.pausedAt = Date.now() - 30 * 60000; return g; });
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('a paused phase never auto-advances', s.state.phase === 2);
+
+    // Auto off → host keeps manual control.
+    c = await mkParty();
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 2 })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, auto: false })));
+    await backdate(c.partyCode, 30);
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('auto off means phases only change manually', s.state.phase === 2);
+
+    // Extending buys time past the original allotment.
+    c = await mkParty();
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 2 })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, extend: 5 })));
+    await backdate(c.partyCode, 12); // past 10, inside 15
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('+5 minutes holds the phase past its original time', s.state.phase === 2);
+    assert('timing reports the extended allotment', s.state.timing.allottedMinutes === 15);
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

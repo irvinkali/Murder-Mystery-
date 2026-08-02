@@ -1,23 +1,23 @@
 'use strict';
-/* POST /api/advance — host phase control.
- *   { partyCode, hostToken, phase? }   advance to next phase (or an explicit one)
- *   { partyCode, hostToken, pause:true|false }   pause/resume the phase clock
+/* POST /api/advance — host phase & clock control.
+ *   { partyCode, hostToken, phase? }          advance now (next, or explicit)
+ *   { partyCode, hostToken, pause: bool }     pause/resume the phase clock
+ *   { partyCode, hostToken, auto: bool }      turn auto-advance on/off
+ *   { partyCode, hostToken, extend: minutes } add time to the current phase
  *
- * On a phase change it: closes the leaving phase's scheduled polls (running
- * their consequences), applies the new phase's transition effects (narration,
- * private script lines, find-hints), then opens the new phase's polls. */
+ * Phases otherwise advance THEMSELVES on the schedule (see lib/phases.js);
+ * these are the host's overrides. */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { getGame, updateGame } = require('../lib/store');
-const { PHASES, phaseInfo } = require('../lib/runtime');
-const { applyPhaseTransition } = require('../lib/phases');
-const { autoOpen, autoClose } = require('../lib/pollsched');
+const { PHASES, phaseInfo, loadRuntimePack } = require('../lib/runtime');
+const { performAdvance } = require('../lib/phases');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, hostToken, phase, pause } = parseBody(event);
+  const { partyCode, hostToken, phase, pause, auto, extend } = parseBody(event);
   if (!partyCode) return bad('partyCode required');
   const code = partyCode.toUpperCase();
 
@@ -25,9 +25,9 @@ exports.handler = async (event) => {
   if (!game) return notFound('no such party');
   if (hostToken !== game.hostToken) return forbidden('host only');
 
-  const pack = require('../lib/runtime').loadRuntimePack();
+  const pack = loadRuntimePack();
 
-  // Pause / resume the (display-only) phase clock.
+  // Pause / resume the phase clock (auto-advance waits while paused).
   if (typeof pause === 'boolean') {
     const next = await updateGame(code, (g) => {
       const now = Date.now();
@@ -38,20 +38,26 @@ exports.handler = async (event) => {
     return ok({ paused: next.paused });
   }
 
+  // Auto-advance on/off.
+  if (typeof auto === 'boolean') {
+    const next = await updateGame(code, (g) => { g.autoAdvance = auto; return g; });
+    return ok({ autoAdvance: next.autoAdvance !== false });
+  }
+
+  // Add minutes to the current phase.
+  if (typeof extend === 'number' && isFinite(extend) && extend > 0) {
+    const next = await updateGame(code, (g) => {
+      g.phaseExtraMs = (g.phaseExtraMs || 0) + Math.min(extend, 60) * 60000;
+      g.phaseWarned = false; // the two-minute warning re-arms for the new end time
+      return g;
+    });
+    return ok({ extendedMinutes: Math.round((next.phaseExtraMs || 0) / 60000) });
+  }
+
   const max = PHASES.length;
   const target = typeof phase === 'number' ? phase : game.phase + 1;
   if (target < 1 || target > max) return bad(`phase must be 1..${max}`);
 
-  const next = await updateGame(code, (g) => {
-    const from = g.phase;
-    if (target !== from) autoClose(pack, g, from);       // resolve leaving-phase polls
-    applyPhaseTransition(pack, g, target);               // sets phase + narration/script/hints
-    autoOpen(pack, g, target);                           // open this phase's polls
-    g.phaseStartedAt = new Date().toISOString();
-    g.paused = false; g.pausedAt = null; g.pauseAccumMs = 0;
-    g.log.push({ at: new Date().toISOString(), kind: 'phase', phase: target });
-    return g;
-  });
-
+  const next = await updateGame(code, (g) => { performAdvance(pack, g, target); return g; });
   return ok({ phase: next.phase, phaseName: phaseInfo(next.phase).name });
 };

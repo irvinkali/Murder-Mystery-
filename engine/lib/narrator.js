@@ -71,6 +71,9 @@ function finalClosedLine() {
   return 'And there it is: the last ballot, cast and counted. Whatever you believe, you believe it in ink now. In a moment, the gallery answers back.';
 }
 
+// Spoken two-minute warning before an automatic phase change (ambient, no bell).
+const WARN_2MIN = 'Two minutes, everyone. Finish your sentences — the evening moves on with or without you.';
+
 // Atmospheric asides for quiet stretches — generic, funny-dark, re-usable.
 const ASIDES = [
   'Do refresh your drinks. Steady hands are wasted on the innocent.',
@@ -130,6 +133,7 @@ function maybeAside(game, nowMs) {
 function narratorInventory(pack) {
   const items = [];
   items.push({ key: 'attention', text: ATTENTION });
+  items.push({ key: 'warn.2min', text: WARN_2MIN });
   for (const propId of Object.keys(PROP_CATALOG)) {
     const t = foundLine(propId);
     if (t) items.push({ key: 'found.' + propId, text: t });
@@ -145,7 +149,7 @@ function narratorInventory(pack) {
 }
 
 module.exports = {
-  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION,
+  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION, WARN_2MIN,
   foundLine, suspectLine, subpoenaLine, finalClosedLine, asideText,
   pushNarrator, shouldAside, maybeAside, narratorInventory,
 };

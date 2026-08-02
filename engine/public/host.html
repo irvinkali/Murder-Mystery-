@@ -40,7 +40,12 @@
     </div>
     <div class="row">
       <button id="pauseBtn" class="ghost" style="flex:1">Pause</button>
+      <button id="extendBtn" class="ghost" style="flex:1">+5 min</button>
       <button id="advBtn" style="flex:2">Advance phase →</button>
+    </div>
+    <div class="row" style="align-items:center;margin-top:8px">
+      <span class="muted" style="flex:2;font-size:13px" id="autoLabel">Auto-advance is on — phases change themselves when time runs out (with a 2-minute warning).</span>
+      <button id="autoBtn" class="ghost" style="flex:1;margin-top:0">Turn auto off</button>
     </div>
 
     <div class="divider"></div>
@@ -70,7 +75,7 @@
 const PHASE_NAMES = ['', 'Arrivals', 'The Unveiling', 'Investigation', 'The Keystone', 'Accusation', 'The Reveal'];
 const SCHED = { 3:['benefits'], 4:['subpoena'], 5:['final'] };
 const SCHED_LABEL = { benefits:'“Who benefits?” vote', subpoena:'“Open the files?” vote', final:'Final “who did it?” vote' };
-let cur = { phase: 1, paused: false };
+let cur = { phase: 1, paused: false, auto: true };
 
 function showLive() {
   el('#setup').style.display = 'none'; el('#live').style.display = 'block';
@@ -85,10 +90,13 @@ function renderClock(timing) {
   const start = Date.parse(timing.phaseStartedAt);
   const paused = timing.paused ? (Date.now() - (timing.pausedAt? Date.parse(timing.pausedAt):Date.now())) : 0;
   const elapsed = Date.now() - start - (timing.pauseAccumMs||0) - paused;
-  const suggested = (timing.suggestedMinutes||0)*60000;
-  const remaining = suggested - elapsed;
-  el('#phaseClock').textContent = suggested
-    ? `${fmt(elapsed)} elapsed · ${remaining>=0?fmt(remaining)+' left':'over by '+fmt(-remaining)} (suggested ${timing.suggestedMinutes}m)${timing.paused?' · PAUSED':''}`
+  const allotted = (timing.allottedMinutes||timing.suggestedMinutes||0)*60000;
+  const remaining = allotted - elapsed;
+  const tail = timing.autoAdvance
+    ? (remaining>=0 ? `auto-advances in ${fmt(remaining)}` : 'advancing…')
+    : (remaining>=0 ? `${fmt(remaining)} left (auto off)` : `over by ${fmt(-remaining)} (auto off)`);
+  el('#phaseClock').textContent = allotted
+    ? `${fmt(elapsed)} elapsed · ${tail} · ${timing.allottedMinutes||timing.suggestedMinutes}m total${timing.paused?' · PAUSED':''}`
     : `${fmt(elapsed)} elapsed`;
 }
 
@@ -97,6 +105,11 @@ async function tick() {
   try {
     const { state } = await api(`state?partyCode=${Store.party}`);
     cur.phase = state.phase; cur.paused = state.timing && state.timing.paused;
+    cur.auto = !state.timing || state.timing.autoAdvance !== false;
+    el('#autoBtn').textContent = cur.auto ? 'Turn auto off' : 'Turn auto on';
+    el('#autoLabel').textContent = cur.auto
+      ? 'Auto-advance is on — phases change themselves when time runs out (with a 2-minute warning).'
+      : 'Auto-advance is off — phases change only when you click Advance.';
     el('#phaseTitle').textContent = `Phase ${state.phase} · ${state.phaseName}`;
     el('#nextUp').textContent = state.phase < 6 ? `Next: ${PHASE_NAMES[state.phase+1]}` : 'Final phase';
     const openPolls = (state.polls||[]).filter(p=>!p.closed).map(p=>p.question);
@@ -130,6 +143,8 @@ el('#createBtn').addEventListener('click', async () => {
 });
 el('#advBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host}); tick(); } catch(e){ alert(e.message); } });
 el('#pauseBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,pause:!cur.paused}); tick(); } catch(e){ alert(e.message); } });
+el('#extendBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,extend:5}); tick(); } catch(e){ alert(e.message); } });
+el('#autoBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,auto:!cur.auto}); tick(); } catch(e){ alert(e.message); } });
 el('#pollBtn').addEventListener('click', async () => {
   const question=el('#pq').value.trim(); const options=el('#po').value.split(',').map(s=>s.trim()).filter(Boolean);
   if(options.length<2){ alert('Give at least two options.'); return; }

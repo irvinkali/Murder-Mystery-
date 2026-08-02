@@ -12,6 +12,7 @@ const {
 const { visibleDrops } = require('../lib/branching');
 const { shouldAside, maybeAside, ATTENTION } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
+const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
@@ -21,13 +22,19 @@ exports.handler = async (event) => {
   let game = await getGame(q.partyCode.toUpperCase());
   if (!game) return notFound('no such party');
 
+  const pack = loadRuntimePack();
+
+  // The phase clock ticks lazily on every poll: fire the two-minute warning or
+  // the automatic phase change when due. (Pure pre-check, then a re-checked
+  // mutation, so concurrent pollers don't double-fire.)
+  if (autoAdvanceDue(game)) {
+    game = (await updateGame(game.partyCode, (g) => { maybeAutoAdvance(pack, g); return g; })) || game;
+  }
+
   // If the room has gone quiet mid-game, the narrator drops an aside.
-  // (Re-checked inside the mutator so concurrent pollers don't double-fire.)
   if (shouldAside(game)) {
     game = (await updateGame(game.partyCode, (g) => { maybeAside(g); return g; })) || game;
   }
-
-  const pack = loadRuntimePack();
   const charName = (id) => {
     const c = [...pack.cast, ...(pack.flex || [])].find((x) => x.id === id);
     return c ? c.name : id;
@@ -69,13 +76,15 @@ exports.handler = async (event) => {
       total: Object.keys(p.votes).length,
     })),
     discoveredCount: Object.keys(game.discovered || {}).length,
-    // Phase clock (display-only; host uses this for "time remaining").
+    // Phase clock — auto-advance changes phases when time runs out.
     timing: {
       phaseStartedAt: game.phaseStartedAt || game.createdAt,
       paused: !!game.paused,
       pausedAt: game.pausedAt || null,
       pauseAccumMs: game.pauseAccumMs || 0,
       suggestedMinutes: PHASE_MINUTES[game.phase] || null,
+      allottedMinutes: phaseAllottedMs(game) ? Math.round(phaseAllottedMs(game) / 60000) : null,
+      autoAdvance: game.autoAdvance !== false,
     },
   };
 
