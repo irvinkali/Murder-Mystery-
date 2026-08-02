@@ -25,9 +25,30 @@
       <div class="beat" id="revealTitle"></div>
       <p id="revealBody" style="font-size:22px"></p>
     </div>
+    <div id="finale" style="display:none">
+      <div class="divider"></div>
+      <h2>How the room voted</h2>
+      <div class="list" id="finalVotes"></div>
+      <div class="divider"></div>
+      <h2>The honours</h2>
+      <div class="grid" id="awards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"></div>
+    </div>
   </div>
 
   <div id="mainStage">
+    <div class="card center" id="joinCard" style="display:none">
+      <h2>Join the party</h2>
+      <div class="row" style="align-items:center;justify-content:center">
+        <div style="flex:1">
+          <p class="muted">Point your camera here</p>
+          <img id="joinQR" alt="" style="width:180px;height:180px;border-radius:10px;background:#fff;padding:8px" />
+        </div>
+        <div style="flex:1">
+          <p class="muted">or visit this site and enter</p>
+          <div class="big" id="joinCode" style="letter-spacing:.2em"></div>
+        </div>
+      </div>
+    </div>
     <div class="card"><div class="narrator" id="narration"></div></div>
     <div class="card" id="interjectBox" style="display:none;border-color:var(--gold)">
       <div class="narrator beat" id="interjectText" style="font-size:clamp(20px,3vw,32px)"></div>
@@ -39,6 +60,7 @@
 
   <footer>No accounts · No personal data beyond first names · Join with the party code on your phone</footer>
 </div>
+<div id="blackoutOverlay"></div>
 <audio id="ambient" loop></audio>
 <audio id="narr"></audio>
 <script src="/app.js"></script>
@@ -73,12 +95,58 @@ function bell(done){
 }
 
 // --- ambient ---
-function setTrack(phase) {
-  const name = AUDIO[phase]; if (!name || name === curTrack) return;
-  curTrack = name; const a = el('#ambient'); a.src = `/assets/audio/${name}.mp3`;
-  if (audioReady) a.play().catch(()=>{});
+// File-based loops play when present in /assets/audio; otherwise a generative
+// pad (two detuned oscillators through a slow-breathing filter) gives the room
+// a subtle soundscape with zero setup. The blackout swaps it for a low rumble.
+const PAD_FREQ = { 1: 110, 2: 82.4, 3: 98, 4: 73.4, 5: 87.3, 6: 65.4 };
+const pad = { nodes: null, dark: false };
+function padEnsure(){
+  if (pad.nodes || !audioCtx) return;
+  try {
+    const g = audioCtx.createGain(); g.gain.value = 0.0001;
+    const f = audioCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 320; f.Q.value = 0.7;
+    const o1 = audioCtx.createOscillator(); o1.type = 'triangle';
+    const o2 = audioCtx.createOscillator(); o2.type = 'sine';
+    const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.05;
+    const lfoG = audioCtx.createGain(); lfoG.gain.value = 120;
+    lfo.connect(lfoG); lfoG.connect(f.frequency);
+    o1.connect(f); o2.connect(f); f.connect(g); g.connect(audioCtx.destination);
+    o1.start(); o2.start(); lfo.start();
+    pad.nodes = { g, f, o1, o2 };
+  } catch(e){}
 }
-function duck(on){ const a = el('#ambient'); a.volume = on ? 0.15 : 1.0; }
+function padTune(){
+  if (!pad.nodes) return;
+  const base = pad.dark ? 41 : (PAD_FREQ[curPhase] || 98);
+  const t = audioCtx.currentTime;
+  pad.nodes.o1.frequency.setTargetAtTime(base, t, 1.2);
+  pad.nodes.o2.frequency.setTargetAtTime(base * 1.005, t, 1.2);
+  pad.nodes.f.frequency.setTargetAtTime(pad.dark ? 120 : 320, t, 0.8);
+  pad.nodes.g.gain.setTargetAtTime(pad.dark ? 0.10 : (padWanted ? 0.045 : 0.0001), t, 0.8);
+}
+let padWanted = false, curPhase = 1;
+function setTrack(phase) {
+  curPhase = phase;
+  const name = AUDIO[phase];
+  if (name && name !== curTrack) {
+    curTrack = name; const a = el('#ambient');
+    a.onerror = () => { padWanted = true; padEnsure(); padTune(); };   // no file → generative pad
+    a.src = `/assets/audio/${name}.mp3`;
+    if (audioReady) { const p = a.play(); if (p && p.then) p.then(()=>{ padWanted = false; padTune(); }).catch(()=>{ padWanted = true; padEnsure(); padTune(); }); }
+  }
+  padTune();
+}
+function ambientBlackout(active){
+  if (pad.dark === active) return;
+  pad.dark = active;
+  if (active && audioReady) { padEnsure(); }
+  const a = el('#ambient'); a.volume = active ? 0 : 1.0;
+  padTune();
+}
+function duck(on){
+  const a = el('#ambient'); a.volume = on ? 0.15 : (pad.dark ? 0 : 1.0);
+  if (pad.nodes && !pad.dark) pad.nodes.g.gain.setTargetAtTime(on ? 0.012 : (padWanted ? 0.045 : 0.0001), audioCtx.currentTime, 0.3);
+}
 
 // --- narration queue ---
 function pickVoice(){
@@ -169,7 +237,9 @@ el('#audioBtn').addEventListener('click', () => {
   if (audioReady){
     try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch(e){}
     docentVoice = pickVoice(); fillVoicePicker(); el('#voiceRow').style.display = 'block';
-    if (curTrack) el('#ambient').play().catch(()=>{}); pump();
+    if (curTrack) { const p = el('#ambient').play(); if (p && p.catch) p.catch(()=>{ padWanted = true; padEnsure(); padTune(); }); }
+    else { padWanted = true; padEnsure(); padTune(); }
+    pump();
   }
   else { el('#ambient').pause(); el('#voiceRow').style.display = 'none'; if ('speechSynthesis' in window) speechSynthesis.cancel(); }
 });
@@ -189,6 +259,8 @@ async function refresh() {
     el('#phaseName').textContent = state.phaseName;
     setTrack(state.phase);
     if (state.attention) attn = state.attention;
+    el('#blackoutOverlay').className = state.blackout ? 'on' : '';
+    ambientBlackout(!!state.blackout);
 
     if (state.reveal) {
       el('#revealBox').style.display = 'block'; el('#mainStage').style.display = 'none';
@@ -197,9 +269,39 @@ async function refresh() {
       const af = state.reveal.audio || [];
       enqueue('reveal.title', `Variant ${state.reveal.variant}. ${state.reveal.killer}.`, af[0], true); // bell first
       enqueue('reveal.method', state.reveal.method || '', af[1]);
+
+      // The curtain call: how the room voted + the honours.
+      const vc = state.reveal.voteCounts || {};
+      const awards = state.reveal.awards || [];
+      if (Object.keys(vc).length || awards.length) {
+        el('#finale').style.display = 'block';
+        const total = Object.values(vc).reduce((a,b)=>a+b,0) || 1;
+        el('#finalVotes').innerHTML = Object.entries(vc).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]).map(([opt,n]) =>
+          `<div class="barrow"><span>${esc(opt)}${opt===state.reveal.killer?' 🗡':''}</span><span class="bar"><span style="width:${Math.round(100*n/total)}%"></span></span><span class="muted">${n}</span></div>`).join('');
+        el('#awards').innerHTML = awards.map(a =>
+          `<div class="tile"><span class="pill on">${esc(a.title)}</span><b>${esc(a.firstName)}</b><span class="muted">as ${esc(a.characterName)}</span><div class="muted" style="font-size:12px;margin-top:6px">${esc(a.note)}</div></div>`).join('');
+        if (awards.length && state.attention) {
+          enqueue('awards.intro', 'But before you compare notes over the good wine — the house has a few honours to bestow.', state.reveal.awardsIntroAudio || null);
+          awards.forEach((a, i) => enqueue('award:'+i, `${a.title}: ${a.firstName}, as ${a.characterName}. ${a.note}`, null));
+        }
+      }
       return;
     }
     el('#revealBox').style.display = 'none'; el('#mainStage').style.display = 'block';
+
+    // Arrivals: show the join card (QR + code). The QR image comes from a
+    // public generator; if it can't load (offline rehearsal), the code alone
+    // carries the moment.
+    if (state.phase === 1) {
+      el('#joinCard').style.display = 'block';
+      el('#joinCode').textContent = party;
+      const joinUrl = `${location.origin}/?party=${party}`;
+      const qr = el('#joinQR');
+      if (!qr.dataset.set) { qr.dataset.set = '1';
+        qr.onerror = () => { qr.style.display = 'none'; };
+        qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=' + encodeURIComponent(joinUrl);
+      }
+    } else el('#joinCard').style.display = 'none';
 
     el('#narration').textContent = state.narration || '';
     if (state.narration) enqueue('narr:'+(state.narrationAudio||state.phase), state.narration, state.narrationAudio, true); // phase beats ring the bell

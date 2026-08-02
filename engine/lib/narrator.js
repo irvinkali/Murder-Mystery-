@@ -17,7 +17,7 @@
  * browser voice is only the fallback.
  */
 
-const { audioName, PROP_CATALOG } = require('./runtime');
+const { audioName, PROP_CATALOG, exhibitNumber } = require('./runtime');
 
 // Spoken call-to-attention, played after the gallery bell and before any MAJOR
 // announcement — so a room mid-conversation has a beat to quiet down.
@@ -73,6 +73,17 @@ function finalClosedLine() {
 
 // Spoken two-minute warning before an automatic phase change (ambient, no bell).
 const WARN_2MIN = 'Two minutes, everyone. Finish your sentences — the evening moves on with or without you.';
+
+// Spoken lead-in to the awards, after the reveal itself.
+const AWARDS_INTRO = 'But before you compare notes over the good wine — the house has a few honours to bestow.';
+
+// The blackout set-piece (60 seconds of dark, then an inventory discrepancy).
+const BLACKOUT_START = 'Oh dear. It seems the gallery has lost its lights. Stay calm. Stay where you are. Or don\'t — I can\'t see you either.';
+const BLACKOUT_END = 'And — light. Welcome back. Do take a moment to notice who\'s standing somewhere new.';
+function blackoutMovedLine(propId) {
+  const n = exhibitNumber(propId);
+  return n ? `One more thing. Exhibit ${n} is not where it was a minute ago. Curious.` : null;
+}
 
 // Atmospheric asides for quiet stretches — generic, funny-dark, re-usable.
 const ASIDES = [
@@ -134,6 +145,13 @@ function narratorInventory(pack) {
   const items = [];
   items.push({ key: 'attention', text: ATTENTION });
   items.push({ key: 'warn.2min', text: WARN_2MIN });
+  items.push({ key: 'awards.intro', text: AWARDS_INTRO });
+  items.push({ key: 'blackout.start', text: BLACKOUT_START });
+  items.push({ key: 'blackout.end', text: BLACKOUT_END });
+  for (const propId of Object.keys(PROP_CATALOG)) {
+    const t = blackoutMovedLine(propId);
+    if (t) items.push({ key: 'blackout.moved.' + propId, text: t });
+  }
   for (const propId of Object.keys(PROP_CATALOG)) {
     const t = foundLine(propId);
     if (t) items.push({ key: 'found.' + propId, text: t });
@@ -149,7 +167,8 @@ function narratorInventory(pack) {
 }
 
 module.exports = {
-  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION, WARN_2MIN,
+  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION, WARN_2MIN, AWARDS_INTRO,
+  BLACKOUT_START, BLACKOUT_END, blackoutMovedLine,
   foundLine, suspectLine, subpoenaLine, finalClosedLine, asideText,
   pushNarrator, shouldAside, maybeAside, narratorInventory,
 };

@@ -17,7 +17,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, hostToken, phase, pause, auto, extend } = parseBody(event);
+  const { partyCode, hostToken, phase, pause, auto, extend, blackout } = parseBody(event);
   if (!partyCode) return bad('partyCode required');
   const code = partyCode.toUpperCase();
 
@@ -36,6 +36,14 @@ exports.handler = async (event) => {
       return g;
     });
     return ok({ paused: next.paused });
+  }
+
+  // Host-triggered blackout (fires the set-piece now; once per game).
+  if (blackout === true) {
+    const { startBlackout } = require('../lib/blackout');
+    let fired = false;
+    await updateGame(code, (g) => { fired = startBlackout(pack, g); return g; });
+    return fired ? ok({ blackout: true }) : bad('the blackout has already happened');
   }
 
   // Auto-advance on/off.

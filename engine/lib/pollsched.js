@@ -131,6 +131,7 @@ function closePoll(pack, game, pollId) {
     const win = winningOption(counts);
     const winId = matchCharByLabel(pack, win);
     if (winId) pushNarrator(game, 'suspect.' + winId, suspectLine(win), true);   // major: bell first
+    require('./blackout').armBlackout(game);   // the set-piece arms off this poll
   } else if (pollId === 'subpoena' && typeof fired === 'string' && fired.startsWith('medical:')) {
     const outcome = fired.slice('medical:'.length);
     pushNarrator(game, 'subpoena.' + outcome, subpoenaLine(outcome), true);      // major

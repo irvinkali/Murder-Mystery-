@@ -124,3 +124,11 @@ details.card > summary::-webkit-details-marker { display: none; }
 details.card > summary::before { content: '▸ '; }
 details.card[open] > summary::before { content: '▾ '; }
 details.card .row button { margin-top: 8px; }
+
+/* The blackout: everything goes dark. */
+#blackoutOverlay {
+  position: fixed; inset: 0; background: #000; z-index: 999;
+  display: none; align-items: center; justify-content: center;
+  color: #2a2536; font-family: var(--font); font-size: 20px; letter-spacing: .1em;
+}
+#blackoutOverlay.on { display: flex; }

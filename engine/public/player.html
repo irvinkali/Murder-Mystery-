@@ -26,6 +26,7 @@
     <div class="row" style="align-items:center">
       <button class="ghost" id="hpAuto" style="flex:1">Auto off</button>
       <button class="ghost" id="hpAlibi" style="flex:1">Resolve 6:40</button>
+      <button class="ghost" id="hpBlackout" style="flex:1">Blackout</button>
       <button class="ghost" id="hpReveal" style="flex:1">Reveal</button>
     </div>
     <div class="list" id="hpPolls" style="margin-top:10px"></div>
@@ -48,6 +49,8 @@
   <div class="card">
     <h2>Your dossier</h2>
     <div class="brief" id="brief">Loading…</div>
+    <div class="divider"></div>
+    <p class="muted" style="font-size:12px;margin:0">Seat code: <b id="seatCode" class="serif" style="color:var(--gold-2)"></b> — if your phone dies, rejoin at the party site with this code to get your character back.</p>
   </div>
 
   <div class="card" id="alibiBox" style="display:none;border-color:var(--gold)">
@@ -83,6 +86,7 @@
   <div class="center"><button class="ghost" id="leave">Leave party</button></div>
   <div class="err" id="err"></div>
 </div>
+<div id="blackoutOverlay">the lights are out</div>
 <script src="/app.js"></script>
 <script>
 if (!Store.party || !Store.code) location.href = '/';
@@ -131,7 +135,33 @@ if (isHost) {
   el('#hpAdv').addEventListener('click', async()=>{ try{ await hapi({}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpAuto').addEventListener('click', async()=>{ try{ await hapi({auto:!hostState.auto}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpAlibi').addEventListener('click', async()=>{ try{ await api('alibi',{action:'resolve',partyCode:Store.party,hostToken:Store.host}); alert('Resolved. Any contradiction has been flagged privately.'); }catch(e){ alert(e.message); } });
+  el('#hpBlackout').addEventListener('click', async()=>{ if(!confirm('Kill the lights for 60 seconds?')) return; try{ await hapi({blackout:true}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpReveal').addEventListener('click', async()=>{ try{ await api('reveal',{partyCode:Store.party,hostToken:Store.host}); alert('The reveal is playing on the gallery screen.'); }catch(e){ alert(e.message); } });
+}
+
+// A private note arriving should be FELT: soft tone + vibration. Audio needs a
+// prior user gesture, so the context is created on the first touch anywhere.
+let noteCtx = null, noteSig = null;
+document.addEventListener('pointerdown', () => {
+  if (!noteCtx) { try { noteCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+}, { once: true });
+function secretChime(){
+  if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+  if (!noteCtx) return;
+  try {
+    const t0 = noteCtx.currentTime;
+    const o = noteCtx.createOscillator(), g = noteCtx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(523.25, t0); o.frequency.setValueAtTime(783.99, t0 + 0.12);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.15, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+    o.connect(g); g.connect(noteCtx.destination); o.start(t0); o.stop(t0 + 0.8);
+  } catch(e){}
+}
+function maybeChime(you, phase){
+  const sig = `${(you.drops||[]).length}|${you.killer?1:0}|${you.lines?phase:0}`;
+  if (noteSig !== null && sig !== noteSig) secretChime(); // changed → something new arrived
+  noteSig = sig;
 }
 
 function renderNotes(you) {
@@ -178,12 +208,13 @@ async function refresh() {
     el('#victim').textContent = state.victim || '';
     if (state.narration) { el('#narration').style.display = 'block'; el('#narration').textContent = state.narration; }
     else el('#narration').style.display = 'none';
-    if (you && you.character) { el('#charName').textContent = you.character.name; el('#brief').textContent = you.character.brief; }
-    if (you) { renderNotes(you); renderLines(you); }
+    if (you && you.character) { el('#charName').textContent = you.character.name; el('#brief').textContent = you.character.brief; el('#seatCode').textContent = Store.code; }
+    if (you) { renderNotes(you); renderLines(you); maybeChime(you, state.phase); }
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
     renderPolls(state.polls || []);
     renderHost(state);
+    el('#blackoutOverlay').className = state.blackout ? 'on' : '';
     const showAlibi = you && state.phase === 3 && !you.alibiSubmitted;
     el('#alibiBox').style.display = showAlibi ? 'block' : 'none';
   } catch (e) { el('#err').textContent = e.message; }

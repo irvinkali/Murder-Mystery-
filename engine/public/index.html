@@ -24,6 +24,17 @@
     <div class="err" id="err"></div>
   </div>
 
+  <details class="card">
+    <summary>Rejoining? Phone died or new browser →</summary>
+    <p class="muted" style="margin-top:10px">Enter the party code and the 5-letter <b>seat code</b> from your dossier page. You'll get your same character back.</p>
+    <label for="rParty">Party code</label>
+    <input id="rParty" autocapitalize="characters" maxlength="4" placeholder="ABCD" />
+    <label for="rSeat">Seat code</label>
+    <input id="rSeat" autocapitalize="characters" maxlength="5" placeholder="ABCDE" />
+    <button id="resumeBtn" class="ghost">Resume my seat</button>
+    <div class="err" id="rErr"></div>
+  </details>
+
   <div class="center muted">
     <p>Hosting tonight? <a href="/host">Open host controls →</a></p>
   </div>
@@ -31,7 +42,19 @@
 </div>
 <script src="/app.js"></script>
 <script>
-  el('#party').value = Store.party || (qs('party') || '');
+  el('#party').value = (qs('party') || Store.party || '').toUpperCase();
+  el('#resumeBtn').addEventListener('click', async () => {
+    const partyCode = el('#rParty').value.trim().toUpperCase();
+    const seat = el('#rSeat').value.trim().toUpperCase();
+    el('#rErr').textContent = '';
+    if (!partyCode || !seat) { el('#rErr').textContent = 'Enter both codes.'; return; }
+    try {
+      const r = await api(`state?partyCode=${partyCode}&personalCode=${seat}`);
+      if (!r.you || !r.you.character) { el('#rErr').textContent = 'No seat matches those codes.'; return; }
+      Store.party = partyCode; Store.code = seat;
+      location.href = '/player.html';
+    } catch (e) { el('#rErr').textContent = e.message; }
+  });
   el('#joinBtn').addEventListener('click', async () => {
     const partyCode = el('#party').value.trim().toUpperCase();
     const name = el('#name').value.trim();

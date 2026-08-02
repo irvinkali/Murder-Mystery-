@@ -13,6 +13,7 @@ const { visibleDrops } = require('../lib/branching');
 const { shouldAside, maybeAside, ATTENTION } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
+const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
@@ -29,6 +30,11 @@ exports.handler = async (event) => {
   // mutation, so concurrent pollers don't double-fire.)
   if (autoAdvanceDue(game)) {
     game = (await updateGame(game.partyCode, (g) => { maybeAutoAdvance(pack, g); return g; })) || game;
+  }
+
+  // The blackout set-piece starts/ends on its own clock.
+  if (blackoutDue(game)) {
+    game = (await updateGame(game.partyCode, (g) => { maybeBlackout(pack, g); return g; })) || game;
   }
 
   // If the room has gone quiet mid-game, the narrator drops an aside.
@@ -76,6 +82,8 @@ exports.handler = async (event) => {
       total: Object.keys(p.votes).length,
     })),
     discoveredCount: Object.keys(game.discovered || {}).length,
+    // The room goes dark on every screen while this is true.
+    blackout: blackoutActive(game),
     // Phase clock — auto-advance changes phases when time runs out.
     timing: {
       phaseStartedAt: game.phaseStartedAt || game.createdAt,

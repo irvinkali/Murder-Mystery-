@@ -327,6 +327,85 @@ async function main() {
     assert('timing reports the extended allotment', s.state.timing.allottedMinutes === 15);
   }
 
+  // 11. Concurrency: simultaneous votes must all be recorded (CAS + retry).
+  {
+    const c = await j(createGame(POST({})));
+    const vcodes = [];
+    for (let i = 0; i < 8; i++) { const r = await j(join(POST({ partyCode: c.partyCode, name: 'C' + i }))); vcodes.push(r.personalCode); }
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+    const target = pack.cast[0].name;
+    await Promise.all(vcodes.map((code) => j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: code, id: 'benefits', choice: target })))));
+    const g = await getGame(c.partyCode);
+    assert('8 simultaneous votes are all recorded (no lost writes)',
+      Object.keys(g.polls.benefits.votes).length === 8);
+  }
+
+  // 12. Resume-a-seat: valid seat code returns the character; wrong one doesn't.
+  {
+    const c = await j(createGame(POST({})));
+    const r = await j(join(POST({ partyCode: c.partyCode, name: 'Resumer' })));
+    const good = await j(state(GET({ partyCode: c.partyCode, personalCode: r.personalCode })));
+    assert('a valid seat code recovers the same character',
+      good.you && good.you.character && good.you.character.id === r.character.id);
+    const bad2 = await j(state(GET({ partyCode: c.partyCode, personalCode: 'ZZZZZ' })));
+    assert('an invalid seat code recovers nothing', !bad2.you);
+  }
+
+  // 13. The finale: vote results + awards ride the reveal.
+  {
+    const { resolveKillerId } = require('./lib/runtime');
+    const nameFor = (id) => pack.cast.find((x) => x.id === id).name;
+    const c = await j(createGame(POST({})));
+    const fcodes = [];
+    for (let i = 0; i < 10; i++) { const r = await j(join(POST({ partyCode: c.partyCode, name: 'F' + i }))); fcodes.push(r.personalCode); } // full core cast → the killer's seat is claimed
+    const sealed = (await getGame(c.partyCode)).variant;
+    const killerName = nameFor(resolveKillerId(pack, sealed));
+    const wrongName = pack.cast.map((x) => x.name).find((n) => n !== killerName);
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: fcodes[0], id: 'final', choice: killerName })));
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: fcodes[1], id: 'final', choice: killerName })));
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: fcodes[2], id: 'final', choice: wrongName })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
+    const rev = await j(reveal(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+    assert('reveal carries the final-vote counts', rev.voteCounts && rev.voteCounts[killerName] === 2);
+    assert('killer caught by plurality is flagged', rev.caught === true);
+    const titles = (rev.awards || []).map((a) => a.title);
+    assert('awards include Best Detective and the killer\'s bow',
+      titles.includes('Best Detective') && titles.includes('Caught Red-Handed'));
+    assert('Best Detective actually voted for the killer',
+      (rev.awards.find((a) => a.title === 'Best Detective') || {}).firstName.startsWith('F'));
+  }
+
+  // 14. The blackout set-piece.
+  {
+    const { updateGame } = require('./lib/store');
+    const c = await j(createGame(POST({})));
+    for (let i = 0; i < 3; i++) await j(join(POST({ partyCode: c.partyCode, name: 'B' + i })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+    const r1 = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, blackout: true })));
+    assert('host can trigger the blackout', r1.blackout === true);
+    let s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('the room is dark while the blackout runs', s.state.blackout === true);
+    let g = await getGame(c.partyCode);
+    assert('blackout start is a major narrator beat',
+      (g.narratorFeed || []).some((n) => n.key === 'blackout.start' && n.major));
+    await updateGame(c.partyCode, (gg) => { gg.blackout.endsAt = Date.now() - 1000; return gg; });
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('the lights come back on', s.state.blackout === false);
+    g = await getGame(c.partyCode);
+    assert('the narrator closes the blackout and reports the moved exhibit',
+      (g.narratorFeed || []).some((n) => n.key === 'blackout.end') &&
+      (g.narratorFeed || []).some((n) => n.key.startsWith('blackout.moved.')));
+    const r2 = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, blackout: true })));
+    assert('the blackout fires at most once', !!r2.error);
+    const { narratorInventory } = require('./lib/narrator');
+    const inv = narratorInventory(pack);
+    assert('blackout + awards lines are pre-renderable',
+      inv.some((i) => i.key === 'blackout.start') && inv.some((i) => i.key === 'blackout.end') &&
+      inv.filter((i) => i.key.startsWith('blackout.moved.')).length === 7 &&
+      inv.some((i) => i.key === 'awards.intro'));
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

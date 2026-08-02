@@ -82,6 +82,8 @@
       <div style="font-size:38px;margin:8px 0">The Last Exhibit</div>
       <p>An opening night of provocative new work. Twelve pieces. One unveiling at midnight.<br/>Come as someone with something to hide — because everyone here does.</p>
       <p style="margin-top:14px"><b>Bring your phone.</b> You’ll receive your character and a party code on arrival.<br/>Dress: glamorous, a little funereal.</p>
+      <p><img id="inviteQR" alt="" style="width:120px;height:120px;background:#fff;padding:6px" /><br/>
+      <span style="font-size:12px;color:#555" id="inviteUrl"></span></p>
       <p class="muted" style="font-size:12px">10–20 guests · about two hours · you are a suspect</p>
     </div>
   </div>
@@ -109,6 +111,9 @@ function renderNFC() {
   el('#nfc').innerHTML = PROPS.map(([num,name,place]) =>
     `<div class="label"><b>Exhibit ${num} — ${name}</b><br/><span class="muted">${place}</span>
      <span class="url">${base}/prop/${num}</span></div>`).join('');
+  el('#inviteUrl').textContent = base;
+  el('#inviteQR').onerror = () => { el('#inviteQR').style.display = 'none'; };
+  el('#inviteQR').src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(base);
 }
 function renderPlacards() {
   let h = '';
