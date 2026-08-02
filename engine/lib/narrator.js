@@ -77,6 +77,9 @@ const WARN_2MIN = 'Two minutes, everyone. Finish your sentences — the evening 
 // Spoken lead-in to the awards, after the reveal itself.
 const AWARDS_INTRO = 'But before you compare notes over the good wine — the house has a few honours to bestow.';
 
+// The gallery portrait (host-triggered photo moment, usually during Arrivals).
+const PHOTO_LINE = 'Before anything happens that we\'ll all have to testify about — gather in, everyone. The gallery portrait. Look wealthy. Look innocent. At least one of you will fail at one of those.';
+
 // The blackout set-piece (60 seconds of dark, then an inventory discrepancy).
 const BLACKOUT_START = 'Oh dear. It seems the gallery has lost its lights. Stay calm. Stay where you are. Or don\'t — I can\'t see you either.';
 const BLACKOUT_END = 'And — light. Welcome back. Do take a moment to notice who\'s standing somewhere new.';
@@ -146,6 +149,7 @@ function narratorInventory(pack) {
   items.push({ key: 'attention', text: ATTENTION });
   items.push({ key: 'warn.2min', text: WARN_2MIN });
   items.push({ key: 'awards.intro', text: AWARDS_INTRO });
+  items.push({ key: 'photo', text: PHOTO_LINE });
   items.push({ key: 'blackout.start', text: BLACKOUT_START });
   items.push({ key: 'blackout.end', text: BLACKOUT_END });
   for (const propId of Object.keys(PROP_CATALOG)) {
@@ -167,7 +171,7 @@ function narratorInventory(pack) {
 }
 
 module.exports = {
-  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION, WARN_2MIN, AWARDS_INTRO,
+  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION, WARN_2MIN, AWARDS_INTRO, PHOTO_LINE,
   BLACKOUT_START, BLACKOUT_END, blackoutMovedLine,
   foundLine, suspectLine, subpoenaLine, finalClosedLine, asideText,
   pushNarrator, shouldAside, maybeAside, narratorInventory,

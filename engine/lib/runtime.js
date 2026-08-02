@@ -130,6 +130,27 @@ function publicRoster(pack) {
   return pack.cast.map((c) => ({ id: c.id, name: c.name }));
 }
 
+/**
+ * A character's PUBLIC persona — the part of their dossier everyone learns at
+ * game start (everything before their SECRETS). Safe for the join screen.
+ */
+function publicPersona(character) {
+  if (!character || !character.brief) return '';
+  return String(character.brief)
+    .split(/SECRETS?\s*:/i)[0]
+    .replace(/^[\s—–-]+/, '')
+    .replace(/\*+/g, '')
+    .trim();
+}
+
+/** Unclaimed seats (core first, then flex) with their public personas. */
+function castingList(pack, game) {
+  const taken = new Set(Object.keys(game.assignments || {}));
+  return [...pack.cast, ...(pack.flex || [])]
+    .filter((c) => !taken.has(c.id))
+    .map((c) => ({ id: c.id, name: c.name, persona: publicPersona(c) }));
+}
+
 /** A single player's private dossier. Served ONLY to that player. */
 function playerBrief(pack, characterId) {
   const c = [...pack.cast, ...(pack.flex || [])].find((x) => x.id === characterId);
@@ -280,6 +301,8 @@ module.exports = {
   phaseInfo,
   publicVictimBlurb,
   publicRoster,
+  publicPersona,
+  castingList,
   playerBrief,
   assignableIds,
   capacity,

@@ -20,6 +20,11 @@
     <input id="party" autocapitalize="characters" autocomplete="off" maxlength="4" placeholder="ABCD" />
     <label for="name">Your first name</label>
     <input id="name" autocomplete="given-name" placeholder="What your fellow guests will call you" />
+    <button class="ghost" id="castBtn" type="button">Choose who you'll be (optional)</button>
+    <div id="castList" style="display:none;margin-top:12px">
+      <p class="muted" style="font-size:13px">These are the guests still unclaimed — you'll see only what the whole room will know about them. Tap one, or skip and be surprised.</p>
+      <div class="list" id="castTiles"></div>
+    </div>
     <button id="joinBtn">Take my place</button>
     <div class="err" id="err"></div>
   </div>
@@ -55,6 +60,26 @@
       location.href = '/player.html';
     } catch (e) { el('#rErr').textContent = e.message; }
   });
+  let chosenChar = null;
+  el('#castBtn').addEventListener('click', async () => {
+    const partyCode = el('#party').value.trim().toUpperCase();
+    if (!partyCode) { el('#err').textContent = 'Enter the party code first.'; return; }
+    el('#err').textContent = '';
+    try {
+      const r = await api(`state?partyCode=${partyCode}`);
+      const list = r.state.casting || [];
+      if (!list.length) { el('#err').textContent = 'All characters are claimed.'; return; }
+      el('#castList').style.display = 'block';
+      el('#castTiles').innerHTML = list.map(c =>
+        `<button type="button" class="tile" data-cid="${esc(c.id)}" style="text-align:left"><b>${esc(c.name)}</b><span class="muted" style="font-size:13px">${esc(c.persona)}</span></button>`).join('');
+      document.querySelectorAll('[data-cid]').forEach(b => b.addEventListener('click', () => {
+        chosenChar = b.dataset.cid;
+        document.querySelectorAll('[data-cid]').forEach(x => x.style.borderColor = '');
+        b.style.borderColor = 'var(--gold)';
+        el('#joinBtn').textContent = `Take my place as ${b.querySelector('b').textContent}`;
+      }));
+    } catch (e) { el('#err').textContent = e.message; }
+  });
   el('#joinBtn').addEventListener('click', async () => {
     const partyCode = el('#party').value.trim().toUpperCase();
     const name = el('#name').value.trim();
@@ -62,12 +87,15 @@
     if (!partyCode || !name) { el('#err').textContent = 'Enter the party code and your name.'; return; }
     el('#joinBtn').disabled = true;
     try {
-      const r = await api('join', { partyCode, name });
+      const body = { partyCode, name };
+      if (chosenChar) body.characterId = chosenChar;
+      const r = await api('join', body);
       Store.party = partyCode; Store.code = r.personalCode;
       location.href = '/player.html';
     } catch (e) {
       el('#err').textContent = e.message;
       el('#joinBtn').disabled = false;
+      if (/just claimed/i.test(e.message)) { chosenChar = null; el('#joinBtn').textContent = 'Take my place'; el('#castBtn').click(); }
     }
   });
 </script>

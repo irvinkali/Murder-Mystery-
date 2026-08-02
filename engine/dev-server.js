@@ -41,6 +41,8 @@ function staticFileFor(pathname) {
   if (pathname === '/' || pathname === '') return 'index.html';
   if (pathname === '/gallery') return 'gallery.html';
   if (pathname === '/host') return 'host.html';
+  if (pathname === '/invite') return 'invite.html';
+  if (pathname === '/printables') return 'printables.html';
   if (pathname.startsWith('/prop/')) return 'prop.html'; // NFC deep link
   return pathname.replace(/^\/+/, '');
 }

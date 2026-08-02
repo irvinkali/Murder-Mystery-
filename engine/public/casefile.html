@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Case File — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+<style>
+  .sheet { background: #fdfcf8; color: #16131c; border-radius: 10px; padding: 34px 38px; margin: 18px 0; font-family: var(--font); }
+  .sheet h1, .sheet h2 { color: #16131c; }
+  .sheet h1 { font-size: 34px; margin: 0; }
+  .stamp { display: inline-block; border: 2px solid #7c1f2b; color: #7c1f2b; padding: 3px 12px; transform: rotate(-4deg);
+           font-family: var(--sans); font-weight: 700; letter-spacing: .2em; font-size: 13px; }
+  .meta { color: #5a5566; font-family: var(--sans); font-size: 13px; }
+  .rule { height: 1px; background: #d8d3c8; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e4e0d6; vertical-align: top; }
+  th { font-family: var(--sans); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #7a7566; }
+  .aw { border: 1px solid #d8d3c8; border-radius: 8px; padding: 10px 14px; margin: 8px 0; }
+  .aw b { font-size: 16px; }
+  @media print {
+    body { background: #fff; }
+    .noprint, footer { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    .sheet { box-shadow: none; margin: 0; border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card noprint">
+    <div class="eyebrow">The Last Exhibit</div>
+    <h2>The Case File</h2>
+    <p class="muted">The keepsake record of your evening — who found what, how the room voted, and who fooled whom. Print it, or save it as a PDF.</p>
+    <button id="printBtn">Print / Save as PDF</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="sheet" id="sheet" style="display:none">
+    <span class="stamp">CASE CLOSED</span>
+    <h1 style="margin-top:12px">Galerie Noir — The Last Exhibit</h1>
+    <p class="meta" id="meta"></p>
+    <div class="rule"></div>
+
+    <h2>The verdict</h2>
+    <p id="verdict" style="font-size:18px"></p>
+
+    <h2>How the room voted</h2>
+    <table id="votes"></table>
+
+    <h2>The honours</h2>
+    <div id="awards"></div>
+
+    <h2>Exhibits recovered</h2>
+    <table id="discoveries"></table>
+
+    <h2>The company</h2>
+    <table id="guests"></table>
+
+    <div class="rule"></div>
+    <p class="meta">“Every guest is a suspect. Every exhibit remembers.” — the house</p>
+  </div>
+</div>
+<script src="/app.js"></script>
+<script>
+const party = qs('party') || Store.party;
+el('#printBtn').addEventListener('click', () => window.print());
+(async () => {
+  if (!party) { el('#err').textContent = 'Add ?party=CODE to this address.'; return; }
+  try {
+    const d = await api(`casefile?partyCode=${party}`);
+    el('#sheet').style.display = 'block';
+    const when = d.playedAt ? new Date(d.playedAt).toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' }) : '';
+    el('#meta').textContent = `Party ${d.partyCode} · ${when} · ${d.guests.length} guests · variant ${d.solution.variant}${d.blackoutHappened ? ' · one unexplained blackout' : ''}`;
+    el('#verdict').textContent = `${d.solution.killer} — ${d.solution.caught ? 'caught by the room’s final vote.' : 'walked free; the room accused the wrong guest.'} ${d.solution.method || ''}`;
+    el('#votes').innerHTML = '<tr><th>Accused</th><th>Votes</th></tr>' +
+      Object.entries(d.voteCounts).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1])
+        .map(([name,n]) => `<tr><td>${esc(name)}${name===d.solution.killer?' 🗡':''}</td><td>${n}</td></tr>`).join('');
+    el('#awards').innerHTML = d.awards.map(a =>
+      `<div class="aw"><b>${esc(a.title)}</b> — ${esc(a.firstName)}, as ${esc(a.characterName)}<br/><span class="meta">${esc(a.note)}</span></div>`).join('') || '<p class="meta">No honours were bestowed.</p>';
+    el('#discoveries').innerHTML = '<tr><th>Exhibit</th><th>Item</th><th>Examinations</th></tr>' +
+      (d.discoveries.map(x => `<tr><td>No. ${esc(x.exhibit||'?')}</td><td>${esc(x.label)}</td><td>${x.examinations}</td></tr>`).join('') || '<tr><td colspan="3">The exhibits kept their secrets.</td></tr>');
+    el('#guests').innerHTML = '<tr><th>Guest</th><th>Played</th><th>Exhibits examined</th></tr>' +
+      d.guests.map(g => `<tr><td>${esc(g.firstName)}</td><td>${esc(g.characterName)}</td><td>${g.exhibitsExamined}</td></tr>`).join('');
+  } catch (e) { el('#err').textContent = e.message; }
+})();
+</script>
+</body>
+</html>

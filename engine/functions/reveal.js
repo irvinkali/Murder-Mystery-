@@ -81,10 +81,13 @@ exports.handler = async (event) => {
   const v = getVariant(pack, game.variant);
   if (!v) return bad('sealed variant missing');
 
-  const finale = computeFinale(pack, game, resolveKillerId(pack, game.variant));
+  const killerId = resolveKillerId(pack, game.variant);
+  const killerChar = pack.cast.find((c) => c.id === killerId);
+  const finale = computeFinale(pack, game, killerId);
   const solution = {
     variant: v.letter,
-    killer: v.killer,
+    // Use the cast's proper name casing (the variant header shouts in caps).
+    killer: killerChar ? killerChar.name : v.killer,
     motive: v.motive,
     method: v.method,
     evidence: v.evidence.steps,

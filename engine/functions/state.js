@@ -7,7 +7,7 @@
 const { ok, bad, notFound, preflight } = require('../lib/api');
 const { getGame, updateGame } = require('../lib/store');
 const {
-  loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES,
+  loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES, castingList,
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
 const { shouldAside, maybeAside, ATTENTION } = require('../lib/narrator');
@@ -66,6 +66,8 @@ exports.handler = async (event) => {
     playerCount: roster.length,
     victim: publicVictimBlurb(pack),
     roster,
+    // Unclaimed characters with their game-public personas (for casting at join).
+    casting: castingList(pack, game),
     narration: game.narration ? game.narration.text : null,
     narrationAudio: game.narration ? game.narration.audio : null,
     // The spoken call-to-attention played before major announcements.

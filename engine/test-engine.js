@@ -406,6 +406,58 @@ async function main() {
       inv.some((i) => i.key === 'awards.intro'));
   }
 
+  // 15. Casting: pick a character at join; personas carry no secrets.
+  {
+    const c = await j(createGame(POST({})));
+    let s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('casting lists all 20 unclaimed characters with personas',
+      s.state.casting.length === 20 && s.state.casting.every((x) => x.name && x.persona));
+    assert('casting personas never contain secrets',
+      s.state.casting.every((x) => !/secret/i.test(x.persona)));
+    const pick = s.state.casting[3];
+    const r = await j(join(POST({ partyCode: c.partyCode, name: 'Chooser', characterId: pick.id })));
+    assert('a guest can claim a chosen character', r.character && r.character.id === pick.id);
+    const dup = await j(join(POST({ partyCode: c.partyCode, name: 'Late', characterId: pick.id })));
+    assert('claiming a taken character is refused', !!dup.error && /claimed/i.test(dup.error));
+    s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('claimed characters leave the casting list', !s.state.casting.some((x) => x.id === pick.id));
+  }
+
+  // 16. Photo moment + case file.
+  {
+    const casefile = require('./functions/casefile').handler;
+    const { resolveKillerId } = require('./lib/runtime');
+    const nameFor = (id) => pack.cast.find((x) => x.id === id).name;
+    const c = await j(createGame(POST({})));
+    const pcodes = [];
+    for (let i = 0; i < 10; i++) { const r = await j(join(POST({ partyCode: c.partyCode, name: 'K' + i }))); pcodes.push(r.personalCode); }
+
+    const ph = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, photo: true })));
+    const g1 = await getGame(c.partyCode);
+    assert('the photo moment is a major narrator beat with a screen card',
+      ph.photo === true &&
+      (g1.narratorFeed || []).some((n) => n.key === 'photo' && n.major) &&
+      (g1.screenCards || []).some((x) => x.kind === 'photo'));
+
+    const early = await casefile(GET({ partyCode: c.partyCode }));
+    assert('the case file is sealed before the reveal', JSON.parse(early.body).error !== undefined);
+
+    const sealed = (await getGame(c.partyCode)).variant;
+    const killerName = nameFor(resolveKillerId(pack, sealed));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+    await j(scan(POST({ partyCode: c.partyCode, personalCode: pcodes[0], exhibit: '21' })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: pcodes[0], id: 'final', choice: killerName })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
+    await j(reveal(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+    const cf = await j(casefile(GET({ partyCode: c.partyCode })));
+    assert('the case file opens after the reveal with the night\'s record',
+      cf.solution && cf.solution.killer === killerName &&
+      cf.guests.length === 10 &&
+      cf.discoveries.some((d) => d.exhibit === '21') &&
+      Array.isArray(cf.awards));
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

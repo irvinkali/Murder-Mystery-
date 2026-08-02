@@ -34,3 +34,13 @@
   from = "/host"
   to = "/host.html"
   status = 200
+
+[[redirects]]
+  from = "/invite"
+  to = "/invite.html"
+  status = 200
+
+[[redirects]]
+  from = "/printables"
+  to = "/printables.html"
+  status = 200

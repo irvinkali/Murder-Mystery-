@@ -27,10 +27,11 @@
       <button class="ghost" id="hpAuto" style="flex:1">Auto off</button>
       <button class="ghost" id="hpAlibi" style="flex:1">Resolve 6:40</button>
       <button class="ghost" id="hpBlackout" style="flex:1">Blackout</button>
+      <button class="ghost" id="hpPhoto" style="flex:1">Portrait</button>
       <button class="ghost" id="hpReveal" style="flex:1">Reveal</button>
     </div>
     <div class="list" id="hpPolls" style="margin-top:10px"></div>
-    <p class="muted" style="font-size:12px;margin-bottom:0">Gallery screen: <a id="hpGallery" target="_blank">open →</a></p>
+    <p class="muted" style="font-size:12px;margin-bottom:0">Gallery screen: <a id="hpGallery" target="_blank">open →</a> · After the reveal: <a id="hpCase" target="_blank">Case File →</a></p>
   </details>
 
   <!-- What happens now (all players) -->
@@ -103,6 +104,7 @@ function renderHost(state) {
   if (!isHost) return;
   el('#hostPanel').style.display = 'block';
   el('#hpGallery').href = `${location.origin}/gallery?party=${Store.party}`;
+  el('#hpCase').href = `${location.origin}/casefile.html?party=${Store.party}`;
   const t = state.timing || {};
   hostState.paused = !!t.paused; hostState.auto = t.autoAdvance !== false;
   el('#hpPause').textContent = hostState.paused ? 'Resume' : 'Pause';
@@ -136,6 +138,7 @@ if (isHost) {
   el('#hpAuto').addEventListener('click', async()=>{ try{ await hapi({auto:!hostState.auto}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpAlibi').addEventListener('click', async()=>{ try{ await api('alibi',{action:'resolve',partyCode:Store.party,hostToken:Store.host}); alert('Resolved. Any contradiction has been flagged privately.'); }catch(e){ alert(e.message); } });
   el('#hpBlackout').addEventListener('click', async()=>{ if(!confirm('Kill the lights for 60 seconds?')) return; try{ await hapi({blackout:true}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpPhoto').addEventListener('click', async()=>{ try{ await hapi({photo:true}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpReveal').addEventListener('click', async()=>{ try{ await api('reveal',{partyCode:Store.party,hostToken:Store.host}); alert('The reveal is playing on the gallery screen.'); }catch(e){ alert(e.message); } });
 }
 

@@ -17,7 +17,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, hostToken, phase, pause, auto, extend, blackout } = parseBody(event);
+  const { partyCode, hostToken, phase, pause, auto, extend, blackout, photo } = parseBody(event);
   if (!partyCode) return bad('partyCode required');
   const code = partyCode.toUpperCase();
 
@@ -36,6 +36,18 @@ exports.handler = async (event) => {
       return g;
     });
     return ok({ paused: next.paused });
+  }
+
+  // Host-triggered photo moment: the narrator calls the gallery portrait.
+  if (photo === true) {
+    const { pushNarrator, PHOTO_LINE } = require('../lib/narrator');
+    await updateGame(code, (g) => {
+      pushNarrator(g, 'photo', PHOTO_LINE, true); // major: bell first
+      g.screenCards = g.screenCards || [];
+      g.screenCards.push({ kind: 'photo', text: 'THE GALLERY PORTRAIT — gather in.', at: new Date().toISOString() });
+      return g;
+    });
+    return ok({ photo: true });
   }
 
   // Host-triggered blackout (fires the set-piece now; once per game).

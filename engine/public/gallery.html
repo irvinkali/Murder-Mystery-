@@ -32,6 +32,7 @@
       <div class="divider"></div>
       <h2>The honours</h2>
       <div class="grid" id="awards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"></div>
+      <p class="center" style="margin-top:16px"><a id="caseLink">Keep tonight — open the printable Case File →</a></p>
     </div>
   </div>
 
@@ -275,6 +276,7 @@ async function refresh() {
       const awards = state.reveal.awards || [];
       if (Object.keys(vc).length || awards.length) {
         el('#finale').style.display = 'block';
+        el('#caseLink').href = `/casefile.html?party=${party}`;
         const total = Object.values(vc).reduce((a,b)=>a+b,0) || 1;
         el('#finalVotes').innerHTML = Object.entries(vc).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1]).map(([opt,n]) =>
           `<div class="barrow"><span>${esc(opt)}${opt===state.reveal.killer?' 🗡':''}</span><span class="bar"><span style="width:${Math.round(100*n/total)}%"></span></span><span class="muted">${n}</span></div>`).join('');
@@ -318,9 +320,9 @@ async function refresh() {
 
     const latest = (state.screenCards || [])[0];
     if (latest) { el('#screenBox').style.display='block'; el('#screenText').textContent = latest.text;
-      // The medical verdict is already announced (with bell) via the narrator
-      // feed — display its card silently. Hint cards still speak.
-      if (latest.kind !== 'medical') enqueue('card:'+(latest.audio||latest.text), latest.text, latest.audio); }
+      // Medical verdicts and the photo call are already announced (with bell)
+      // via the narrator feed — display those cards silently. Hints still speak.
+      if (latest.kind !== 'medical' && latest.kind !== 'photo') enqueue('card:'+(latest.audio||latest.text), latest.text, latest.audio); }
     else el('#screenBox').style.display='none';
 
     el('#roster').innerHTML = state.roster.map(c =>

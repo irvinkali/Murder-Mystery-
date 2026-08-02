@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Invite Kit — The Last Exhibit</title>
+<link rel="stylesheet" href="/app.css" />
+<style>
+  .inviteCard {
+    max-width: 430px; margin: 0 auto; padding: 44px 34px; text-align: center;
+    background:
+      radial-gradient(420px 260px at 50% -8%, #221a2e 0%, transparent 65%),
+      linear-gradient(170deg, #17131f, #0d0b12);
+    border: 1px solid #3a3050; border-radius: 16px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  }
+  .inviteCard .rule { width: 60px; height: 2px; background: var(--gold); margin: 18px auto; }
+  .inviteCard h1 { font-size: 40px; margin: 6px 0; }
+  .inviteCard .line { font-family: var(--font); font-size: 18px; margin: 4px 0; }
+  .inviteCard .detail { color: var(--gold-2); font-family: var(--font); font-size: 20px; margin: 2px 0; }
+  .inviteCard .fine { color: var(--muted); font-size: 12px; margin-top: 18px; line-height: 1.6; }
+  .copybox { background: #0e0c14; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; white-space: pre-wrap; }
+  @media print {
+    body { background: #fff; }
+    .noprint, footer { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    .inviteCard { box-shadow: none; border: 1px solid #999; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card noprint">
+    <div class="eyebrow">Host tools</div>
+    <h2>Invite kit</h2>
+    <p class="muted">Fill in your details — the invite updates live. Then either <b>screenshot the card</b> for texts and group chats, <b>print it</b>, or copy the ready-made messages below. Nothing here reveals anything about the mystery.</p>
+    <div class="row">
+      <div style="flex:1"><label>Date</label><input id="fDate" placeholder="Saturday, August 23rd" /></div>
+      <div style="flex:1"><label>Time</label><input id="fTime" placeholder="7:00 PM" /></div>
+    </div>
+    <label>Place</label><input id="fPlace" placeholder="Your address" />
+    <div class="row">
+      <div style="flex:1"><label>RSVP by</label><input id="fRsvpBy" placeholder="August 15th" /></div>
+      <div style="flex:1"><label>RSVP to</label><input id="fRsvp" placeholder="Text Kali" /></div>
+    </div>
+    <button id="printBtn">Print / Save as PDF</button>
+  </div>
+
+  <!-- The card (screenshot this) -->
+  <div class="inviteCard" id="card">
+    <div class="eyebrow">Galerie Noir requests your presence</div>
+    <h1>The Last Exhibit</h1>
+    <div class="rule"></div>
+    <p class="line">An opening night of provocative new work.<br/>Twelve pieces. One unveiling at midnight.<br/>Come as someone with something to hide —<br/>because everyone here does.</p>
+    <div class="rule"></div>
+    <p class="detail" id="cDate">—</p>
+    <p class="detail" id="cTime"></p>
+    <p class="detail" id="cPlace"></p>
+    <p class="line" id="cRsvp" style="margin-top:14px"></p>
+    <p class="fine">You'll play a character all evening — no lines to learn, your phone guides you privately.<br/>
+    Dress: glamorous, a little funereal · ~2 hours · 10–20 guests · bring a charged phone</p>
+  </div>
+
+  <div class="card noprint">
+    <h2>Copy-paste messages</h2>
+    <label>Short — for the group chat</label>
+    <div class="copybox" id="txtShort"></div>
+    <button class="ghost" data-copy="txtShort">Copy</button>
+    <label style="margin-top:18px">Longer — for individual invites</label>
+    <div class="copybox" id="txtLong"></div>
+    <button class="ghost" data-copy="txtLong">Copy</button>
+    <div class="divider"></div>
+    <h3>Sending tips</h3>
+    <p class="muted">
+    · Send now, even before the website is live — guests only need the date; the party code comes on the night.<br/>
+    · Aim for firm RSVPs: the game plays 10–20, so chase stragglers a week out.<br/>
+    · Nudge everyone to arrive on time — the story starts when the doors "lock."<br/>
+    · A charged phone matters more than the outfit. Say it twice.</p>
+  </div>
+  <footer class="noprint">Spoiler-free by design — you can read every word of this page safely.</footer>
+</div>
+<script src="/app.js"></script>
+<script>
+const F = { fDate:'', fTime:'', fPlace:'', fRsvpBy:'', fRsvp:'' };
+function v(id){ return el('#'+id).value.trim(); }
+function render(){
+  const date=v('fDate'), time=v('fTime'), place=v('fPlace'), by=v('fRsvpBy'), to=v('fRsvp');
+  el('#cDate').textContent = date || '—';
+  el('#cTime').textContent = time;
+  el('#cPlace').textContent = place;
+  el('#cRsvp').textContent = (to||by) ? `RSVP${by?' by '+by:''}${to?' · '+to:''}` : '';
+  el('#txtShort').textContent =
+`🖤 You're invited: THE LAST EXHIBIT — a murder mystery party.
+${date||'[date]'}${time?', '+time:''}${place?' · '+place:''}
+You'll play a character all night (no lines to memorize — your phone secretly guides you). Dress glamorous, a little funereal. Bring a charged phone.
+RSVP${by?' by '+by:''}${to?': '+to:''} — spots are limited (10–20 guests).`;
+  el('#txtLong').textContent =
+`You're invited to THE LAST EXHIBIT — an immersive murder mystery evening.
+
+It's opening night at Galerie Noir. Twelve pieces, one unveiling at midnight… and by 8 PM, a body. Every guest plays a character with their own public face and private secret — including you. No acting skill or memorizing needed: your phone quietly tells you who you are, what you know, and when to stir trouble. Even I don't know how it ends — the killer is chosen by the game itself on the night.
+
+📅 ${date||'[date]'}${time?' at '+time:''}
+📍 ${place||'[address]'}
+🥂 Dress: glamorous, a little funereal
+📱 Bring a charged phone (essential!)
+⏱ About two hours of mystery, then drinks and gloating
+
+RSVP${by?' by '+by:''}${to?' — '+to:''}. The game seats 10–20, so say yes quickly.`;
+  Object.keys(F).forEach(k=>localStorage.setItem('inv.'+k, v(k)));
+}
+Object.keys(F).forEach(k=>{
+  el('#'+k).value = localStorage.getItem('inv.'+k) || '';
+  el('#'+k).addEventListener('input', render);
+});
+document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click', async ()=>{
+  try { await navigator.clipboard.writeText(el('#'+b.dataset.copy).textContent); b.textContent='✓ Copied'; setTimeout(()=>b.textContent='Copy',1500); }
+  catch(e){ alert('Select the text and copy it manually.'); }
+}));
+el('#printBtn').addEventListener('click', ()=>window.print());
+render();
+</script>
+</body>
+</html>
