@@ -14,6 +14,24 @@
     <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
   </div>
 
+  <!-- Host drawer — shown ONLY on the device that created the party -->
+  <details class="card" id="hostPanel" style="display:none;border-color:var(--gold)">
+    <summary>Host controls</summary>
+    <div class="muted clock" id="hpClock" style="margin-top:10px"></div>
+    <div class="row">
+      <button class="ghost" id="hpPause" style="flex:1">Pause</button>
+      <button class="ghost" id="hpExtend" style="flex:1">+5 min</button>
+      <button id="hpAdv" style="flex:2">Advance →</button>
+    </div>
+    <div class="row" style="align-items:center">
+      <button class="ghost" id="hpAuto" style="flex:1">Auto off</button>
+      <button class="ghost" id="hpAlibi" style="flex:1">Resolve 6:40</button>
+      <button class="ghost" id="hpReveal" style="flex:1">Reveal</button>
+    </div>
+    <div class="list" id="hpPolls" style="margin-top:10px"></div>
+    <p class="muted" style="font-size:12px;margin-bottom:0">Gallery screen: <a id="hpGallery" target="_blank">open →</a></p>
+  </details>
+
   <!-- What happens now (all players) -->
   <div class="narrator note" id="narration" style="display:none"></div>
 
@@ -69,6 +87,53 @@
 <script>
 if (!Store.party || !Store.code) location.href = '/';
 
+// ---- Host drawer (only on the device that created the party) ----
+const isHost = !!Store.host;
+const SCHED = { 3:['benefits'], 4:['subpoena'], 5:['final'] };
+const SCHED_LABEL = { benefits:'“Who benefits?” vote', subpoena:'“Open the files?” vote', final:'Final “who did it?” vote' };
+let hostState = { paused:false, auto:true };
+const fmt = ms => { const s=Math.max(0,Math.round(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+const hapi = (body) => api('advance', Object.assign({ partyCode: Store.party, hostToken: Store.host }, body));
+
+function renderHost(state) {
+  if (!isHost) return;
+  el('#hostPanel').style.display = 'block';
+  el('#hpGallery').href = `${location.origin}/gallery?party=${Store.party}`;
+  const t = state.timing || {};
+  hostState.paused = !!t.paused; hostState.auto = t.autoAdvance !== false;
+  el('#hpPause').textContent = hostState.paused ? 'Resume' : 'Pause';
+  el('#hpAuto').textContent = hostState.auto ? 'Auto off' : 'Auto on';
+  if (t.phaseStartedAt) {
+    const pausedNow = t.paused ? (Date.now() - (t.pausedAt ? Date.parse(t.pausedAt) : Date.now())) : 0;
+    const elapsed = Date.now() - Date.parse(t.phaseStartedAt) - (t.pauseAccumMs||0) - pausedNow;
+    const allotted = (t.allottedMinutes || t.suggestedMinutes || 0) * 60000;
+    const rem = allotted - elapsed;
+    el('#hpClock').textContent = allotted
+      ? `Phase ${state.phase} · ${hostState.auto ? (rem>=0?`auto-advances in ${fmt(rem)}`:'advancing…') : `${fmt(Math.max(rem,0))} left (auto off)`}${t.paused?' · PAUSED':''}`
+      : `Phase ${state.phase}`;
+  }
+  const rows = [];
+  for (const p of (state.polls||[])) {
+    rows.push(`<div class="barrow"><span style="font-size:13px">${esc(p.question)}</span><span class="muted">${p.total}${p.closed?' · closed':''}</span>`+
+      (p.closed?'<span></span>':`<span><button data-hclose="${esc(p.id)}" style="margin:0;padding:6px 10px;font-size:12px">Close</button></span>`)+`</div>`);
+  }
+  for (const id of (SCHED[state.phase]||[])) {
+    if (!(state.polls||[]).some(p=>p.id===id))
+      rows.push(`<div class="barrow"><span class="muted" style="font-size:13px">${esc(SCHED_LABEL[id])} (not open)</span><span></span><span><button data-hopen="${id}" style="margin:0;padding:6px 10px;font-size:12px">Open</button></span></div>`);
+  }
+  el('#hpPolls').innerHTML = rows.join('');
+  document.querySelectorAll('[data-hclose]').forEach(b=>b.onclick=async()=>{ try{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hclose}); if(r.counts) alert('Results — '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); refresh(); }catch(e){ alert(e.message); } });
+  document.querySelectorAll('[data-hopen]').forEach(b=>b.onclick=async()=>{ try{ await api('poll',{action:'open',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hopen}); refresh(); }catch(e){ alert(e.message); } });
+}
+if (isHost) {
+  el('#hpPause').addEventListener('click', async()=>{ try{ await hapi({pause:!hostState.paused}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpExtend').addEventListener('click', async()=>{ try{ await hapi({extend:5}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpAdv').addEventListener('click', async()=>{ try{ await hapi({}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpAuto').addEventListener('click', async()=>{ try{ await hapi({auto:!hostState.auto}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpAlibi').addEventListener('click', async()=>{ try{ await api('alibi',{action:'resolve',partyCode:Store.party,hostToken:Store.host}); alert('Resolved. Any contradiction has been flagged privately.'); }catch(e){ alert(e.message); } });
+  el('#hpReveal').addEventListener('click', async()=>{ try{ await api('reveal',{partyCode:Store.party,hostToken:Store.host}); alert('The reveal is playing on the gallery screen.'); }catch(e){ alert(e.message); } });
+}
+
 function renderNotes(you) {
   const parts = [];
   if (you.killer) {
@@ -118,6 +183,7 @@ async function refresh() {
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
     renderPolls(state.polls || []);
+    renderHost(state);
     const showAlibi = you && state.phase === 3 && !you.alibiSubmitted;
     el('#alibiBox').style.display = showAlibi ? 'block' : 'none';
   } catch (e) { el('#err').textContent = e.message; }

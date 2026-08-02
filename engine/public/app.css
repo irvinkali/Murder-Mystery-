@@ -114,3 +114,13 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: cen
 .guidance { font-size: 13px; color: var(--muted); margin: 4px 0 8px; }
 .clock { font-variant-numeric: tabular-nums; }
 .audio-btn { width: auto; margin: 0; padding: 8px 14px; font-size: 13px; }
+
+/* Collapsible host drawer on the player page (host's device only). */
+details.card > summary {
+  cursor: pointer; list-style: none; font-family: var(--font);
+  font-size: 18px; color: var(--gold-2); letter-spacing: .02em;
+}
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::before { content: '▸ '; }
+details.card[open] > summary::before { content: '▾ '; }
+details.card .row button { margin-top: 8px; }
