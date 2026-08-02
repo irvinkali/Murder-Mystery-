@@ -178,7 +178,7 @@ el('#voiceSel').addEventListener('change', () => {
   localStorage.setItem('narrVoice', el('#voiceSel').value);
   docentVoice = pickVoice();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
-  synth('Good evening, my darlings. Shall I narrate?', ()=>{});   // instant audition
+  synth('Good evening. Shall I narrate for you tonight?', ()=>{});   // instant audition
 });
 
 async function refresh() {

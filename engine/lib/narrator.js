@@ -22,18 +22,18 @@ const { audioName, PROP_CATALOG } = require('./runtime');
 // Spoken call-to-attention, played after the gallery bell and before any MAJOR
 // announcement — so a room mid-conversation has a beat to quiet down.
 // Pre-rendered once under the key 'attention'.
-const ATTENTION = 'Your attention, my darlings... if you please.';
+const ATTENTION = 'Ladies and gentlemen — your attention, please.';
 
 // ---------------------------------------------------------------------------
 // 1. PHASE MONOLOGUES — velvet emcee, funny-dark, paced for performance.
 // ---------------------------------------------------------------------------
 const MONOLOGUES = {
-  1: 'Good evening, my darlings... and welcome to Galerie Noir. Tonight is opening night — the wine is cold, the light is flattering, and every single one of you walked in carrying something you would rather not discuss. Perfect. That is what galleries are for. Mingle. Admire. Lie beautifully. The art is watching... and so, dear guests, am I.',
-  2: 'Ah. The final piece... unveiled at last. And it appears our guest of honour... will not be taking questions. No — don\'t crowd. Give the moment its dignity; she would have insisted. The doors are locked now. The evening has changed its shape, and until we know whose hands did this... none of you are merely guests anymore. You are material.',
-  3: 'Now the real work begins. Investigate, my darlings. Circle one another. Ask the questions polite society forbids — tonight, rudeness is a virtue and curiosity is the dress code. The gallery keeps its secrets in plain sight... behind frames, under cushions, in rooms you were not invited into. Go and be invited. And do keep your stories straight. Someone in this room is editing theirs as we speak.',
-  4: 'Feel that? The evening... sharpening. The pleasantries are spent, the alibis are wearing thin at the elbows, and somewhere in this gallery the one thing that matters is waiting to be held up to the light. The decisive piece is within reach tonight. Find it — and this stops being a guessing game... and becomes a proof.',
-  5: 'Enough. Set down your glasses. It is time for the oldest ritual in art: the naming of a price. Say your accusations out loud, my darlings — to the room, to each other\'s faces. And then, in private, every one of you will cast a ballot with a single name on it. Choose with care. The room is listening... and the room remembers everything.',
-  6: 'The ballots are sealed. The gallery has one piece left to show you — the truth, in its original frame. Eyes on the screen, my darlings. This... is The Last Exhibit.',
+  1: 'Good evening, my darlings, and welcome to Galerie Noir. It\'s opening night. The wine is cold, the light is flattering, and every one of you walked in carrying something you\'d rather not discuss. Perfect — that\'s what galleries are for. Mingle. Admire. Lie beautifully. The art is watching, and so am I.',
+  2: 'The final piece is unveiled — and it seems our guest of honour won\'t be taking questions. Don\'t crowd. Give the moment its dignity; she\'d have insisted. The doors are locked now, and until we know whose hands did this, none of you are just guests anymore. You\'re material.',
+  3: 'Now the real work begins. Circle one another. Ask the questions polite society won\'t allow — tonight, rudeness is a virtue and curiosity is the dress code. This gallery keeps its secrets in plain sight: behind frames, under cushions, in rooms you weren\'t invited into. Go get invited. And keep your stories straight — someone in this room is editing theirs right now.',
+  4: 'Feel that? The evening is sharpening. The pleasantries are spent, the alibis are wearing thin, and somewhere in this gallery the one thing that matters is waiting to be held up to the light. Find it, and this stops being a guessing game and becomes a proof.',
+  5: 'Enough. Set down your glasses. Say your accusations out loud — to the room, to each other\'s faces. Then, in private, each of you will cast a ballot with a single name on it. Choose carefully. The room is listening, and the room remembers everything.',
+  6: 'The ballots are sealed. The gallery has one piece left to show you: the truth, in its original frame. Eyes on the screen. This is The Last Exhibit.',
 };
 
 // ---------------------------------------------------------------------------
@@ -42,43 +42,43 @@ const MONOLOGUES = {
 
 // Per-prop discovery flourishes. Physical descriptions only (public catalog).
 const FOUND_FLOURISH = {
-  P1: 'An abandoned glass, far from the bar... still wearing someone\'s shade. Glasses don\'t walk, darlings. They\'re carried — and then they\'re left.',
-  P2: 'A little book of days... with one day torn out. People only tear out the pages that testify.',
-  P3: 'A bottle from someone\'s bathroom shelf... its label scratched nearly to silence. Nearly.',
-  P4: 'A sealed black envelope. Sealed things are promises, darlings... and someone in this room broke one to hide it.',
-  P5: 'The gloves of someone who handles art... marked by work they never mentioned doing.',
-  P6: 'A photograph... with one face scratched away. We only erase the faces we can\'t stop seeing.',
-  P7: 'A staff credential, on a snapped lanyard. Doors remember, my darlings... even when people are in too much of a hurry to.',
+  P1: 'An abandoned glass, far from the bar, still wearing someone\'s shade. Glasses don\'t walk. They\'re carried, and then they\'re left.',
+  P2: 'A little book of days with one day torn out. People only tear out the pages that testify.',
+  P3: 'A bottle from someone\'s bathroom shelf, its label scratched nearly to silence. Nearly.',
+  P4: 'A sealed black envelope. Sealed things are promises — and someone broke one to hide this.',
+  P5: 'The gloves of someone who handles art, marked by work they never mentioned doing.',
+  P6: 'A photograph with one face scratched away. We only erase the faces we can\'t stop seeing.',
+  P7: 'A staff credential on a snapped lanyard. Doors remember, even when people are in too much of a hurry to.',
 };
 
 function foundLine(propId) {
   const cat = PROP_CATALOG[propId];
   if (!cat) return null;
-  return `Ah... someone has an eye. ${FOUND_FLOURISH[propId] || `They have found the ${cat.label.toLowerCase()}.`} Do examine it closely... and decide who you tell.`;
+  return `Well — someone has a good eye. ${FOUND_FLOURISH[propId] || `They've found the ${cat.label.toLowerCase()}.`} Take a close look, and decide who you tell.`;
 }
 
 function suspectLine(name) {
-  return `The ballots are counted, and how deliciously awkward... the room's gaze has settled — politely, of course — on ${name}. Compose yourself, dear. Suspicion is just attention... wearing gloves.`;
+  return `The votes are in, and how awkward: the room's gaze has settled, politely of course, on ${name}. Compose yourself, dear. Suspicion is only attention wearing gloves.`;
 }
 
 function subpoenaLine(outcome) {
   return outcome === 'yes'
-    ? 'The vote carries. The files... are open. And files, my darlings, never forgive — they simply wait to be read aloud.'
-    : 'The room votes for discretion. How very civilised of you all... The files stay shut. For now. Though secrets, in my experience, leak on their own schedule.';
+    ? 'The vote carries. The files are open. And files never forgive — they simply wait to be read aloud.'
+    : 'The room votes for discretion. How civilised. The files stay shut, for now — though secrets tend to leak on their own schedule.';
 }
 
 function finalClosedLine() {
-  return 'And there it is... the last ballot, cast. Sealed. Counted. Whatever you believe, you believe it now in ink. In a moment, my darlings... the gallery answers back.';
+  return 'And there it is: the last ballot, cast and counted. Whatever you believe, you believe it in ink now. In a moment, the gallery answers back.';
 }
 
 // Atmospheric asides for quiet stretches — generic, funny-dark, re-usable.
 const ASIDES = [
-  'Do refresh your drinks, darlings. Steady hands are wasted on the innocent.',
-  'Such a lovely hush... In my experience, rooms only go this quiet when someone is rehearsing.',
-  'Admire the art, by all means. But do notice who keeps admiring the exits.',
-  'A word of advice from the house: the guest who asks no questions... already knows the answers.',
+  'Do refresh your drinks. Steady hands are wasted on the innocent.',
+  'Such a lovely hush. Rooms only go this quiet when someone is rehearsing.',
+  'Admire the art, by all means. But notice who keeps admiring the exits.',
+  'A word of advice from the house: the guest who asks no questions already knows the answers.',
   'Someone here has told the same story twice tonight, word for word. Memorised things are rarely true things.',
-  'The lighting in here flatters everyone, my darlings. Consider what else in this room might be doing the same.',
+  'The lighting in here flatters everyone. Consider what else in this room might be doing the same.',
   'Whisper if you must. Whispers carry beautifully in a gallery — the acoustics were expensive.',
   'It\'s a fine evening to watch hands, not faces. Faces audition. Hands confess.',
 ];
