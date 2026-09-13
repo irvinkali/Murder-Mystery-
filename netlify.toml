@@ -6,7 +6,7 @@
   base = ""
   publish = "engine/public"
   functions = "engine/functions"
-  command = "cd engine && npm run build-pack && npm run validate"
+  command = "cd engine && npm install && npm run build-pack && npm run validate"
 
 [functions]
   node_bundler = "esbuild"
