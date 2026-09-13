@@ -15,8 +15,9 @@
 let _blobs = null;
 try {
   _blobs = require('@netlify/blobs');
-} catch (_) {
+} catch (e) {
   _blobs = null;
+  console.error(`[store] WARNING: could not load @netlify/blobs (${e && e.message ? e.message : e}) — state will be IN-MEMORY only.`);
 }
 
 const _mem = new Map();   // partyCode -> serialized game JSON
@@ -24,14 +25,43 @@ const _ver = new Map();   // partyCode -> version counter (memory CAS)
 
 const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
 
+let _warned = false;
+
+/**
+ * Wire Blobs to the incoming request. Classic (Lambda-compatible) handlers get
+ * their Blobs credentials on event.blobs rather than in the environment, so
+ * every handler must call this before touching the store.
+ */
+function connect(event) {
+  if (_blobs && typeof _blobs.connectLambda === 'function' && event && event.blobs) {
+    _blobs.connectLambda(event);
+  }
+}
+
+function warnMemory(reason) {
+  if (_warned) return;
+  _warned = true;
+  console.error(
+    '\n[store] ************************************************************\n' +
+    '[store] WARNING: Netlify Blobs unavailable — using IN-MEMORY store.\n' +
+    '[store] Party state is NOT shared between function instances and is\n' +
+    '[store] lost on every cold start. Fine for local dev/tests; BROKEN in\n' +
+    '[store] production.\n' +
+    `[store] Reason: ${reason}\n` +
+    '[store] ************************************************************\n'
+  );
+}
+
 function backend() {
   if (_blobs) {
     try {
       return { kind: 'blobs', store: _blobs.getStore({ name: 'mystery-games', consistency: 'strong' }) };
-    } catch (_) {
-      /* fall through to memory */
+    } catch (e) {
+      warnMemory(e && e.message ? e.message : String(e));
+      return { kind: 'memory' };
     }
   }
+  warnMemory('@netlify/blobs is not installed');
   return { kind: 'memory' };
 }
 
@@ -118,4 +148,4 @@ async function updateGame(partyCode, mutate) {
   return next;
 }
 
-module.exports = { getGame, getGameWithMeta, putGame, updateGame, _mem };
+module.exports = { connect, getGame, getGameWithMeta, putGame, updateGame, _mem };

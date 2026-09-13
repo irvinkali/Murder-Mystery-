@@ -5,7 +5,7 @@
  * Phase-6 reveal. All private content is framed as in-world notes. */
 
 const { ok, bad, notFound, preflight } = require('../lib/api');
-const { getGame, updateGame } = require('../lib/store');
+const { connect, getGame, updateGame } = require('../lib/store');
 const {
   loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES, castingList,
 } = require('../lib/runtime');
@@ -16,6 +16,7 @@ const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/ph
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   const q = event.queryStringParameters || {};
   if (!q.partyCode) return bad('partyCode required');

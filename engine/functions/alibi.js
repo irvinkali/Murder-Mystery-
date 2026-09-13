@@ -7,13 +7,14 @@
  */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
-const { getGame, updateGame } = require('../lib/store');
+const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack } = require('../lib/runtime');
 const { computeAlibi, mergeDrops } = require('../lib/branching');
 
 const ALIBI_PHASE = 3;
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 

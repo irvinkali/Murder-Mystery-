@@ -9,11 +9,12 @@
  * these are the host's overrides. */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
-const { getGame, updateGame } = require('../lib/store');
+const { connect, getGame, updateGame } = require('../lib/store');
 const { PHASES, phaseInfo, loadRuntimePack } = require('../lib/runtime');
 const { performAdvance } = require('../lib/phases');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 

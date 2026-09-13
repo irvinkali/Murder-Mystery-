@@ -5,10 +5,11 @@
  * flex are never load-bearing and are layered in only above the core cast). */
 
 const { ok, bad, notFound, preflight, parseBody, personalCode } = require('../lib/api');
-const { updateGame } = require('../lib/store');
+const { connect, updateGame } = require('../lib/store');
 const { loadRuntimePack, playerBrief, assignableIds } = require('../lib/runtime');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 

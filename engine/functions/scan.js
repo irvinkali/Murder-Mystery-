@@ -4,11 +4,12 @@
  * resolved server-side and never returned. Keystone stays gated until Phase 4. */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
-const { getGame, updateGame } = require('../lib/store');
+const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack, resolvePropScan, propIdFromInput } = require('../lib/runtime');
 const { pushNarrator, foundLine } = require('../lib/narrator');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 

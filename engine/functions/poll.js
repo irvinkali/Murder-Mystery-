@@ -11,11 +11,12 @@
  */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
-const { getGame, updateGame } = require('../lib/store');
+const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack } = require('../lib/runtime');
 const { openPoll, closePoll, findSchedById } = require('../lib/pollsched');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 

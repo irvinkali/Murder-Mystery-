@@ -5,7 +5,7 @@
  * it to the host. The host keeps advance/pause control. */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
-const { getGame, updateGame } = require('../lib/store');
+const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack, getVariant, KEYSTONE_PHASE, PHASES, audioName, AUDIO_KEYS, resolveKillerId } = require('../lib/runtime');
 const { finalVoteClosed, tally } = require('../lib/pollsched');
 
@@ -65,6 +65,7 @@ function computeFinale(pack, game, killerId) {
 }
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 

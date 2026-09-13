@@ -4,10 +4,11 @@
  * the room by then). Any guest can pull it — it's the party favor. */
 
 const { ok, bad, notFound, forbidden, preflight } = require('../lib/api');
-const { getGame } = require('../lib/store');
+const { connect, getGame } = require('../lib/store');
 const { loadRuntimePack, PROP_CATALOG, exhibitNumber } = require('../lib/runtime');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   const q = event.queryStringParameters || {};
   if (!q.partyCode) return bad('partyCode required');

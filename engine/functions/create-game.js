@@ -4,10 +4,11 @@
  * is never returned here or in any player-facing response before the reveal. */
 
 const { ok, bad, preflight, parseBody, partyCode, token } = require('../lib/api');
-const { putGame } = require('../lib/store');
+const { connect, putGame } = require('../lib/store');
 const { loadRuntimePack, selectVariant } = require('../lib/runtime');
 
 exports.handler = async (event) => {
+  connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
