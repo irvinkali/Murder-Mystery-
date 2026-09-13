@@ -25,7 +25,7 @@ const _ver = new Map();   // partyCode -> version counter (memory CAS)
 const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
 
 function backend() {
-  if (_blobs && process.env.NETLIFY) {
+  if (_blobs) {
     try {
       return { kind: 'blobs', store: _blobs.getStore({ name: 'mystery-games', consistency: 'strong' }) };
     } catch (_) {
