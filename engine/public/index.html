@@ -95,7 +95,7 @@
     } catch (e) {
       el('#err').textContent = e.message;
       el('#joinBtn').disabled = false;
-      if (/just claimed/i.test(e.message)) { chosenChar = null; el('#joinBtn').textContent = 'Take my place'; el('#castBtn').click(); }
+      if (/just claimed|reserved/i.test(e.message)) { chosenChar = null; el('#joinBtn').textContent = 'Take my place'; el('#castBtn').click(); }
     }
   });
 </script>

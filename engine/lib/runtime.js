@@ -143,11 +143,21 @@ function publicPersona(character) {
     .trim();
 }
 
-/** Unclaimed seats (core first, then flex) with their public personas. */
+/** Normalize a guest name for reservation matching: case and spacing ignored. */
+function normName(s) {
+  return String(s == null ? '' : s).normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Unclaimed, unreserved seats (core first, then flex) with their public
+ * personas. Host reservations are left out so guests can't pick them — and the
+ * reserved guest names themselves are never included.
+ */
 function castingList(pack, game) {
   const taken = new Set(Object.keys(game.assignments || {}));
+  const reserved = game.reservations || {};
   return [...pack.cast, ...(pack.flex || [])]
-    .filter((c) => !taken.has(c.id))
+    .filter((c) => !taken.has(c.id) && !reserved[c.id])
     .map((c) => ({ id: c.id, name: c.name, persona: publicPersona(c) }));
 }
 
@@ -303,6 +313,7 @@ module.exports = {
   publicRoster,
   publicPersona,
   castingList,
+  normName,
   playerBrief,
   assignableIds,
   capacity,

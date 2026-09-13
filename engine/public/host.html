@@ -59,6 +59,15 @@
     </details>
 
     <div class="divider"></div>
+    <details id="castingBox">
+      <summary><h3 style="display:inline">Casting</h3> <span class="muted">— assign characters to guests in advance</span></summary>
+      <p class="muted">Type a guest's name against a character. When they join with that name (capitals and extra spaces don't matter), they get that character. Anyone else is seated from what's left. Any flex characters can be used, in any order. Nothing here appears on the gallery screen.</p>
+      <div class="list" id="castRows"><span class="muted">Loading…</span></div>
+      <button id="castSave">Save casting</button>
+      <span class="muted" id="castMsg"></span>
+    </details>
+
+    <div class="divider"></div>
     <h3>The 6:40 question</h3>
     <p class="muted">Ask the room aloud in Phase 3; guests answer on their phones. Then resolve — a contradiction is flagged privately. You won't be told who.</p>
     <button id="alibiBtn" class="ghost">Resolve the 6:40 flag</button>
@@ -156,6 +165,24 @@ el('#revealBtn').addEventListener('click', async () => {
   try { const r = await api('reveal',{partyCode:Store.party,hostToken:Store.host}); const box=el('#revealBox'); box.style.display='block';
     box.innerHTML=`<div class="kicker">Now on the gallery screen</div><div class="serif" style="font-size:20px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div><p>${esc(r.method||'')}</p>`; }
   catch(e){ alert(e.message); }
+});
+function renderCasting(roster) {
+  el('#castRows').innerHTML = roster.map(c =>
+    `<div class="barrow" style="grid-template-columns:1.2fr 1.5fr auto"><span><b>${esc(c.name)}</b>${c.flex?' <span class="pill">flex</span>':''}</span>`+
+    `<input data-res="${esc(c.id)}" value="${esc(c.guest)}" placeholder="Guest name" style="margin:0" />`+
+    `<span class="muted" style="font-size:12px">${c.claimedBy?'joined: '+esc(c.claimedBy):''}</span></div>`).join('');
+}
+async function loadCasting() {
+  el('#castMsg').textContent = '';
+  try { const r = await api('cast',{action:'get',partyCode:Store.party,hostToken:Store.host}); renderCasting(r.roster); }
+  catch(e){ el('#castMsg').textContent = e.message; }
+}
+el('#castingBox').addEventListener('toggle', () => { if (el('#castingBox').open) loadCasting(); });
+el('#castSave').addEventListener('click', async () => {
+  const reservations = {};
+  document.querySelectorAll('[data-res]').forEach(i => { reservations[i.dataset.res] = i.value; });
+  try { const r = await api('cast',{action:'save',partyCode:Store.party,hostToken:Store.host,reservations}); renderCasting(r.roster); el('#castMsg').textContent = 'Saved.'; }
+  catch(e){ el('#castMsg').textContent = e.message; }
 });
 el('#reset').addEventListener('click', () => { Store.clear(); location.reload(); });
 if (Store.party && Store.host) { showLive(); tick(); }

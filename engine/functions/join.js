@@ -1,12 +1,16 @@
 'use strict';
 /* POST /api/join  { partyCode, name, characterId? } -> { personalCode, character }
- * With characterId: claims that specific unclaimed character (casting).
- * Without: assigns the next available seat, core cast first (fairness rule 2:
- * flex are never load-bearing and are layered in only above the core cast). */
+ * Seating order:
+ *  1. The name matches a host reservation (case/spacing ignored) -> that character.
+ *  2. characterId given -> claims that unclaimed, unreserved character (casting).
+ *  3. Otherwise the next unclaimed seat, core cast first, skipping reserved
+ *     seats; if only reserved seats remain, one of those is used so a surprise
+ *     guest or a typo is never turned away. (Fairness rule 2: flex are never
+ *     load-bearing.) */
 
 const { ok, bad, notFound, preflight, parseBody, personalCode } = require('../lib/api');
 const { connect, updateGame } = require('../lib/store');
-const { loadRuntimePack, playerBrief, assignableIds } = require('../lib/runtime');
+const { loadRuntimePack, playerBrief, assignableIds, normName } = require('../lib/runtime');
 
 exports.handler = async (event) => {
   connect(event);
@@ -19,18 +23,27 @@ exports.handler = async (event) => {
   const pack = loadRuntimePack();
   const seatOrder = assignableIds(pack); // core cast first, then flex
   if (characterId && !seatOrder.includes(characterId)) return bad('no such character');
+  const want = normName(name);
 
   let assignedId = null;
   let pcode = null;
   let alreadyClaimed = false;
+  let reservedElsewhere = false;
 
   const game = await updateGame(partyCode.toUpperCase(), (g) => {
+    assignedId = null; alreadyClaimed = false; reservedElsewhere = false; // reset on retry
     const taken = new Set(Object.keys(g.assignments));
-    if (characterId) {
+    const res = g.reservations || {};
+    const open = (id) => !taken.has(id);
+    const match = want ? seatOrder.find((id) => open(id) && res[id] && normName(res[id]) === want) : null;
+    if (match) {
+      assignedId = match;
+    } else if (characterId) {
       if (taken.has(characterId)) { alreadyClaimed = true; return g; }
+      if (res[characterId]) { reservedElsewhere = true; return g; }
       assignedId = characterId;
     } else {
-      assignedId = seatOrder.find((id) => !taken.has(id)) || null;
+      assignedId = seatOrder.find((id) => open(id) && !res[id]) || seatOrder.find(open) || null;
     }
     if (!assignedId) return g; // full (all seats claimed)
     pcode = personalCode();
@@ -43,6 +56,7 @@ exports.handler = async (event) => {
 
   if (!game) return notFound('no such party');
   if (alreadyClaimed) return bad('that character was just claimed — pick another');
+  if (reservedElsewhere) return bad('that character is reserved for another guest — pick another');
   if (!assignedId) return bad('party is full (all characters assigned)');
 
   return ok({ personalCode: pcode, character: playerBrief(pack, assignedId) });

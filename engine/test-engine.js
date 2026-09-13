@@ -423,6 +423,41 @@ async function main() {
     assert('claimed characters leave the casting list', !s.state.casting.some((x) => x.id === pick.id));
   }
 
+  // 15b. Host-side casting: reservations by name, forgiving match, any flex, never public.
+  {
+    const cast = require('./functions/cast').handler;
+    const c = await j(createGame(POST({})));
+    const hc = (body) => j(cast(POST({ partyCode: c.partyCode, hostToken: c.hostToken, ...body })));
+    const denied = await cast(POST({ action: 'get', partyCode: c.partyCode, hostToken: 'nope' }));
+    assert('host casting is host only', denied.statusCode === 403);
+    const g0 = await hc({ action: 'get' });
+    assert('host casting roster lists all 20 characters',
+      g0.roster.length === 20 && g0.roster.filter((x) => x.flex).length === 10);
+    const saved = await hc({ action: 'save', reservations: { C1: 'Opal Brindlewick', C3: 'Zebulon Quartz', F9: 'Xanthe', F4: '   ' } });
+    const row = (r, id) => r.roster.find((x) => x.id === id);
+    assert('reservations save with the party (blank names dropped)',
+      row(saved, 'C3').guest === 'Zebulon Quartz' && row(saved, 'F9').guest === 'Xanthe' && !row(saved, 'F4').guest);
+    assert('reserving a nonexistent character is refused', !!(await hc({ action: 'save', reservations: { X99: 'A' } })).error);
+    const s = await j(state(GET({ partyCode: c.partyCode })));
+    assert('public state (gallery) carries no casting names',
+      !/Opal|Brindlewick|Zebulon|Quartz|Xanthe|reservation/i.test(JSON.stringify(s)));
+    assert('reserved characters are hidden from the guest casting picker',
+      !s.state.casting.some((x) => ['C1', 'C3', 'F9'].includes(x.id)) && s.state.casting.length === 17);
+    const m = await j(join(POST({ partyCode: c.partyCode, name: '  zebulon   QUARTZ ' })));
+    assert('a reserved guest gets their character (case/space-insensitive)', m.character && m.character.id === 'C3');
+    const f = await j(join(POST({ partyCode: c.partyCode, name: 'xanthe' })));
+    assert('any flex character can be reserved, not only F1 onward', f.character && f.character.id === 'F9');
+    const pickReserved = await j(join(POST({ partyCode: c.partyCode, name: 'Other', characterId: 'C1' })));
+    assert('picking a character reserved for someone else is refused', !!pickReserved.error && /reserved/i.test(pickReserved.error));
+    const u = await j(join(POST({ partyCode: c.partyCode, name: 'Surprise Guest' })));
+    assert('an unmatched name is seated from unreserved seats', u.character && u.character.id === 'C2');
+    for (let i = 0; i < 16; i++) await j(join(POST({ partyCode: c.partyCode, name: 'Walkin' + i })));
+    const last = await j(join(POST({ partyCode: c.partyCode, name: 'Typo Opal' })));
+    assert('an unmatched guest still gets a reserved seat once nothing else is free', last.character && last.character.id === 'C1');
+    const g1 = await hc({ action: 'get' });
+    assert('host roster shows who joined as each character', row(g1, 'C3').claimedBy === '  zebulon   QUARTZ ');
+  }
+
   // 16. Photo moment + case file.
   {
     const casefile = require('./functions/casefile').handler;
