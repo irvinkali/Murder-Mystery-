@@ -55,7 +55,7 @@ function warnMemory(reason) {
 function backend() {
   if (_blobs) {
     try {
-      return { kind: 'blobs', store: _blobs.getStore({ name: 'mystery-games', consistency: 'strong' }) };
+      return { kind: 'blobs', store: _blobs.getStore({ name: 'mystery-games', consistency: 'eventual' }) };
     } catch (e) {
       warnMemory(e && e.message ? e.message : String(e));
       return { kind: 'memory' };
