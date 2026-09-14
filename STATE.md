@@ -24,7 +24,7 @@ This file lets any Claude session (chat or Claude Code) resume work. Kali may re
 - STATE.md — this file (safe)
 - docs/ — safe docs (design doc, props guide copies)
 - packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 b5531a15dcbcf9d9d34edf6a4bf3e713)
-- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 033cec661965dcac5b0513aafed7bd7c)
+- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 02533c96f2771dfbebdca827751bf6aa)
 - engine/ — app code (not started)
 
 ## Progress log
@@ -221,16 +221,44 @@ It found two real gaps, both present since the first pack and neither caused by 
 ## The cast has relationships now (added 2026-09-14)
 The owner asked why a character had married into the class with no spouse present, and said the
 cast did not all have to be individuals. Four relationships were built out of existing characters:
-a married couple, two business partners, a pair estranged since 1989, and two cousins. Two of the
-four are core-to-core so the spine survives a table of ten.
+a pair who were inseparable at seventeen and have not spoken since, two business partners, a pair
+estranged since 1989, and two cousins. Two of the four are core-to-core so the spine survives a
+table of ten. (The first of the four started life as a marriage; see the graduates-only ruling
+below.)
 
 The rule that makes this safe: **a core character may never name a flex character**, because flex
 characters are optional and fairness rule 2 says nothing may depend on one. A core half speaks of a
-spouse in the abstract; only the flex half names the other person. Verified by script: zero
-references to a flex name anywhere in a core brief, secret or script line.
+other person in the abstract; only the flex half names them. Verified by script: zero references
+to a flex name anywhere in a core brief, secret, script line or private drop.
 
-The two retired teachers stay. They now read as what they are, invited guests of honor printed on
-the program, rather than as unexplained attendees.
+## Graduates only, and nobody married to anybody (added 2026-09-14)
+Kali's ruling: "I don't want to include teachers. Only people that graduated that year. No married
+couples." So all twenty characters are now members of the class of 1989 who graduated with it. No
+staff, no other class years, no outsiders, no plus-ones, no vendors from outside the class, and no
+two people in the room married to each other. An ex-spouse or a partner who is not a character and
+never appears is still allowed, and there is one of each left, mentioned once.
+
+Six characters were re-conceived on the surface. Their ids did not move, the four solutions, the
+evidence chains, the prop matrix, the seven props, the world hooks, the poll copy, the narration
+and every find-hint are byte-identical, and every character still carries exactly one secret block,
+one slide hook where they had one, and one line for each of the five played phases. Everything that
+changed is persona text, a handful of that character's own script lines, one private drop, and six
+costume notes in lobby.json. Proven by a structural fingerprint taken before the edit and diffed
+after it: the only fields that moved were the ones intended to.
+
+The casting functions Kali casts real guests against were preserved, deliberately, because the
+point of the flex roster is that each part suits a kind of guest: the one who knows nobody, the one
+with a job to do and permission to arrive late or leave early, the one who may sit down all evening
+and let the room come to them, the big entrance who is welcome and unwelcome at once, the one who
+asks strangers direct questions and writes the answers down, and the warm storyteller with the
+microphone after the slideshow. The programme's "say a few words" duty now belongs to a classmate,
+so there is no guest of honor and nothing anywhere refers to one.
+
+One costume joke moved. The "not in period dress because they are working" gag now belongs to the
+caterer alone; the note-taker is in 1989 costume like everybody else.
+
+Gate after the change, run against BOTH packs: fairness 15/15, engine 117/117, branching 21/21,
+smoke 18/18, audit 10/10, spoiler-scan clean on the default pack. `npm run check` green.
 
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.
