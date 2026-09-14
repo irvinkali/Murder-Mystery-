@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Case File — The Last Exhibit</title>
+<title>Case File</title>
 <link rel="stylesheet" href="/app.css" />
 <style>
   .sheet { background: #fdfcf8; color: #16131c; border-radius: 10px; padding: 34px 38px; margin: 18px 0; font-family: var(--font); }
@@ -26,10 +26,10 @@
   }
 </style>
 </head>
-<body>
+<body data-page-title="Case File">
 <div class="wrap">
   <div class="card noprint">
-    <div class="eyebrow">The Last Exhibit</div>
+    <div class="eyebrow" data-brand="siteTitle">Mystery Party</div>
     <h2>The Case File</h2>
     <p class="muted">The keepsake record of your evening — who found what, how the room voted, and who fooled whom. Print it, or save it as a PDF.</p>
     <button id="printBtn">Print / Save as PDF</button>
@@ -38,7 +38,7 @@
 
   <div class="sheet" id="sheet" style="display:none">
     <span class="stamp">CASE CLOSED</span>
-    <h1 style="margin-top:12px">Galerie Noir — The Last Exhibit</h1>
+    <h1 style="margin-top:12px" data-brand="casefileTitle">The Case File</h1>
     <p class="meta" id="meta"></p>
     <div class="rule"></div>
 
@@ -51,14 +51,14 @@
     <h2>The honours</h2>
     <div id="awards"></div>
 
-    <h2>Exhibits recovered</h2>
+    <h2 id="itemsHeading">Items recovered</h2>
     <table id="discoveries"></table>
 
     <h2>The company</h2>
     <table id="guests"></table>
 
     <div class="rule"></div>
-    <p class="meta">“Every guest is a suspect. Every exhibit remembers.” — the house</p>
+    <p class="meta" data-brand="casefileEpigraph">Every guest is a suspect.</p>
   </div>
 </div>
 <script src="/app.js"></script>
@@ -66,6 +66,9 @@
 const party = qs('party') || Store.party;
 el('#printBtn').addEventListener('click', () => window.print());
 (async () => {
+  const k = await applyBrand();
+  const item = itemWord(k, false), items = itemWord(k, true);
+  el('#itemsHeading').textContent = titleCase(items) + ' recovered';
   if (!party) { el('#err').textContent = 'Add ?party=CODE to this address.'; return; }
   try {
     const d = await api(`casefile?partyCode=${party}`);
@@ -78,9 +81,9 @@ el('#printBtn').addEventListener('click', () => window.print());
         .map(([name,n]) => `<tr><td>${esc(name)}${name===d.solution.killer?' 🗡':''}</td><td>${n}</td></tr>`).join('');
     el('#awards').innerHTML = d.awards.map(a =>
       `<div class="aw"><b>${esc(a.title)}</b> — ${esc(a.firstName)}, as ${esc(a.characterName)}<br/><span class="meta">${esc(a.note)}</span></div>`).join('') || '<p class="meta">No honours were bestowed.</p>';
-    el('#discoveries').innerHTML = '<tr><th>Exhibit</th><th>Item</th><th>Examinations</th></tr>' +
-      (d.discoveries.map(x => `<tr><td>No. ${esc(x.exhibit||'?')}</td><td>${esc(x.label)}</td><td>${x.examinations}</td></tr>`).join('') || '<tr><td colspan="3">The exhibits kept their secrets.</td></tr>');
-    el('#guests').innerHTML = '<tr><th>Guest</th><th>Played</th><th>Exhibits examined</th></tr>' +
+    el('#discoveries').innerHTML = `<tr><th>${esc(titleCase(item))}</th><th>Item</th><th>Examinations</th></tr>` +
+      (d.discoveries.map(x => `<tr><td>No. ${esc(x.exhibit||'?')}</td><td>${esc(x.label)}</td><td>${x.examinations}</td></tr>`).join('') || `<tr><td colspan="3">The ${esc(items)} kept their secrets.</td></tr>`);
+    el('#guests').innerHTML = `<tr><th>Guest</th><th>Played</th><th>${esc(titleCase(items))} examined</th></tr>` +
       d.guests.map(g => `<tr><td>${esc(g.firstName)}</td><td>${esc(g.characterName)}</td><td>${g.exhibitsExamined}</td></tr>`).join('');
   } catch (e) { el('#err').textContent = e.message; }
 })();

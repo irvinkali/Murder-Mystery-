@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>The Last Exhibit</title>
+<title>Mystery Party</title>
 <link rel="stylesheet" href="/app.css" />
 </head>
-<body>
+<body data-page-title="">
 <div class="wrap">
   <div class="center">
-    <div class="eyebrow">Galerie Noir presents</div>
-    <h1>The Last Exhibit</h1>
-    <p class="muted">An evening of art, appetite, and one unforgivable secret.</p>
+    <div class="eyebrow" data-brand="brandEyebrow">A murder mystery party</div>
+    <h1 data-brand="siteTitle">Mystery Party</h1>
+    <p class="muted" data-brand="brandTagline">An evening with one unforgivable secret.</p>
   </div>
 
   <div class="card">
@@ -47,6 +47,7 @@
 </div>
 <script src="/app.js"></script>
 <script>
+applyBrand();
   el('#party').value = (qs('party') || Store.party || '').toUpperCase();
   el('#resumeBtn').addEventListener('click', async () => {
     const partyCode = el('#rParty').value.trim().toUpperCase();

@@ -23,7 +23,8 @@ This file lets any Claude session (chat or Claude Code) resume work. Kali may re
 ## File map
 - STATE.md — this file (safe)
 - docs/ — safe docs (design doc, props guide copies)
-- packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 424fe1e3e0cd2df4010b9a71f6bf9c6c)
+- packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 b5531a15dcbcf9d9d34edf6a4bf3e713)
+- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 033cec661965dcac5b0513aafed7bd7c)
 - engine/ — app code (not started)
 
 ## Progress log
@@ -60,6 +61,28 @@ This file lets any Claude session (chat or Claude Code) resume work. Kali may re
 5. Printables kit (prop labels/inserts designed for fold-without-reading), invite text.
 6. Test passes: every variant, every poll path, every player count; AirPlay/iPad screen test.
 7. Dress-rehearsal walkthrough guide for Kali.
+
+## Two packs, and where the words live (added 2026-09-13)
+The repo now holds **two complete story packs**: `packs/last-exhibit/` and `packs/reunion-1989/`
+(a class-of-1989 reunion). Both are radioactive — same spoiler rules, same shape: 10 core
+characters, 10 flex, 4 sealed-at-random solutions, 7 props, six phases.
+
+The engine no longer contains any words that belong to a particular story. **Every word a guest
+or a host can read now comes from the pack**, not from the code: the narrator's phase speeches
+and asides, the prop labels and their numbers, the poll questions, the award names, the phase
+names, the invite kit, the printable labels and cue cards — all of it is authored in each pack's
+bible and served to the app at runtime. Swapping packs swaps the whole voice of the evening.
+The code keeps only the machinery (when a phase turns, when the keystone unlocks, how votes
+tally) plus a few neutral placeholder strings that a finished pack never uses.
+
+Practical notes for the owner:
+- Pick which pack runs by setting `MYSTERY_PACK_FILE` to that pack's `pack.json.b64`. With
+  nothing set, the last-exhibit pack runs, exactly as before.
+- The printables and invite pages now generate from whichever pack is loaded, so the labels,
+  the numbered cards and the invitation wording always match the game you're actually hosting.
+- Each pack has its own spoiler-free props guide in `docs/`.
+- Checksums above are the current ones; `engine/validate.js` pins the last-exhibit bible and
+  reports a mismatch if it is edited.
 
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.

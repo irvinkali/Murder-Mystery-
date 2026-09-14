@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Galerie Noir — The Last Exhibit</title>
+<title>Room Screen</title>
 <link rel="stylesheet" href="/app.css" />
 </head>
-<body class="gallery">
+<body class="gallery" data-page-title="">
 <div class="wrap">
   <div class="center">
-    <div class="eyebrow">Galerie Noir</div>
-    <h1>The Last Exhibit</h1>
+    <div class="eyebrow" data-brand="screenEyebrow">Tonight</div>
+    <h1 data-brand="siteTitle">Mystery Party</h1>
     <div class="big" id="phase">—</div>
     <p class="muted" id="phaseName"></p>
     <button class="audio-btn ghost" id="audioBtn">▶ Enable sound &amp; narration</button>
@@ -66,6 +66,7 @@
 <audio id="narr"></audio>
 <script src="/app.js"></script>
 <script>
+applyBrand();
 const party = qs('party') || Store.party;
 const AUDIO = { 1:'arrivals', 2:'unveiling', 3:'investigation', 4:'keystone', 5:'accusation', 6:'reveal' };
 const NARR_DIR = '/assets/narration/';

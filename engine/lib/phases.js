@@ -20,15 +20,11 @@
 
 const { mergeDrops } = require('./branching');
 const { audioName, AUDIO_KEYS, PHASE_MINUTES, PHASES } = require('./runtime');
-const { MONOLOGUES, narratorInventory, pushNarrator, WARN_2MIN } = require('./narrator');
-
-// In-world narration beats — the velvet emcee's phase monologues (see
-// lib/narrator.js; engine copy, paced and theatrical, no plot content).
-const NARRATION = MONOLOGUES;
+const { monologue, medicalScreenLine, narratorInventory, pushNarrator, warn2minLine } = require('./narrator');
 
 /** Build the phase narration card (Phase 1 appends the fairness disclosure). */
 function narrationFor(pack, phase) {
-  let text = NARRATION[phase] || '';
+  let text = monologue(pack, phase);
   if (phase === 1 && pack.fairnessDisclosure) text += '\n\n' + pack.fairnessDisclosure;
   return text;
 }
@@ -153,7 +149,7 @@ function maybeAutoAdvance(pack, game, nowMs) {
   const due = autoAdvanceDue(game, nowMs);
   if (due === 'warn') {
     game.phaseWarned = true;
-    pushNarrator(game, 'warn.2min', WARN_2MIN);             // ambient — no bell
+    pushNarrator(game, 'warn.2min', warn2minLine(pack));     // ambient — no bell
   } else if (due === 'advance') {
     performAdvance(pack, game, game.phase + 1);
   }
@@ -173,7 +169,7 @@ function narrationInventory(pack) {
       if (h && h.ph4) items.push({ key: AUDIO_KEYS.screenHint(propId), text: h.ph4 });
     }
   }
-  items.push({ key: AUDIO_KEYS.medical(), text: 'The files are open.' });
+  items.push({ key: AUDIO_KEYS.medical(), text: medicalScreenLine(pack) });
   for (const v of pack.variants || []) {
     items.push({ key: AUDIO_KEYS.revealTitle(v.letter), text: `Variant ${v.letter}. ${v.killer}.` });
     if (v.method) items.push({ key: AUDIO_KEYS.revealMethod(v.letter), text: v.method });
@@ -185,6 +181,6 @@ function narrationInventory(pack) {
 }
 
 module.exports = {
-  NARRATION, narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory,
+  narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory,
   performAdvance, phaseElapsedMs, phaseAllottedMs, autoAdvanceDue, maybeAutoAdvance, WARN_BEFORE_MS,
 };

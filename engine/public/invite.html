@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Invite Kit — The Last Exhibit</title>
+<title>Invite Kit</title>
 <link rel="stylesheet" href="/app.css" />
 <style>
   .inviteCard {
@@ -28,7 +28,7 @@
   }
 </style>
 </head>
-<body>
+<body data-page-title="Invite Kit">
 <div class="wrap">
   <div class="card noprint">
     <div class="eyebrow">Host tools · Step 0</div>
@@ -62,17 +62,16 @@
 
   <!-- The card (screenshot this) -->
   <div class="inviteCard" id="card">
-    <div class="eyebrow">Galerie Noir requests your presence</div>
-    <h1>The Last Exhibit</h1>
+    <div class="eyebrow" data-brand="inviteEyebrow">You are invited</div>
+    <h1 data-brand="siteTitle">Mystery Party</h1>
     <div class="rule"></div>
-    <p class="line">An opening night of provocative new work.<br/>Twelve pieces. One unveiling at midnight.<br/>Come as someone with something to hide —<br/>because everyone here does.</p>
+    <p class="line" id="cLines"></p>
     <div class="rule"></div>
     <p class="detail" id="cDate">—</p>
     <p class="detail" id="cTime"></p>
     <p class="detail" id="cPlace"></p>
     <p class="line" id="cRsvp" style="margin-top:14px"></p>
-    <p class="fine">You'll play a character all evening — no lines to learn, your phone guides you privately.<br/>
-    Dress: glamorous, a little funereal · ~2 hours · 10–20 guests · bring a charged phone</p>
+    <p class="fine" id="cFine"></p>
   </div>
 
   <div class="card noprint">
@@ -96,41 +95,33 @@
 <script src="/app.js"></script>
 <script>
 const F = { fDate:'', fTime:'', fPlace:'', fRsvpBy:'', fRsvp:'', d1:'', d2:'', d3:'' };
+let KIT = null;
 function v(id){ return el('#'+id).value.trim(); }
+// Every sentence below is pack copy; the JS only fills in the host's details.
+function fill(tpl, vars){ return String(tpl||'').replace(/\{([A-Z_]+)\}/g, (m,k)=> (k in vars ? vars[k] : m)); }
 function render(){
+  const inv = (KIT && KIT.invite) || {};
   const dates = ['d1','d2','d3'].map(v).filter(Boolean);
-  const dateLines = (dates.length ? dates : ['[date option 1]','[date option 2]']).map(d=>'  🗓 '+d).join('\n');
-  el('#txtPoll').textContent =
-`🖤 SAVE A DATE (one of them, anyway)
-
-I'm hosting THE LAST EXHIBIT — a murder mystery party. An art gallery, an opening night, a body, and every guest playing a character with something to hide. No lines to learn; your phone runs your secrets. Yes, really. Yes, you.
-
-Which of these could you make? Vote for ALL that work:
-${dateLines}
-
-Best date wins — proper invite to follow. 🗡`;
+  const DATES = (dates.length ? dates : ['[date option 1]','[date option 2]']).map(d=>'  \u{1F5D3} '+d).join('\n');
   const date=v('fDate'), time=v('fTime'), place=v('fPlace'), by=v('fRsvpBy'), to=v('fRsvp');
-  el('#cDate').textContent = date || '—';
+  const vars = {
+    DATES,
+    DATE: date || '[date]',
+    TIME_AT: time ? ' at ' + time : '',
+    PLACE: place || '[address]',
+    WHEN: `${date||'[date]'}${time?', '+time:''}${place?' \u00b7 '+place:''}`,
+    RSVP: `RSVP${by?' by '+by:''}${to?': '+to:''}`,
+    RSVP_LONG: `RSVP${by?' by '+by:''}${to?' \u2014 '+to:''}`,
+  };
+  el('#cLines').innerHTML = (inv.card || '').split('\n').map(escBold).join('<br/>');
+  el('#cFine').innerHTML = (inv.fine || '').split('\n').map(escBold).join('<br/>');
+  el('#txtPoll').textContent = fill(inv.poll, vars);
+  el('#cDate').textContent = date || '\u2014';
   el('#cTime').textContent = time;
   el('#cPlace').textContent = place;
-  el('#cRsvp').textContent = (to||by) ? `RSVP${by?' by '+by:''}${to?' · '+to:''}` : '';
-  el('#txtShort').textContent =
-`🖤 You're invited: THE LAST EXHIBIT — a murder mystery party.
-${date||'[date]'}${time?', '+time:''}${place?' · '+place:''}
-You'll play a character all night (no lines to memorize — your phone secretly guides you). Dress glamorous, a little funereal. Bring a charged phone.
-RSVP${by?' by '+by:''}${to?': '+to:''} — spots are limited (10–20 guests).`;
-  el('#txtLong').textContent =
-`You're invited to THE LAST EXHIBIT — an immersive murder mystery evening.
-
-It's opening night at Galerie Noir. Twelve pieces, one unveiling at midnight… and by 8 PM, a body. Every guest plays a character with their own public face and private secret — including you. No acting skill or memorizing needed: your phone quietly tells you who you are, what you know, and when to stir trouble. Even I don't know how it ends — the killer is chosen by the game itself on the night.
-
-📅 ${date||'[date]'}${time?' at '+time:''}
-📍 ${place||'[address]'}
-🥂 Dress: glamorous, a little funereal
-📱 Bring a charged phone (essential!)
-⏱ About two hours of mystery, then drinks and gloating
-
-RSVP${by?' by '+by:''}${to?' — '+to:''}. The game seats 10–20, so say yes quickly.`;
+  el('#cRsvp').textContent = (to||by) ? vars.RSVP : '';
+  el('#txtShort').textContent = fill(inv.short, vars);
+  el('#txtLong').textContent = fill(inv.long, vars);
   Object.keys(F).forEach(k=>localStorage.setItem('inv.'+k, v(k)));
 }
 Object.keys(F).forEach(k=>{
@@ -142,7 +133,7 @@ document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click', 
   catch(e){ alert('Select the text and copy it manually.'); }
 }));
 el('#printBtn').addEventListener('click', ()=>window.print());
-render();
+(async () => { KIT = await applyBrand(); render(); })();
 </script>
 </body>
 </html>

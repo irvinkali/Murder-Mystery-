@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>You found something — The Last Exhibit</title>
+<title>You found something</title>
 <link rel="stylesheet" href="/app.css" />
 </head>
-<body>
+<body data-page-title="You found something">
 <div class="wrap">
-  <div class="eyebrow">The Last Exhibit</div>
+  <div class="eyebrow" data-brand="siteTitle">Mystery Party</div>
   <h1>You found something</h1>
   <div class="note" id="box">Examining…</div>
   <div class="card" id="joinPrompt" style="display:none">
@@ -24,6 +24,7 @@
 </div>
 <script src="/app.js"></script>
 <script>
+applyBrand();
 // NFC tags open /prop/<exhibit-number>; also accept ?n=.
 function exhibit() {
   const fromPath = (location.pathname.match(/\/prop\/([A-Za-z0-9]+)/) || [])[1];
@@ -33,7 +34,7 @@ const EX = exhibit();
 
 async function examine() {
   const box = el('#box');
-  if (!EX) { box.textContent = 'Unknown exhibit tag.'; return; }
+  if (!EX) { box.textContent = 'Unknown tag.'; return; }
   if (!Store.party || !Store.code) { el('#joinPrompt').style.display = 'block'; el('#party').value = Store.party || ''; box.innerHTML = `<div class="kicker">Exhibit ${esc(EX)}</div>Join the party to examine it.`; return; }
   try {
     const { reveal } = await api('scan', { partyCode: Store.party, personalCode: Store.code, exhibit: EX });

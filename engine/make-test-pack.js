@@ -118,6 +118,109 @@ PROPS.forEach((p, i) => {
   };
 });
 
+// Player-facing copy — the rehearsal pack carries its own, exactly like a real
+// pack, so local rehearsal never falls back to the engine's neutral strings.
+const propCatalog = {};
+PROPS.forEach((pid, i) => {
+  const n = String(21 + i);
+  propCatalog[pid] = {
+    number: n,
+    label: `Test exhibit ${n}`,
+    blurb: `TEST PROP ${n}: a harmless dummy object. Nothing here is real.`,
+    flourish: `TEST: somebody found exhibit ${n}. Look at it, then decide who you tell.`,
+    placement: `TEST placement for exhibit ${n}.`,
+  };
+});
+
+const narration = {
+  monologues: {
+    1: 'TEST PHASE 1: arrivals. Everything in this rehearsal is dummy content.',
+    2: 'TEST PHASE 2: the test victim is discovered. Still a rehearsal.',
+    3: 'TEST PHASE 3: investigate. Ask nosy questions of imaginary people.',
+    4: 'TEST PHASE 4: the keystone is reachable now. Still fake.',
+    5: 'TEST PHASE 5: accuse each other. Cast the final ballot.',
+    6: 'TEST PHASE 6: the reveal. None of this happened.',
+  },
+  phaseNames: { 1: 'Arrivals', 2: 'The Discovery', 3: 'Investigation', 4: 'The Keystone', 5: 'Accusation', 6: 'The Reveal' },
+  attention: 'TEST: your attention, please.',
+  warn2min: 'TEST: two minutes left in this phase.',
+  awardsIntro: 'TEST: a few dummy honours to hand out.',
+  photo: 'TEST: gather in for the rehearsal photo.',
+  photoScreen: 'TEST PHOTO — gather in.',
+  blackoutStart: 'TEST: the lights are out for sixty seconds.',
+  blackoutEnd: 'TEST: the lights are back.',
+  blackoutMoved: 'TEST: exhibit {number} has moved.',
+  suspect: 'TEST: the room suspects {name}.',
+  subpoenaYes: 'TEST: the vote carries, the dummy files are open.',
+  subpoenaNo: 'TEST: the room votes no, the dummy files stay shut.',
+  finalClosed: 'TEST: the final ballot is closed.',
+  medicalScreen: 'The files are open.',
+  lockedHint: 'TEST: this one is not available until phase 4.',
+  unknownTag: 'TEST: no exhibit matches that number.',
+  awards: {
+    bestDetective: { title: 'Best Detective', note: 'TEST: named the dummy killer.' },
+    sharpestEye: { title: 'Sharpest Eye', note: 'TEST: examined {count} {items}.' },
+    mostSuspected: { title: 'Most Suspected Innocent', note: 'TEST: collected {count} accusation{s} while innocent.' },
+    caught: { title: 'Caught Red-Handed', note: 'TEST: the room worked it out.' },
+    perfect: { title: 'The Perfect Crime', note: 'TEST: fooled the room.' },
+  },
+  asides: [
+    'TEST aside 1: this is a rehearsal.',
+    'TEST aside 2: none of these people exist.',
+    'TEST aside 3: the stapler is still missing.',
+    'TEST aside 4: ask somebody where they were.',
+    'TEST aside 5: nothing here is a spoiler.',
+    'TEST aside 6: carry on.',
+  ],
+  nudges: [
+    'TEST nudge: go and talk to somebody.',
+    'TEST nudge: examine an exhibit you have not tapped.',
+    'TEST nudge: ask a nosy question.',
+    'TEST nudge: start a harmless rumour.',
+    'TEST nudge: compare notes with another guest.',
+    'TEST nudge: ask the room something out loud.',
+  ],
+};
+
+const polls = {
+  benefits: { question: 'TEST: who benefits most from {their} death?', guidance: 'TEST guidance. Anonymous.' },
+  subpoena: { question: 'TEST: should the dummy files be opened?', guidance: 'TEST guidance. A majority Yes opens them.' },
+  final: { question: 'TEST: final vote, who did it?', guidance: 'TEST guidance. Anonymous and final.' },
+};
+
+const world = {
+  title: 'Rehearsal Pack',
+  venue: 'the test gallery',
+  itemNoun: 'exhibit',
+  itemNounPlural: 'exhibits',
+  alibiQuestion: 'Where were you at 6:40?',
+  nearScene: ['back room'],
+  victimPronouns: { subject: 'she', object: 'her', possessive: 'her', possessivePronoun: 'hers', reflexive: 'herself' },
+};
+
+const frontend = {
+  brand: {
+    siteTitle: 'Rehearsal Pack', brandEyebrow: 'TEST presents', brandTagline: 'A dummy evening.',
+    screenEyebrow: 'TEST', casefileTitle: 'TEST — Case File', casefileEpigraph: 'TEST epigraph.',
+    placardTitle: 'Test placards', placardNote: 'TEST placards. Cut and stand up.',
+    placardBrand: 'TEST', placardLabel: 'Exhibit No. {n}', placardMedium: 'Medium: dummy', placardCount: 12,
+    inviteEyebrow: 'TEST requests your presence', inviteFootnote: '10-20 guests \u00b7 dummy content',
+  },
+  invite: {
+    card: 'A dummy invitation.\nNone of this is real.',
+    fine: 'TEST fine print.',
+    printLines: 'A dummy invitation. None of this is real.',
+    printNote: 'Bring your phone. TEST.',
+    poll: 'TEST date poll.\n{DATES}',
+    short: 'TEST short invite.\n{WHEN}\n{RSVP}',
+    long: 'TEST long invite.\n{DATE}{TIME_AT}\n{PLACE}\n{RSVP_LONG}',
+  },
+  printables: [
+    { kind: 'label', title: 'TEST label', lines: ['DUMMY LABEL'], note: 'Cut it out.' },
+    { kind: 'fold', title: 'TEST fold', lines: ['one', 'two', 'three'], note: '' },
+  ],
+};
+
 const pack = {
   schema: 'mystery-engine/pack@1',
   id: 'test-rehearsal',
@@ -135,6 +238,11 @@ const pack = {
   branching: 'TEST BRANCHING NOTES (dummy).',
   branchingData: { defense: { targets }, alibi, medical },
   fairnessRules: [{ n: 1, text: 'TEST rule: rehearsal only.' }],
+  propCatalog,
+  frontend,
+  narration,
+  polls,
+  world,
 };
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });

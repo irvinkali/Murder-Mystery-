@@ -10,7 +10,7 @@
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { connect, getGame, updateGame } = require('../lib/store');
-const { PHASES, phaseInfo, loadRuntimePack } = require('../lib/runtime');
+const { PHASES, phaseName, loadRuntimePack } = require('../lib/runtime');
 const { performAdvance } = require('../lib/phases');
 
 exports.handler = async (event) => {
@@ -41,11 +41,11 @@ exports.handler = async (event) => {
 
   // Host-triggered photo moment: the narrator calls the gallery portrait.
   if (photo === true) {
-    const { pushNarrator, PHOTO_LINE } = require('../lib/narrator');
+    const { pushNarrator, photoLine, photoScreenLine } = require('../lib/narrator');
     await updateGame(code, (g) => {
-      pushNarrator(g, 'photo', PHOTO_LINE, true); // major: bell first
+      pushNarrator(g, 'photo', photoLine(pack), true); // major: bell first
       g.screenCards = g.screenCards || [];
-      g.screenCards.push({ kind: 'photo', text: 'THE GALLERY PORTRAIT — gather in.', at: new Date().toISOString() });
+      g.screenCards.push({ kind: 'photo', text: photoScreenLine(pack), at: new Date().toISOString() });
       return g;
     });
     return ok({ photo: true });
@@ -80,5 +80,5 @@ exports.handler = async (event) => {
   if (target < 1 || target > max) return bad(`phase must be 1..${max}`);
 
   const next = await updateGame(code, (g) => { performAdvance(pack, g, target); return g; });
-  return ok({ phase: next.phase, phaseName: phaseInfo(next.phase).name });
+  return ok({ phase: next.phase, phaseName: phaseName(next.phase, pack) });
 };

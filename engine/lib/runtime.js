@@ -10,15 +10,21 @@
  *    phase. The keystone (E6) is never served before Phase 4.
  *  - Each player receives only their OWN character brief, never another's.
  *
- * The only plot-adjacent literals in this file are the PHYSICAL prop
- * descriptions, which already appear in the (Kali-readable) props guide.
+ * There are no world literals in this file. Every player-facing string — prop
+ * labels, exhibit numbers, rescue nudges, lock hints — comes from the loaded
+ * pack. The only hardcoded strings left are neutral, world-free fallbacks for a
+ * pack that has not authored its copy yet.
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const PACK_B64 = path.join(__dirname, '..', '..', 'packs', 'last-exhibit', 'pack.json.b64');
+// Which story pack this deployment runs. Set MYSTERY_PACK in the Netlify
+// environment to the folder name under packs/ to switch games; the default
+// keeps existing deployments on the first pack.
+const PACK_NAME = process.env.MYSTERY_PACK || 'last-exhibit';
+const PACK_B64 = path.join(__dirname, '..', '..', 'packs', PACK_NAME, 'pack.json.b64');
 
 const PHASES = [
   { n: 1, key: 'arrivals', name: 'Arrivals' },
@@ -33,33 +39,112 @@ const KILLER_UNLOCK_PHASE = 3; // the hybrid killer learns the truth mid-game
 // Suggested minutes per phase (host guidance only — never auto-advances).
 const PHASE_MINUTES = { 1: 20, 2: 10, 3: 35, 4: 25, 5: 20, 6: 10 };
 
-// Player-facing exhibit numbers (printed on placards / written into NFC tags).
-// Internal prop IDs (P1..P7) are NEVER shown to players; this is the mapping.
-const EXHIBIT_NUMBERS = { P1: '21', P2: '22', P3: '23', P4: '24', P5: '25', P6: '26', P7: '27' };
-function exhibitNumber(propId) { return EXHIBIT_NUMBERS[propId] || null; }
-/** Resolve a player input (typed exhibit number, or NFC value) to an internal prop id. */
-function propIdFromInput(input) {
+// ---------------------------------------------------------------------------
+// PACK COPY ACCESS. Every accessor takes an OPTIONAL pack; when it is omitted
+// the process-wide loaded pack (MYSTERY_PACK_FILE or the default) is used, so
+// existing call sites keep working unchanged.
+// ---------------------------------------------------------------------------
+
+/** The pack to read copy from: the one handed in, or the loaded one. */
+function activePack(pack) {
+  if (pack) return pack;
+  try { return loadRuntimePack(); } catch (_) { return null; }
+}
+
+/** The pack's public, spoiler-free prop catalog: number, label, blurb, flourish. */
+function propCatalog(pack) {
+  const p = activePack(pack);
+  return (p && p.propCatalog) || {};
+}
+function propEntry(propId, pack) { return propCatalog(pack)[propId] || null; }
+
+/** Player-facing item numbers (printed on cards / written into NFC tags).
+ *  Internal prop IDs (P1..Pn) are NEVER shown to players; this is the mapping. */
+function exhibitNumber(propId, pack) {
+  const e = propEntry(propId, pack);
+  return e && e.number != null ? String(e.number) : null;
+}
+/** Resolve a player input (typed item number, or NFC value) to an internal prop id. */
+function propIdFromInput(input, pack) {
   if (input == null) return null;
   const t = String(input).trim().toUpperCase();
-  if (/^P[1-7]$/.test(t)) return t; // tolerate internal id (dev / legacy NFC)
+  const catalog = propCatalog(pack);
+  if (/^P\d+$/.test(t) && catalog[t]) return t; // tolerate internal id (dev / legacy NFC)
   const num = t.replace(/[^0-9]/g, '');
   if (!num) return null;
-  for (const [pid, n] of Object.entries(EXHIBIT_NUMBERS)) {
-    if (n === num || String(Number(n)) === String(Number(num))) return pid;
+  for (const [pid, e] of Object.entries(catalog)) {
+    const n = e && e.number != null ? String(e.number) : null;
+    if (n && (n === num || String(Number(n)) === String(Number(num)))) return pid;
   }
   return null;
 }
 
-// Safe physical descriptions (identical to the props guide Kali already has).
-const PROP_CATALOG = {
-  P1: { label: 'Champagne flute', blurb: 'A single flute, a bold lipstick print on the rim. Left somewhere a glass looks abandoned, not staged.' },
-  P2: { label: 'Day planner', blurb: 'A small datebook. One page has been torn out; the stub still carries an impression.' },
-  P3: { label: 'Prescription bottle', blurb: 'A pill bottle, its label partially scratched away.' },
-  P4: { label: 'Sealed black envelope', blurb: 'A black envelope, sealed. It feels deliberate.' },
-  P5: { label: 'Art-handling gloves', blurb: 'White cotton gloves with a colored smudge across one palm.' },
-  P6: { label: 'Old photograph', blurb: 'A photograph with one face scratched out.' },
-  P7: { label: 'Gallery key fob', blurb: 'A staff key fob on a snapped lanyard — "GALERIE NOIR — STAFF".' },
+// Neutral, world-free fallbacks. A pack that authors its copy never sees these.
+const FALLBACK = {
+  itemNoun: 'item',
+  itemNounPlural: 'items',
+  lockedHint: 'This one is not ready to be read yet.',
+  unknownTag: 'Nothing matches that number.',
+  pronouns: { subject: 'they', object: 'them', possessive: 'their', possessivePronoun: 'theirs', reflexive: 'themself' },
+  nudges: [
+    'Someone just glanced at you across the room. Go find out why.',
+    'You have been quiet. Pick the person you trust least and ask them where they were.',
+    'Your character is protecting something. Make sure no one is circling it.',
+    'Go look at something you have not looked at yet, and tap its tag.',
+    'Start a rumour. Nothing steadies a room like a little chaos.',
+    'Compare notes with someone. One of you knows more than you think.',
+    'Ask the room a question out loud. Watch who gets uncomfortable.',
+  ],
 };
+
+/** The pack's narration block (monologues, interjections, awards), or {}. */
+function narrationCopy(pack) {
+  const p = activePack(pack);
+  return (p && p.narration) || {};
+}
+/** The pack's world hooks (pronouns, near-scene phrases, nouns), or {}. */
+function worldCopy(pack) {
+  const p = activePack(pack);
+  return (p && p.world) || {};
+}
+/** The victim's first name, derived from the bible — never hard-coded. */
+function victimName(pack) {
+  const p = activePack(pack);
+  const m = String((p && p.victim) || '').match(/\*\*([^*\s]+)/);
+  return m ? m[1] : '';
+}
+/** The victim's pronouns, pack-supplied; no gender is assumed by the engine. */
+function victimPronouns(pack) {
+  return worldCopy(pack).victimPronouns || FALLBACK.pronouns;
+}
+
+const cap = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s);
+
+/** Substitute {tokens} in a pack copy string. Unknown tokens are left alone. */
+function fill(text, vars) {
+  if (text == null) return text;
+  return String(text).replace(/\{(\w+)\}/g, (whole, k) => (vars && Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : whole));
+}
+
+/** The standard substitution set available to every pack copy string. */
+function copyVars(pack, extra) {
+  const pr = victimPronouns(pack);
+  const w = worldCopy(pack);
+  return Object.assign({
+    victim: victimName(pack),
+    they: pr.subject, them: pr.object, their: pr.possessive,
+    theirs: pr.possessivePronoun, themself: pr.reflexive,
+    They: cap(pr.subject), Them: cap(pr.object), Their: cap(pr.possessive),
+    item: w.itemNoun || FALLBACK.itemNoun,
+    items: w.itemNounPlural || FALLBACK.itemNounPlural,
+    title: w.title || '', venue: w.venue || '',
+  }, extra || {});
+}
+
+/** Render a piece of pack copy with the standard vars plus any extras. */
+function say(pack, text, extra) {
+  return text ? fill(text, copyVars(pack, extra)) : text;
+}
 
 // --- Narration audio (opaque filenames; no plot in the name) --------------
 // A logical key ("phase.3", "reveal.A.method", …) hashes to an opaque mp3 name.
@@ -116,6 +201,12 @@ function getVariant(pack, letter) {
 
 function phaseInfo(n) {
   return PHASES.find((p) => p.n === n) || PHASES[0];
+}
+
+/** The player-facing name of a phase — pack copy, with the engine key as backstop. */
+function phaseName(n, pack) {
+  const named = (narrationCopy(pack).phaseNames || {})[n];
+  return named || phaseInfo(n).name;
 }
 
 /** The public "everyone knows this" blurb about the victim. */
@@ -184,10 +275,10 @@ function capacity(pack) {
  * before Phase 4.
  */
 function resolvePropScan(pack, variantLetter, propId, phase) {
-  const catalog = PROP_CATALOG[propId];
+  const catalog = propEntry(propId, pack);
   if (!catalog) return { propId, unknown: true };
 
-  const base = { propId, label: catalog.label, blurb: catalog.blurb };
+  const base = { propId, label: say(pack, catalog.label), blurb: say(pack, catalog.blurb) };
 
   const v = getVariant(pack, variantLetter);
   if (!v) return base;
@@ -207,24 +298,20 @@ function resolvePropScan(pack, variantLetter, propId, phase) {
   // Gate the keystone until Phase 4 under all paths (fairness rule 4).
   const isKeystone = kind === 'keystone' || step.n === 6;
   if (isKeystone && phase < KEYSTONE_PHASE) {
-    return { ...base, extra: null, locked: true, lockedHint: "The catalog entry for this piece is marked 'to be announced'." };
+    const hint = say(pack, narrationCopy(pack).lockedHint) || FALLBACK.lockedHint;
+    return { ...base, extra: null, locked: true, lockedHint: hint };
   }
 
   // Evidence-bearing and unlocked: reveal the evidence-step text.
   return { ...base, extra: { step: step.n, text: step.text, keystone: isKeystone } };
 }
 
-// Generic, plot-free rescue prompts for players who have gone quiet. They nod
-// at "your character has something to protect" without encoding any secret.
-const NUDGES = [
-  'Someone just glanced at you across the room. Go find out why.',
-  'You have been quiet. Pick the person you trust least and ask them where they were.',
-  'Your character is protecting something. Make sure no one is circling it.',
-  'Go examine a piece you have not looked at yet — tap its tag.',
-  'Start a rumor. Nothing steadies a room like a little chaos.',
-  'Compare notes with someone. One of you knows more than you think.',
-  'Ask the room a question out loud. Watch who gets uncomfortable.',
-];
+// Rescue prompts for players who have gone quiet, in the pack's own voice. They
+// nod at "your character has something to protect" without encoding any secret.
+function nudgeList(pack) {
+  const list = narrationCopy(pack).nudges;
+  return (list && list.length) ? list : FALLBACK.nudges;
+}
 const NUDGE_PHASES = new Set([2, 3, 4, 5]);
 const NUDGE_THRESHOLD_MS = 8 * 60 * 1000;
 
@@ -239,12 +326,13 @@ function hashId(s) {
  * inactive past the threshold during an active phase. Deterministic pick (no
  * randomness) so it is testable and stable between polls.
  */
-function idleNudge(characterId, phase, idleMs, thresholdMs) {
+function idleNudge(characterId, phase, idleMs, thresholdMs, pack) {
   const limit = typeof thresholdMs === 'number' ? thresholdMs : NUDGE_THRESHOLD_MS;
   if (!NUDGE_PHASES.has(phase)) return null;
   if (!(idleMs >= limit)) return null;
-  const idx = (hashId(characterId) + phase) % NUDGES.length;
-  return { text: NUDGES[idx], idleMinutes: Math.floor(idleMs / 60000) };
+  const list = nudgeList(pack);
+  const idx = (hashId(characterId) + phase) % list.length;
+  return { text: say(pack, list[idx]), idleMinutes: Math.floor(idleMs / 60000) };
 }
 
 /**
@@ -299,8 +387,18 @@ module.exports = {
   KILLER_UNLOCK_PHASE,
   PHASE_MINUTES,
   NUDGE_THRESHOLD_MS,
-  PROP_CATALOG,
-  EXHIBIT_NUMBERS,
+  FALLBACK,
+  activePack,
+  propCatalog,
+  propEntry,
+  narrationCopy,
+  worldCopy,
+  victimName,
+  victimPronouns,
+  fill,
+  copyVars,
+  say,
+  nudgeList,
   exhibitNumber,
   propIdFromInput,
   audioName,
@@ -309,6 +407,7 @@ module.exports = {
   selectVariant,
   getVariant,
   phaseInfo,
+  phaseName,
   publicVictimBlurb,
   publicRoster,
   publicPersona,

@@ -307,6 +307,185 @@ function parseScriptLines(text) {
   return { scriptLines, findHints, fairnessDisclosure };
 }
 
+// ---------------------------------------------------------------------------
+// PLAYER-FACING COPY. The engine owns the mechanism; the pack owns every word a
+// guest can read or hear. These parsers are generic — no pack supplies a string
+// to this file, they only describe the shape a bible writes its copy in.
+// ---------------------------------------------------------------------------
+
+/** `- P1 | 21 | Label | Blurb | Flourish | Placement` → the public catalog. */
+function parsePropCatalog(sectionBody) {
+  const out = {};
+  if (!sectionBody) return out;
+  const re = /^-\s*(P\d+)\s*\|([^\n]*)$/gm;
+  let m;
+  while ((m = re.exec(sectionBody)) !== null) {
+    const f = m[2].split('|').map((s) => s.trim());
+    out[m[1]] = { number: f[0] || null, label: f[1] || '', blurb: f[2] || '', flourish: f[3] || '', placement: f[4] || '' };
+  }
+  return out;
+}
+
+/** `- KEY WORDS: value` lines, in order. Keys are SHOUTED so values may contain colons. */
+function parseKeyedLines(sectionBody) {
+  const out = [];
+  if (!sectionBody) return out;
+  const re = /^-\s*([A-Z][A-Z0-9]*(?: [A-Z0-9]+)*)\s*:\s*([^\n]*\S)\s*$/gm;
+  let m;
+  while ((m = re.exec(sectionBody)) !== null) out.push({ key: m[1].trim(), value: m[2].trim() });
+  return out;
+}
+
+const NARRATION_KEYS = {
+  'ATTENTION': 'attention', 'WARN 2MIN': 'warn2min', 'AWARDS INTRO': 'awardsIntro',
+  'PHOTO': 'photo', 'PHOTO SCREEN': 'photoScreen',
+  'BLACKOUT START': 'blackoutStart', 'BLACKOUT END': 'blackoutEnd', 'BLACKOUT MOVED': 'blackoutMoved',
+  'SUSPECT': 'suspect', 'SUBPOENA YES': 'subpoenaYes', 'SUBPOENA NO': 'subpoenaNo',
+  'FINAL CLOSED': 'finalClosed', 'MEDICAL SCREEN': 'medicalScreen', 'LOCKED HINT': 'lockedHint',
+  'UNKNOWN TAG': 'unknownTag',
+};
+const AWARD_KEYS = {
+  'AWARD BEST DETECTIVE': 'bestDetective', 'AWARD SHARPEST EYE': 'sharpestEye',
+  'AWARD MOST SUSPECTED': 'mostSuspected', 'AWARD CAUGHT': 'caught', 'AWARD PERFECT': 'perfect',
+};
+
+/** The narrator's whole vocabulary for this pack: monologues, interjections, awards. */
+function parseNarration(sectionBody) {
+  const rows = parseKeyedLines(sectionBody);
+  if (!rows.length) return null;
+  const out = { monologues: {}, phaseNames: {}, asides: [], nudges: [], awards: {} };
+  for (const { key, value } of rows) {
+    const pn = key.match(/^PHASE NAME ([1-9])$/);
+    if (pn) { out.phaseNames[Number(pn[1])] = value; continue; }
+    const ph = key.match(/^PHASE ([1-9])$/);
+    if (ph) { out.monologues[Number(ph[1])] = value; continue; }
+    if (key === 'ASIDE') { out.asides.push(value); continue; }
+    if (key === 'NUDGE') { out.nudges.push(value); continue; }
+    if (AWARD_KEYS[key]) {
+      const f = value.split('|').map((s) => s.trim());
+      out.awards[AWARD_KEYS[key]] = { title: f[0] || '', note: f[1] || '' };
+      continue;
+    }
+    if (NARRATION_KEYS[key]) out[NARRATION_KEYS[key]] = value;
+  }
+  return out;
+}
+
+/** `- id | question | guidance` for each engine-scheduled poll. */
+function parsePollCopy(sectionBody) {
+  const out = {};
+  if (!sectionBody) return out;
+  const re = /^-\s*([a-z][a-z0-9_-]*)\s*\|([^\n]*)$/gm;
+  let m;
+  while ((m = re.exec(sectionBody)) !== null) {
+    const f = m[2].split('|').map((s) => s.trim());
+    out[m[1]] = { question: f[0] || '', guidance: f[1] || '' };
+  }
+  return out;
+}
+
+/**
+ * Multi-line values: a line `- KEY >>>` opens a block, a bare `<<<` closes it.
+ * Repeated keys accumulate, so a section can carry a list of blocks.
+ */
+function parseBlocks(sectionBody) {
+  const out = {};
+  if (!sectionBody) return out;
+  const lines = sectionBody.split('\n');
+  let key = null;
+  let buf = [];
+  for (const line of lines) {
+    if (key === null) {
+      const m = line.match(/^-\s*([A-Z][A-Z0-9]*(?: [A-Z0-9]+)*)\s*>>>\s*$/);
+      if (m) { key = m[1]; buf = []; }
+      continue;
+    }
+    if (/^<<<\s*$/.test(line)) {
+      (out[key] = out[key] || []).push(buf.join('\n').replace(/^\n+|\n+$/g, ''));
+      key = null;
+      continue;
+    }
+    buf.push(line);
+  }
+  return out;
+}
+
+/** Turn `KIND:`/`TITLE:`/`LINE:`/`NOTE:` lines inside a PRINTABLE block into an object. */
+function parsePrintableBlock(text) {
+  const out = { kind: 'note', title: '', lines: [], note: '' };
+  for (const line of String(text).split('\n')) {
+    const m = line.match(/^([A-Z]+):\s*(.*)$/);
+    if (!m) continue;
+    const v = m[2].trim();
+    if (m[1] === 'KIND') out.kind = v || 'note';
+    else if (m[1] === 'TITLE') out.title = v;
+    else if (m[1] === 'NOTE') out.note = v;
+    else if (m[1] === 'LINE') out.lines.push(v);
+  }
+  return out;
+}
+
+/**
+ * The host-facing kit: page branding, placard and invite copy, and the
+ * printable inserts. Spoiler-free by construction — it is the same material the
+ * host already has on paper — and served to the front-end by functions/kit.js.
+ */
+function parseFrontend(sectionBody) {
+  const rows = parseKeyedLines(sectionBody);
+  const blocks = parseBlocks(sectionBody);
+  if (!rows.length && !Object.keys(blocks).length) return null;
+  const KEYS = {
+    'SITE TITLE': 'siteTitle', 'BRAND EYEBROW': 'brandEyebrow', 'BRAND TAGLINE': 'brandTagline',
+    'SCREEN EYEBROW': 'screenEyebrow', 'CASEFILE TITLE': 'casefileTitle',
+    'CASEFILE EPIGRAPH': 'casefileEpigraph',
+    'PLACARD TITLE': 'placardTitle', 'PLACARD NOTE': 'placardNote', 'PLACARD BRAND': 'placardBrand',
+    'PLACARD LABEL': 'placardLabel', 'PLACARD MEDIUM': 'placardMedium', 'PLACARD COUNT': 'placardCount',
+    'INVITE EYEBROW': 'inviteEyebrow', 'INVITE FOOTNOTE': 'inviteFootnote',
+  };
+  const brand = {};
+  for (const { key, value } of rows) if (KEYS[key]) brand[KEYS[key]] = value;
+  if (brand.placardCount) brand.placardCount = Number(brand.placardCount) || 0;
+
+  const first = (k) => (blocks[k] && blocks[k][0]) || '';
+  const invite = {
+    card: first('INVITE CARD'),
+    fine: first('INVITE FINE'),
+    printLines: first('INVITE PRINT LINES'),
+    printNote: first('INVITE PRINT NOTE'),
+    poll: first('INVITE POLL'),
+    short: first('INVITE SHORT'),
+    long: first('INVITE LONG'),
+  };
+  const printables = (blocks.PRINTABLE || []).map(parsePrintableBlock);
+  return { brand, invite, printables };
+}
+
+/** Facts the resolver needs that used to be baked into the engine. */
+function parseWorld(sectionBody) {
+  const rows = parseKeyedLines(sectionBody);
+  if (!rows.length) return null;
+  const out = { nearScene: [] };
+  const split = (v) => v.split('|').map((s) => s.trim()).filter(Boolean);
+  for (const { key, value } of rows) {
+    if (key === 'TITLE') out.title = value;
+    else if (key === 'VENUE') out.venue = value;
+    else if (key === 'ALIBI QUESTION') out.alibiQuestion = value;
+    else if (key === 'NEAR SCENE') out.nearScene.push(...split(value));
+    else if (key === 'ITEM NOUN') {
+      const f = split(value);
+      out.itemNoun = f[0] || '';
+      out.itemNounPlural = f[1] || (f[0] ? f[0] + 's' : '');
+    } else if (key === 'VICTIM PRONOUNS') {
+      const f = split(value);
+      out.victimPronouns = {
+        subject: f[0] || 'they', object: f[1] || 'them', possessive: f[2] || 'their',
+        possessivePronoun: f[3] || 'theirs', reflexive: f[4] || 'themself',
+      };
+    }
+  }
+  return out;
+}
+
 /** Load script-lines data from an optional radioactive file (in memory only). */
 function loadScriptLines(b64Path) {
   if (!b64Path || !fs.existsSync(b64Path)) return null;
@@ -349,6 +528,14 @@ function loadPack(b64Path) {
   // Distinct prop ids referenced by the matrix.
   const props = Object.keys(matrix).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
 
+  // Player-facing copy sections. Optional: a bible without them still loads, and
+  // the engine falls back to neutral, world-free wording.
+  const propCatalog = parsePropCatalog(findSection('PROP CATALOG'));
+  const narration = parseNarration(findSection('NARRATION'));
+  const polls = parsePollCopy(findSection('POLL COPY'));
+  const world = parseWorld(findSection('WORLD'));
+  const frontend = parseFrontend(findSection('FRONT-END'));
+
   return {
     checksum: md5(text),
     byteLength: Buffer.byteLength(text, 'utf8'),
@@ -365,6 +552,11 @@ function loadPack(b64Path) {
     scriptLines: scriptData ? scriptData.scriptLines : null,
     findHints: scriptData ? scriptData.findHints : null,
     fairnessDisclosure: scriptData ? scriptData.fairnessDisclosure : null,
+    propCatalog,
+    narration,
+    polls,
+    world,
+    frontend,
   };
 }
 
@@ -378,7 +570,13 @@ module.exports = {
   parseScriptLines,
   parseRoster,
   md5,
+  parsePropCatalog,
+  parseNarration,
+  parsePollCopy,
+  parseWorld,
+  parseFrontend,
+  parseBlocks,
   // exported for unit-level reuse if ever needed
-  _internal: { splitSections, parseCast, parseRoster, parseVariants, parseMatrix, parseEvidenceChain },
+  _internal: { splitSections, parseCast, parseRoster, parseVariants, parseMatrix, parseEvidenceChain, parseKeyedLines },
   DEFAULT_BIBLE: path.join(__dirname, '..', '..', 'packs', 'last-exhibit', 'plot-bible.md.b64'),
 };

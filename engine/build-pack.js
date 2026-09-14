@@ -8,21 +8,26 @@
  * radioactive treatment as the bible. Plaintext JSON is never written to disk
  * and never printed. Output to the terminal is structural stats only.
  *
- * Usage: node engine/build-pack.js
+ * Usage: node engine/build-pack.js [path/to/plot-bible.md.b64]
+ *        (defaults to the last-exhibit bible; the generated pack.json.b64 is
+ *        always written next to whichever bible was built)
  */
 
 const fs = require('fs');
 const path = require('path');
 const { loadPack, md5, DEFAULT_BIBLE } = require('./lib/pack');
 
-const OUT = path.join(__dirname, '..', 'packs', 'last-exhibit', 'pack.json.b64');
+const BIBLE = process.argv[2] || DEFAULT_BIBLE;
+const PACK_DIR = path.dirname(BIBLE);
+const PACK_ID = path.basename(PACK_DIR);
+const OUT = path.join(PACK_DIR, 'pack.json.b64');
 
 function main() {
-  const pack = loadPack(DEFAULT_BIBLE);
+  const pack = loadPack(BIBLE);
 
   const structured = {
     schema: 'mystery-engine/pack@1',
-    id: 'last-exhibit',
+    id: PACK_ID,
     generatedFrom: { checksum: pack.checksum, byteLength: pack.byteLength },
     victim: pack.victim,
     timeline: pack.timeline,
@@ -37,6 +42,12 @@ function main() {
     findHints: pack.findHints,
     fairnessDisclosure: pack.fairnessDisclosure,
     fairnessRules: pack.fairnessRules,
+    // Player-facing copy: every word a guest reads or hears comes from here.
+    propCatalog: pack.propCatalog,
+    narration: pack.narration,
+    polls: pack.polls,
+    world: pack.world,
+    frontend: pack.frontend,
   };
 
   // Serialize in memory only; emit base64 exclusively.
@@ -48,7 +59,7 @@ function main() {
 
   // Structural stats only — no plot content.
   console.log('Built structured pack (encoded):');
-  console.log('  path:            packs/last-exhibit/pack.json.b64');
+  console.log('  path:            ' + path.relative(path.join(__dirname, '..'), OUT));
   console.log('  source bible md5:', pack.checksum);
   console.log('  pack json md5:   ', md5(json));
   console.log('  cast:            ', pack.cast.length);

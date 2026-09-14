@@ -8,6 +8,29 @@ const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/a
 const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack, getVariant, KEYSTONE_PHASE, PHASES, audioName, AUDIO_KEYS, resolveKillerId } = require('../lib/runtime');
 const { finalVoteClosed, tally } = require('../lib/pollsched');
+const { narrationCopy, say, worldCopy, FALLBACK } = require('../lib/runtime');
+
+// Award titles and notes are pack copy; these neutral shapes are the fallback.
+const FALLBACK_AWARDS = {
+  bestDetective: { title: 'Best Detective', note: 'Named the killer, and did the work to earn it.' },
+  sharpestEye: { title: 'Sharpest Eye', note: 'Examined {count} {items}.' },
+  mostSuspected: { title: 'Most Suspected Innocent', note: 'Collected {count} accusation{s} while entirely innocent.' },
+  caught: { title: 'Caught Red-Handed', note: 'The room saw through it. Take a bow anyway.' },
+  perfect: { title: 'The Perfect Crime', note: 'Fooled the room to the very end. Take a bow — carefully.' },
+};
+
+/** One award, rendered from pack copy with {count}, {s} and {items} filled. */
+function award(pack, key, count) {
+  const a = ((narrationCopy(pack).awards || {})[key]) || FALLBACK_AWARDS[key];
+  const w = worldCopy(pack);
+  const n = typeof count === 'number' ? count : 0;
+  const vars = {
+    count: n,
+    s: n === 1 ? '' : 's',
+    items: n === 1 ? (w.itemNoun || FALLBACK.itemNoun) : (w.itemNounPlural || FALLBACK.itemNounPlural),
+  };
+  return { title: say(pack, a.title, vars), note: say(pack, a.note, vars) };
+}
 
 const REVEAL_PHASE = PHASES[PHASES.length - 1].n; // 6
 
@@ -36,14 +59,14 @@ function computeFinale(pack, game, killerId) {
   if (correct.length) {
     correct.sort((a, b) => (info(b).scans - info(a).scans) || info(a).joined.localeCompare(info(b).joined));
     const w = info(correct[0]);
-    awards.push({ title: 'Best Detective', firstName: w.firstName, characterName: w.characterName,
-      note: 'Named the killer, and did the work to earn it.' });
+    const a = award(pack, 'bestDetective');
+    awards.push({ title: a.title, firstName: w.firstName, characterName: w.characterName, note: a.note });
   }
   // Sharpest Eye: most exhibits examined overall.
   const byScans = Object.keys(players).map((c) => ({ code: c, ...info(c) })).sort((a, b) => (b.scans - a.scans) || a.joined.localeCompare(b.joined));
   if (byScans.length && byScans[0].scans > 0) {
-    awards.push({ title: 'Sharpest Eye', firstName: byScans[0].firstName, characterName: byScans[0].characterName,
-      note: `Examined ${byScans[0].scans} exhibit${byScans[0].scans === 1 ? '' : 's'} — nothing in this gallery went unnoticed.` });
+    const a = award(pack, 'sharpestEye', byScans[0].scans);
+    awards.push({ title: a.title, firstName: byScans[0].firstName, characterName: byScans[0].characterName, note: a.note });
   }
   // Most Suspected Innocent: the wrongly-accused crowd favourite.
   const innocent = Object.entries(voteCounts).filter(([name, n]) => name !== killerName && n > 0).sort((a, b) => b[1] - a[1])[0];
@@ -52,14 +75,14 @@ function computeFinale(pack, game, killerId) {
       const ch = pack.cast.concat(pack.flex || []).find((c) => c.id === p.characterId);
       return ch && ch.name === innocent[0];
     });
-    awards.push({ title: 'Most Suspected Innocent', firstName: seat ? seat[1].name : '', characterName: innocent[0],
-      note: `Collected ${innocent[1]} accusation${innocent[1] === 1 ? '' : 's'} while entirely innocent. The room apologises. Somewhat.` });
+    const a = award(pack, 'mostSuspected', innocent[1]);
+    awards.push({ title: a.title, firstName: seat ? seat[1].name : '', characterName: innocent[0], note: a.note });
   }
   // The killer takes a bow.
   const killerSeat = Object.entries(players).find(([, p]) => p.characterId === killerId);
   if (killerSeat) {
-    awards.push({ title: caught ? 'Caught Red-Handed' : 'The Perfect Crime', firstName: killerSeat[1].name, characterName: killerName,
-      note: caught ? 'The room saw through it. Take a bow anyway.' : 'Fooled the room to the very end. Take a bow — carefully.' });
+    const a = award(pack, caught ? 'caught' : 'perfect');
+    awards.push({ title: a.title, firstName: killerSeat[1].name, characterName: killerName, note: a.note });
   }
   return { voteCounts, caught, awards };
 }

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Your Dossier — The Last Exhibit</title>
+<title>Your Dossier</title>
 <link rel="stylesheet" href="/app.css" />
 </head>
-<body>
+<body data-page-title="Your Dossier">
 <div class="wrap">
-  <div class="eyebrow">The Last Exhibit</div>
+  <div class="eyebrow" data-brand="siteTitle">Mystery Party</div>
   <div class="row" style="align-items:baseline">
     <h1 id="charName" style="flex:3">…</h1>
     <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
@@ -55,18 +55,18 @@
   </div>
 
   <div class="card" id="alibiBox" style="display:none;border-color:var(--gold)">
-    <h2>Where were you at 6:40?</h2>
+    <h2 id="alibiQ">Where were you at 6:40?</h2>
     <p class="muted">Everyone is being asked. Answer honestly — or don't.</p>
-    <input id="alibiInput" placeholder="e.g. by the bar, in the west gallery…" />
+    <input id="alibiInput" placeholder="Where you were, and who saw you…" />
     <button id="alibiBtn">Log my answer</button>
     <div class="err" id="alibiErr"></div>
   </div>
 
   <div class="card">
     <h2>I found something</h2>
-    <p class="muted">Tap an exhibit's tag with your phone, or type the <b>exhibit number</b> printed on its placard.</p>
+    <p class="muted" id="findHelp">Tap its tag with your phone, or type the <b>number</b> printed on its card.</p>
     <div class="row">
-      <input id="exInput" inputmode="numeric" placeholder="Exhibit number" style="flex:2" />
+      <input id="exInput" inputmode="numeric" placeholder="Number" style="flex:2" />
       <button id="exBtn" style="flex:1;margin-top:0">Examine</button>
     </div>
     <div class="note" id="findBox" style="display:none"></div>
@@ -90,6 +90,7 @@
 <div id="blackoutOverlay">the lights are out</div>
 <script src="/app.js"></script>
 <script>
+applyBrand();
 if (!Store.party || !Store.code) location.href = '/';
 
 // ---- Host drawer (only on the device that created the party) ----
@@ -218,6 +219,13 @@ async function refresh() {
     renderPolls(state.polls || []);
     renderHost(state);
     el('#blackoutOverlay').className = state.blackout ? 'on' : '';
+    // The public question and the word for a findable thing are pack copy.
+    const w = state.world || {};
+    if (w.alibiQuestion) el('#alibiQ').textContent = w.alibiQuestion;
+    if (w.itemNoun) {
+      el('#findHelp').innerHTML = `Tap the ${esc(w.itemNoun)}'s tag with your phone, or type the <b>${esc(w.itemNoun)} number</b> printed on its card.`;
+      el('#exInput').placeholder = `${esc(w.itemNoun).replace(/^./, c => c.toUpperCase())} number`;
+    }
     const showAlibi = you && state.phase === 3 && !you.alibiSubmitted;
     el('#alibiBox').style.display = showAlibi ? 'block' : 'none';
   } catch (e) { el('#err').textContent = e.message; }

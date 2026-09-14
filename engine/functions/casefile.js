@@ -5,7 +5,7 @@
 
 const { ok, bad, notFound, forbidden, preflight } = require('../lib/api');
 const { connect, getGame } = require('../lib/store');
-const { loadRuntimePack, PROP_CATALOG, exhibitNumber } = require('../lib/runtime');
+const { loadRuntimePack, propEntry, exhibitNumber, worldCopy, say, FALLBACK } = require('../lib/runtime');
 
 exports.handler = async (event) => {
   connect(event);
@@ -18,6 +18,8 @@ exports.handler = async (event) => {
   if (!game.reveal) return forbidden('the case file opens after the reveal');
 
   const pack = loadRuntimePack();
+  const noun = worldCopy(pack).itemNoun || FALLBACK.itemNoun;
+  const itemNoun = noun.charAt(0).toUpperCase() + noun.slice(1); // label fallback only
   const chName = (id) => {
     const c = [...pack.cast, ...(pack.flex || [])].find((x) => x.id === id);
     return c ? c.name : id;
@@ -26,8 +28,8 @@ exports.handler = async (event) => {
   // Timeline of discoveries (public physical descriptions only).
   const discoveries = Object.entries(game.discovered || {})
     .map(([propId, d]) => ({
-      exhibit: exhibitNumber(propId),
-      label: (PROP_CATALOG[propId] || {}).label || 'Exhibit',
+      exhibit: exhibitNumber(propId, pack),
+      label: say(pack, (propEntry(propId, pack) || {}).label) || itemNoun,
       firstAt: d.firstAt,
       examinations: d.count,
     }))

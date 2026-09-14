@@ -12,13 +12,20 @@
  * running the scanner itself never prints a name. Pass --show to unmask (use
  * only in a private context while fixing a leak).
  *
- * Usage: node engine/spoiler-scan.js [--show]
+ * Usage: node engine/spoiler-scan.js [--show] [--pack <pack.json.b64>]
+ *        (or set MYSTERY_PACK_FILE; scans whichever pack is loaded)
  * Exit:  0 clean · 1 leak found · 2 error
  */
 
-const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+// --pack is a convenience for MYSTERY_PACK_FILE, so a pack can be scanned
+// without touching git. Set before requiring the runtime, which caches by path.
+{
+  const i = process.argv.indexOf('--pack');
+  if (i !== -1 && process.argv[i + 1]) process.env.MYSTERY_PACK_FILE = path.resolve(process.argv[i + 1]);
+}
 const { loadRuntimePack } = require('./lib/runtime');
 
 const SHOW = process.argv.includes('--show');
@@ -27,17 +34,31 @@ const REPO = path.join(__dirname, '..');
 // Words that are safe even though they are capitalized in names (titles, etc.).
 const SAFE_TOKENS = new Set(['Dr', 'The', 'No', 'A', 'Of', 'At', 'Rest']);
 
-// Text of the known Kali-facing (safe) docs. A name token that already appears
-// here is not a NEW leak — most importantly the venue "Noir" collides with a
-// character surname, but the venue is public (it is printed in the props guide).
+// Text of the Kali-facing (safe) docs: the project state, the readme, and EVERY
+// host doc under docs/ — which is where each pack's own props guide lives. A
+// name token that already appears there is not a NEW leak, because the host is
+// meant to read it (e.g. a venue name printed on a props guide that also
+// happens to collide with a character surname). Enumerated, not listed, so a
+// third pack's host docs are covered the moment they are added.
+function safeCorpusFiles() {
+  const files = ['STATE.md', 'README.md'];
+  const docs = path.join(REPO, 'docs');
+  try {
+    for (const f of fs.readdirSync(docs).sort()) {
+      if (f.toLowerCase().endsWith('.md')) files.push(path.join('docs', f));
+    }
+  } catch (_) { /* no docs dir */ }
+  return files;
+}
 function safeCorpus() {
-  const files = ['STATE.md', 'README.md', 'docs/last-exhibit-props-guide.md', 'docs/design-doc.md'];
   let txt = '';
-  for (const f of files) {
+  for (const f of safeCorpusFiles()) {
     try { txt += '\n' + fs.readFileSync(path.join(REPO, f), 'utf8'); } catch (_) { /* ignore */ }
   }
   return txt.toLowerCase();
 }
+
+const publicTokens = new Set(); // name tokens the host docs already expose
 
 function sensitiveTokens(pack) {
   const safe = safeCorpus();
@@ -46,7 +67,7 @@ function sensitiveTokens(pack) {
     if (!name) return;
     for (const w of String(name).split(/[^A-Za-z]+/)) {
       if (w.length < 3 || SAFE_TOKENS.has(w)) continue;
-      if (new RegExp('\\b' + w.toLowerCase() + '\\b').test(safe)) continue; // already public
+      if (new RegExp('\\b' + w.toLowerCase() + '\\b').test(safe)) { publicTokens.add(w); continue; } // already public
       tokens.add(w);
     }
   };
@@ -67,10 +88,28 @@ function sensitivePhrases(pack) {
     .filter((n) => !safe.includes(n.toLowerCase()));
 }
 
-function trackedFiles() {
-  const out = execSync('git ls-files', { cwd: REPO, encoding: 'utf8' });
-  return out.split('\n').map((s) => s.trim()).filter(Boolean)
-    .filter((f) => !f.endsWith('.b64')); // radioactive files are allowed to hold plot
+// Walk the working tree rather than asking git, so a pack that has not been
+// committed yet is still scanned (and nothing has to be staged to check it).
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.netlify', 'dist', 'coverage']);
+const TEXTLIKE = /\.(md|js|mjs|cjs|json|html|css|txt|yml|yaml|toml|svg|sh)$/i;
+
+function scannableFiles(dir, rel, out) {
+  const base = dir || REPO;
+  const prefix = rel || '';
+  const acc = out || [];
+  let entries;
+  try { entries = fs.readdirSync(base, { withFileTypes: true }); } catch (_) { return acc; }
+  for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (e.name.startsWith('.') && e.name !== '.github' && e.name !== '.gitignore') continue;
+    if (SKIP_DIRS.has(e.name)) continue;
+    const relPath = prefix ? prefix + '/' + e.name : e.name;
+    if (e.isDirectory()) { scannableFiles(path.join(base, e.name), relPath, acc); continue; }
+    if (!e.isFile()) continue;
+    if (relPath.endsWith('.b64')) continue;      // radioactive files may hold plot
+    if (!TEXTLIKE.test(relPath)) continue;       // binaries can't leak a name legibly
+    acc.push(relPath);
+  }
+  return acc;
 }
 
 function mask(tok) {
@@ -81,7 +120,7 @@ function main() {
   const pack = loadRuntimePack();
   const tokens = sensitiveTokens(pack);
   const phrases = sensitivePhrases(pack);
-  const files = trackedFiles();
+  const files = scannableFiles();
   const res = [];
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -96,12 +135,15 @@ function main() {
     }
   }
 
-  console.log(`\nSpoiler scan — ${tokens.length} names + ${phrases.length} flex names × ${files.length} tracked files (excluding *.b64)`);
+  console.log(`\nSpoiler scan — pack ${pack.id || '(unnamed)'}: ${tokens.length} names + ${phrases.length} flex names × ${files.length} working-tree files (excluding *.b64)`);
+  if (publicTokens.size) {
+    console.log(`  (${publicTokens.size} name token${publicTokens.size === 1 ? '' : 's'} skipped as already public in STATE.md / README.md / docs/*.md)`);
+  }
   if (res.length === 0) {
     console.log('\x1b[32m✓ CLEAN — no plot names found in any Kali-readable file\x1b[0m\n');
     process.exit(0);
   }
-  console.log('\x1b[31m✗ LEAK — plot names found in committed files:\x1b[0m');
+  console.log('\x1b[31m✗ LEAK — plot names found in Kali-readable files:\x1b[0m');
   for (const r of res) console.log(`   ${r.file}  ←  ${mask(r.tok)}`);
   console.log(SHOW ? '' : '\n(run with --show to unmask while fixing)\n');
   process.exit(1);

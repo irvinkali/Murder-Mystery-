@@ -11,10 +11,14 @@
  * Exit:   0 if all rules pass, 1 otherwise.
  */
 
+const path = require('path');
 const { loadPack, DEFAULT_BIBLE } = require('./lib/pack');
 
 const EXPECTED = {
-  md5: '424fe1e3e0cd2df4010b9a71f6bf9c6c', // from STATE.md (safe, non-spoiler)
+  // Checksum pin for the default bible (safe, non-spoiler). Re-pinned when the
+  // player-facing copy sections (8–11) moved out of the engine and into the
+  // bible; the previous value was 424fe1e3e0cd2df4010b9a71f6bf9c6c.
+  md5: 'b5531a15dcbcf9d9d34edf6a4bf3e713',
   coreCast: 10,
   variants: 4,
   props: 7,
@@ -29,12 +33,14 @@ const BOLD = '\x1b[1m';
 const RESET = '\x1b[0m';
 
 const results = [];
+let packId = 'unknown';
 function check(id, label, strength, passed, detail) {
   results.push({ id, label, strength, passed, detail });
 }
 
 function run() {
   const b64Path = process.argv[2] || DEFAULT_BIBLE;
+  packId = path.basename(path.dirname(path.resolve(b64Path)));
   let pack;
   try {
     pack = loadPack(b64Path);
@@ -50,15 +56,56 @@ function run() {
   const variantsOk = V.length === EXPECTED.variants;
 
   // ---- Integrity pre-checks (structure the rules rely on) ----
-  check('I0', 'Bible checksum matches STATE.md', 'rigorous',
-    pack.checksum === EXPECTED.md5,
-    pack.checksum === EXPECTED.md5 ? 'md5 verified' : 'md5 MISMATCH');
+  // The checksum is pinned per pack: the default bible against STATE.md, any
+  // other pack only when the caller pins one via MYSTERY_EXPECTED_MD5.
+  const isDefaultBible = path.resolve(b64Path) === path.resolve(DEFAULT_BIBLE);
+  const expectedMd5 = process.env.MYSTERY_EXPECTED_MD5 || (isDefaultBible ? EXPECTED.md5 : null);
+  check('I0', 'Bible checksum matches its pin', 'rigorous',
+    expectedMd5 ? pack.checksum === expectedMd5 : true,
+    !expectedMd5 ? 'no checksum pinned for this pack (set MYSTERY_EXPECTED_MD5 to pin it)'
+      : pack.checksum === expectedMd5 ? 'md5 verified' : 'md5 MISMATCH');
   check('I1', 'Core cast count', 'rigorous',
     pack.cast.length === EXPECTED.coreCast, `found ${pack.cast.length}/${EXPECTED.coreCast}`);
   check('I2', 'Solution variant count', 'rigorous',
     V.length === EXPECTED.variants, `found ${V.length}/${EXPECTED.variants}`);
   check('I3', 'Prop count in matrix', 'rigorous',
     pack.props.length === EXPECTED.props, `found ${pack.props.length}/${EXPECTED.props}`);
+
+  // ---- I4: the pack carries ALL its own player-facing copy ----
+  // The engine holds only neutral fallbacks; a pack that leans on them would
+  // sound like no particular world, so a complete pack must supply every string.
+  {
+    const cat = pack.propCatalog || {};
+    const narr = pack.narration || {};
+    const world = pack.world || {};
+    const polls = pack.polls || {};
+    const catOk = pack.props.length > 0 && pack.props.every((p) => {
+      const e = cat[p];
+      return !!(e && e.number && e.label && e.blurb && e.flourish && e.placement);
+    });
+    const monoOk = [1, 2, 3, 4, 5, 6].every((n) => !!(narr.monologues || {})[n]);
+    const nameOk = [1, 2, 3, 4, 5, 6].every((n) => !!(narr.phaseNames || {})[n]);
+    const linesOk = ['attention', 'warn2min', 'awardsIntro', 'photo', 'photoScreen',
+      'blackoutStart', 'blackoutEnd', 'blackoutMoved', 'suspect', 'subpoenaYes',
+      'subpoenaNo', 'finalClosed', 'medicalScreen', 'lockedHint', 'unknownTag']
+      .every((k) => !!narr[k]);
+    const awardsOk = ['bestDetective', 'sharpestEye', 'mostSuspected', 'caught', 'perfect']
+      .every((k) => { const a = (narr.awards || {})[k]; return !!(a && a.title && a.note); });
+    const listsOk = (narr.asides || []).length >= 6 && (narr.nudges || []).length >= 6;
+    const pollsOk = ['benefits', 'subpoena', 'final']
+      .every((id) => !!(polls[id] && polls[id].question && polls[id].guidance));
+    const fe = pack.frontend || {};
+    const feOk = !!(fe.brand && fe.brand.siteTitle && fe.brand.brandEyebrow && fe.brand.placardLabel &&
+      fe.brand.placardCount && fe.invite && fe.invite.card && fe.invite.poll && fe.invite.short &&
+      fe.invite.long && fe.invite.printLines && (fe.printables || []).length);
+    const worldOk = !!(world.title && world.itemNoun && world.itemNounPlural &&
+      world.alibiQuestion && (world.nearScene || []).length && world.victimPronouns &&
+      world.victimPronouns.subject);
+    const ok = catOk && monoOk && nameOk && linesOk && awardsOk && listsOk && pollsOk && worldOk && feOk;
+    check('I4', 'Pack carries its own player-facing copy (no engine fallbacks)', 'rigorous', ok,
+      `catalog: ${catOk}; monologues: ${monoOk}; phase names: ${nameOk}; narrator lines: ${linesOk}; awards: ${awardsOk}; ` +
+      `asides+nudges: ${listsOk}; poll copy: ${pollsOk}; world hooks: ${worldOk}; front-end kit: ${feOk}`);
+  }
 
   // ---- §7 Rule 1: killer provable from E1..E6 + <=2 prop finds ----
   {
@@ -105,7 +152,7 @@ function run() {
     const ok = pack.cast.length === EXPECTED.coreCast && allHavePiece && distinctPieces;
     check('R3', 'Every core character carries an exposure (no one obviously safe)',
       'proxy', ok,
-      `${pack.cast.length} characters, each mapped to a distinct MEMENTO piece: ${ok ? 'yes' : 'NO'}`);
+      `${pack.cast.length} characters, each mapped to a distinct exposure number: ${ok ? 'yes' : 'NO'}`);
   }
 
   // ---- §7 Rule 4: keystone unavailable before Phase 4 under all poll paths ----
@@ -200,7 +247,7 @@ function run() {
 function report(pack) {
   const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
   console.log(`\n${BOLD}Mystery Engine — Fairness Validation${RESET}`);
-  console.log(`${DIM}pack: last-exhibit  ·  variants: ${pack.variants.length}  ·  core cast: ${pack.cast.length}  ·  props: ${pack.props.length}  ·  flex: ${pack.flex.length}${RESET}`);
+  console.log(`${DIM}pack: ${packId}  ·  variants: ${pack.variants.length}  ·  core cast: ${pack.cast.length}  ·  props: ${pack.props.length}  ·  flex: ${pack.flex.length}${RESET}`);
   console.log(`${DIM}(spoiler-safe: no identities, secrets, or solutions are printed)${RESET}\n`);
 
   let allPass = true;

@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Host — The Last Exhibit</title>
+<title>Host</title>
 <link rel="stylesheet" href="/app.css" />
 </head>
-<body>
+<body data-page-title="Host">
 <div class="wrap">
   <div class="nav">
     <a class="ghost" href="/">← Home</a>
@@ -14,7 +14,7 @@
     <span class="pill" id="navCode"></span>
   </div>
   <div class="eyebrow">Host controls</div>
-  <h1>The Last Exhibit</h1>
+  <h1 data-brand="siteTitle">Mystery Party</h1>
   <p class="muted">You set the tempo; the app runs the beats. The solution stays sealed and hidden from you until the reveal.</p>
 
   <div class="card" id="setup">
@@ -82,6 +82,7 @@
 </div>
 <script src="/app.js"></script>
 <script>
+applyBrand();
 const PHASE_NAMES = ['', 'Arrivals', 'The Unveiling', 'Investigation', 'The Keystone', 'Accusation', 'The Reveal'];
 const SCHED = { 3:['benefits'], 4:['subpoena'], 5:['final'] };
 const SCHED_LABEL = { benefits:'“Who benefits?” vote', subpoena:'“Open the files?” vote', final:'Final “who did it?” vote' };

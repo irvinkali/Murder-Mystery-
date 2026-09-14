@@ -20,7 +20,7 @@
  * No plot literals live here; all drop text flows from the parsed pack.
  */
 
-const { resolveKillerId } = require('./runtime');
+const { resolveKillerId, victimName, worldCopy, narrationCopy, say } = require('./runtime');
 
 const MEDICAL_DELAY_MS = 6 * 60 * 1000; // §4.3 "~6 minutes later"
 
@@ -69,6 +69,28 @@ function computeDefense(pack, game, winningCharId) {
   return { targetCode, drop: { kind, text } };
 }
 
+/** Escape a literal phrase and let any whitespace in it also match a hyphen. */
+function phraseRe(phrase) {
+  return String(phrase).trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\s+/g, '[\\s-]*');
+}
+
+/**
+ * The "you placed yourself at the scene" test, built entirely from pack data:
+ * the victim's first name plus every NEAR SCENE phrase the pack declares.
+ */
+function nearSceneRe(pack) {
+  const parts = [];
+  const vn = victimName(pack);
+  if (vn) parts.push('\\b' + phraseRe(vn) + '\\b');
+  for (const phrase of (worldCopy(pack).nearScene || [])) {
+    if (phrase) parts.push(phraseRe(phrase));
+  }
+  // No pack data at all: match nothing, so the flag simply never suppresses.
+  return parts.length ? new RegExp(parts.join('|'), 'i') : /(?!)/;
+}
+
 /**
  * §4.2. Fire only when the variant's alibi target has logged an answer that
  * does NOT place them with the victim / near the back room. Returns { targetCode,
@@ -83,11 +105,11 @@ function computeAlibi(pack, game) {
   if (!targetCode) return null;
   const answer = (game.alibi || {})[targetCode];
   if (!answer) return null; // no answer logged → no flag
-  // "Near the scene" = with the victim or by the back room. Derive the victim's
-  // name from the pack (never hard-code it — that would leak into source).
-  const victimFirst = ((pack.victim || '').match(/\*\*([^*\s]+)/) || [])[1] || '\0';
-  const nearScene = new RegExp('\\b' + victimFirst + '\\b|back[\\s-]?room', 'i');
-  if (nearScene.test(answer)) return null; // honesty is its own gamble → no drop
+  // "Near the scene" = with the victim, or at one of the pack's own scene
+  // locations. Both come from the pack — the victim's name is derived from the
+  // bible and the location phrases from its WORLD HOOKS — so no name and no
+  // place is ever hard-coded here (that would leak into source).
+  if (nearSceneRe(pack).test(answer)) return null; // honesty is its own gamble → no drop
   return { targetCode, drop: { kind: 'alibi', text: entry.text } };
 }
 
@@ -115,7 +137,7 @@ function computeMedical(pack, game, outcome, nowMs) {
       targetCode: code,
       drop: { kind: 'medical-full', text: entry.full },
     }));
-    return { drops, screen: 'The files are open.' };
+    return { drops, screen: say(pack, narrationCopy(pack).medicalScreen) || 'The files are open.' };
   }
   // NO-majority: partial leak to the three most active investigators, delayed.
   const availableAt = new Date((nowMs || Date.now()) + MEDICAL_DELAY_MS).toISOString();
@@ -151,6 +173,7 @@ function visibleDrops(game, code, phase, nowMs) {
 module.exports = {
   MEDICAL_DELAY_MS,
   matchCharByLabel,
+  nearSceneRe,
   computeDefense,
   computeAlibi,
   computeMedical,

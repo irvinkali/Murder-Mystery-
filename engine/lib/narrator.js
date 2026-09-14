@@ -1,113 +1,124 @@
 'use strict';
 /*
- * The Narrator — a "velvet emcee" who is present in the room all night.
+ * The Narrator — the voice that is present in the room all night.
  *
  * Two kinds of speech:
  *  1. Phase monologues (the "what happens now" cards) — fuller, theatrical,
  *     paced with deliberate ellipses so the TTS performs rather than reads.
- *  2. Live interjections — reactions to real events (an exhibit found, the
- *     room's suspicion landing on someone, votes resolving) plus atmospheric
- *     asides when the room goes quiet.
+ *  2. Live interjections — reactions to real events (an item found, the room's
+ *     suspicion landing on someone, votes resolving) plus atmospheric asides
+ *     when the room goes quiet.
  *
- * SPOILER-SAFETY: this file contains ONLY templates and engine copy. Character
- * names are inserted at runtime from the pack; prop references use the public
- * physical catalog labels. Nothing here names anyone, so the spoiler scanner
- * stays clean. Because the name/prop space is enumerable, nearly every line can
- * still be pre-rendered by the TTS generator under an opaque filename — the
- * browser voice is only the fallback.
+ * SPOILER-SAFETY *and* PACK-AGNOSTICISM: this file contains no copy at all. The
+ * narrator's entire vocabulary — monologues, flourishes, asides, awards — is
+ * authored in the pack and read through lib/runtime's copy accessors. Character
+ * names and item numbers are substituted at runtime. Nothing here names anyone
+ * or any place, so the spoiler scanner stays clean and a second pack sounds like
+ * itself rather than like the first one. Because the name/prop space is
+ * enumerable, nearly every line can still be pre-rendered by the TTS generator
+ * under an opaque filename — the browser voice is only the fallback.
  */
 
-const { audioName, PROP_CATALOG, exhibitNumber } = require('./runtime');
+const { audioName, propCatalog, exhibitNumber, narrationCopy, say } = require('./runtime');
 
-// Spoken call-to-attention, played after the gallery bell and before any MAJOR
-// announcement — so a room mid-conversation has a beat to quiet down.
-// Pre-rendered once under the key 'attention'.
-const ATTENTION = 'Ladies and gentlemen — your attention, please.';
-
-// ---------------------------------------------------------------------------
-// 1. PHASE MONOLOGUES — velvet emcee, funny-dark, paced for performance.
-// ---------------------------------------------------------------------------
-const MONOLOGUES = {
-  1: 'Good evening, my darlings, and welcome to Galerie Noir. It\'s opening night. The wine is cold, the light is flattering, and every one of you walked in carrying something you\'d rather not discuss. Perfect — that\'s what galleries are for. Mingle. Admire. Lie beautifully. The art is watching, and so am I.',
-  2: 'The final piece is unveiled — and it seems our guest of honour won\'t be taking questions. Don\'t crowd. Give the moment its dignity; she\'d have insisted. The doors are locked now, and until we know whose hands did this, none of you are just guests anymore. You\'re material.',
-  3: 'Now the real work begins. Circle one another. Ask the questions polite society won\'t allow — tonight, rudeness is a virtue and curiosity is the dress code. This gallery keeps its secrets in plain sight: behind frames, under cushions, in rooms you weren\'t invited into. Go get invited. And keep your stories straight — someone in this room is editing theirs right now.',
-  4: 'Feel that? The evening is sharpening. The pleasantries are spent, the alibis are wearing thin, and somewhere in this gallery the one thing that matters is waiting to be held up to the light. Find it, and this stops being a guessing game and becomes a proof.',
-  5: 'Enough. Set down your glasses. Say your accusations out loud — to the room, to each other\'s faces. Then, in private, each of you will cast a ballot with a single name on it. Choose carefully. The room is listening, and the room remembers everything.',
-  6: 'The ballots are sealed. The gallery has one piece left to show you: the truth, in its original frame. Eyes on the screen. This is The Last Exhibit.',
-};
-
-// ---------------------------------------------------------------------------
-// 2. LIVE INTERJECTIONS — enumerable templates, filled from the pack.
-// ---------------------------------------------------------------------------
-
-// Per-prop discovery flourishes. Physical descriptions only (public catalog).
-const FOUND_FLOURISH = {
-  P1: 'An abandoned glass, far from the bar, still wearing someone\'s shade. Glasses don\'t walk. They\'re carried, and then they\'re left.',
-  P2: 'A little book of days with one day torn out. People only tear out the pages that testify.',
-  P3: 'A bottle from someone\'s bathroom shelf, its label scratched nearly to silence. Nearly.',
-  P4: 'A sealed black envelope. Sealed things are promises — and someone broke one to hide this.',
-  P5: 'The gloves of someone who handles art, marked by work they never mentioned doing.',
-  P6: 'A photograph with one face scratched away. We only erase the faces we can\'t stop seeing.',
-  P7: 'A staff credential on a snapped lanyard. Doors remember, even when people are in too much of a hurry to.',
-};
-
-function foundLine(propId) {
-  const cat = PROP_CATALOG[propId];
-  if (!cat) return null;
-  return `Well — someone has a good eye. ${FOUND_FLOURISH[propId] || `They've found the ${cat.label.toLowerCase()}.`} Take a close look, and decide who you tell.`;
-}
-
-function suspectLine(name) {
-  return `The votes are in, and how awkward: the room's gaze has settled, politely of course, on ${name}. Compose yourself, dear. Suspicion is only attention wearing gloves.`;
-}
-
-function subpoenaLine(outcome) {
-  return outcome === 'yes'
-    ? 'The vote carries. The files are open. And files never forgive — they simply wait to be read aloud.'
-    : 'The room votes for discretion. How civilised. The files stay shut, for now — though secrets tend to leak on their own schedule.';
-}
-
-function finalClosedLine() {
-  return 'And there it is: the last ballot, cast and counted. Whatever you believe, you believe it in ink now. In a moment, the gallery answers back.';
-}
-
-// Spoken two-minute warning before an automatic phase change (ambient, no bell).
-const WARN_2MIN = 'Two minutes, everyone. Finish your sentences — the evening moves on with or without you.';
-
-// Spoken lead-in to the awards, after the reveal itself.
-const AWARDS_INTRO = 'But before you compare notes over the good wine — the house has a few honours to bestow.';
-
-// The gallery portrait (host-triggered photo moment, usually during Arrivals).
-const PHOTO_LINE = 'Before anything happens that we\'ll all have to testify about — gather in, everyone. The gallery portrait. Look wealthy. Look innocent. At least one of you will fail at one of those.';
-
-// The blackout set-piece (60 seconds of dark, then an inventory discrepancy).
-const BLACKOUT_START = 'Oh dear. It seems the gallery has lost its lights. Stay calm. Stay where you are. Or don\'t — I can\'t see you either.';
-const BLACKOUT_END = 'And — light. Welcome back. Do take a moment to notice who\'s standing somewhere new.';
-function blackoutMovedLine(propId) {
-  const n = exhibitNumber(propId);
-  return n ? `One more thing. Exhibit ${n} is not where it was a minute ago. Curious.` : null;
-}
-
-// Atmospheric asides for quiet stretches — generic, funny-dark, re-usable.
-const ASIDES = [
+// Neutral fallbacks: used only by a pack that has not authored its narration.
+const FALLBACK_ASIDES = [
+  'A lovely hush. Rooms only go this quiet when someone is rehearsing.',
   'Do refresh your drinks. Steady hands are wasted on the innocent.',
-  'Such a lovely hush. Rooms only go this quiet when someone is rehearsing.',
-  'Admire the art, by all means. But notice who keeps admiring the exits.',
-  'A word of advice from the house: the guest who asks no questions already knows the answers.',
-  'Someone here has told the same story twice tonight, word for word. Memorised things are rarely true things.',
-  'The lighting in here flatters everyone. Consider what else in this room might be doing the same.',
-  'Whisper if you must. Whispers carry beautifully in a gallery — the acoustics were expensive.',
-  'It\'s a fine evening to watch hands, not faces. Faces audition. Hands confess.',
+  'Notice who keeps checking the exits.',
+  'The guest who asks no questions already knows the answers.',
+  'Someone here has told the same story twice tonight, word for word.',
+  'Watch hands, not faces. Faces audition. Hands confess.',
 ];
+const FALLBACK = {
+  attention: 'Your attention, please.',
+  warn2min: 'Two minutes, everyone.',
+  awardsIntro: 'Before you compare notes — a few honours to bestow.',
+  photo: 'Gather in, everyone. One photograph.',
+  photoScreen: 'PHOTOGRAPH — gather in.',
+  blackoutStart: 'The lights have gone. Stay calm. Stay where you are.',
+  blackoutEnd: 'And — light. Welcome back.',
+  blackoutMoved: 'One more thing. No. {number} is not where it was a minute ago.',
+  suspect: 'The votes are in, and the room has settled on {name}.',
+  subpoenaYes: 'The vote carries. The files are open.',
+  subpoenaNo: 'The room votes for discretion. The files stay shut, for now.',
+  finalClosed: 'The last ballot is cast and counted.',
+  medicalScreen: 'The files are open.',
+  found: 'Someone has a good eye. Take a close look, and decide who you tell.',
+};
+
 const ASIDE_QUIET_MS = 4 * 60 * 1000; // a quiet stretch = ~4 min with no narrator activity
 const ASIDE_PHASES = new Set([2, 3, 4, 5]);
 
-function asideText(idx) {
-  return ASIDES[((idx % ASIDES.length) + ASIDES.length) % ASIDES.length];
+function line(pack, key) {
+  return say(pack, narrationCopy(pack)[key]) || FALLBACK[key];
 }
 
 // ---------------------------------------------------------------------------
-// 3. THE FEED — how interjections reach the gallery.
+// 1. PHASE MONOLOGUES — the pack's own voice, one per phase.
+// ---------------------------------------------------------------------------
+
+/** The monologue for a phase, or '' when the pack has not authored one. */
+function monologue(pack, phase) {
+  const m = (narrationCopy(pack).monologues || {})[phase];
+  return say(pack, m) || '';
+}
+
+// ---------------------------------------------------------------------------
+// 2. LIVE INTERJECTIONS — templates filled from the pack + the live game.
+// ---------------------------------------------------------------------------
+
+/** Spoken call-to-attention, played after the bell and before any MAJOR beat. */
+function attentionLine(pack) { return line(pack, 'attention'); }
+/** Spoken two-minute warning before an automatic phase change (ambient, no bell). */
+function warn2minLine(pack) { return line(pack, 'warn2min'); }
+/** Spoken lead-in to the awards, after the reveal itself. */
+function awardsIntroLine(pack) { return line(pack, 'awardsIntro'); }
+/** The host-triggered group photo moment. */
+function photoLine(pack) { return line(pack, 'photo'); }
+/** The screen card that accompanies the photo moment. */
+function photoScreenLine(pack) { return line(pack, 'photoScreen'); }
+function blackoutStartLine(pack) { return line(pack, 'blackoutStart'); }
+function blackoutEndLine(pack) { return line(pack, 'blackoutEnd'); }
+/** The public screen text when the medical files open. */
+function medicalScreenLine(pack) { return line(pack, 'medicalScreen'); }
+
+/** First-discovery flourish for one prop (physical description only). */
+function foundLine(propId, pack) {
+  const cat = propCatalog(pack)[propId];
+  if (!cat) return null;
+  return say(pack, cat.flourish) || say(pack, FALLBACK.found);
+}
+
+/** The item that moved during the blackout, named by its public number. */
+function blackoutMovedLine(propId, pack) {
+  const n = exhibitNumber(propId, pack);
+  if (!n) return null;
+  return say(pack, narrationCopy(pack).blackoutMoved || FALLBACK.blackoutMoved, { number: n });
+}
+
+function suspectLine(name, pack) {
+  return say(pack, narrationCopy(pack).suspect || FALLBACK.suspect, { name });
+}
+
+function subpoenaLine(outcome, pack) {
+  return outcome === 'yes' ? line(pack, 'subpoenaYes') : line(pack, 'subpoenaNo');
+}
+
+function finalClosedLine(pack) { return line(pack, 'finalClosed'); }
+
+/** Atmospheric asides for quiet stretches, in the pack's voice. */
+function asideList(pack) {
+  const list = narrationCopy(pack).asides;
+  return (list && list.length) ? list : FALLBACK_ASIDES;
+}
+function asideText(idx, pack) {
+  const list = asideList(pack);
+  return say(pack, list[((idx % list.length) + list.length) % list.length]);
+}
+
+// ---------------------------------------------------------------------------
+// 3. THE FEED — how interjections reach the room.
 // ---------------------------------------------------------------------------
 
 /** Append a narrator interjection to the game's feed. `key` drives the opaque
@@ -132,10 +143,11 @@ function shouldAside(game, nowMs) {
 }
 
 /** Fire a quiet-stretch aside if due. Mutates game; returns true if one fired. */
-function maybeAside(game, nowMs) {
+function maybeAside(game, nowMs, pack) {
   if (!shouldAside(game, nowMs)) return false;
   const idx = game.asideIdx = (game.asideIdx || 0) + 1;
-  pushNarrator(game, 'aside.' + (((idx - 1) % ASIDES.length) + 1), asideText(idx - 1));
+  const list = asideList(pack);
+  pushNarrator(game, 'aside.' + (((idx - 1) % list.length) + 1), asideText(idx - 1, pack));
   return true;
 }
 
@@ -146,33 +158,37 @@ function maybeAside(game, nowMs) {
 /** All narrator lines that can be pre-rendered (names/props are enumerable). */
 function narratorInventory(pack) {
   const items = [];
-  items.push({ key: 'attention', text: ATTENTION });
-  items.push({ key: 'warn.2min', text: WARN_2MIN });
-  items.push({ key: 'awards.intro', text: AWARDS_INTRO });
-  items.push({ key: 'photo', text: PHOTO_LINE });
-  items.push({ key: 'blackout.start', text: BLACKOUT_START });
-  items.push({ key: 'blackout.end', text: BLACKOUT_END });
-  for (const propId of Object.keys(PROP_CATALOG)) {
-    const t = blackoutMovedLine(propId);
+  items.push({ key: 'attention', text: attentionLine(pack) });
+  items.push({ key: 'warn.2min', text: warn2minLine(pack) });
+  items.push({ key: 'awards.intro', text: awardsIntroLine(pack) });
+  items.push({ key: 'photo', text: photoLine(pack) });
+  items.push({ key: 'blackout.start', text: blackoutStartLine(pack) });
+  items.push({ key: 'blackout.end', text: blackoutEndLine(pack) });
+  const propIds = Object.keys(propCatalog(pack));
+  for (const propId of propIds) {
+    const t = blackoutMovedLine(propId, pack);
     if (t) items.push({ key: 'blackout.moved.' + propId, text: t });
   }
-  for (const propId of Object.keys(PROP_CATALOG)) {
-    const t = foundLine(propId);
+  for (const propId of propIds) {
+    const t = foundLine(propId, pack);
     if (t) items.push({ key: 'found.' + propId, text: t });
   }
   for (const c of pack.cast || []) {
-    items.push({ key: 'suspect.' + c.id, text: suspectLine(c.name) });
+    items.push({ key: 'suspect.' + c.id, text: suspectLine(c.name, pack) });
   }
-  items.push({ key: 'subpoena.yes', text: subpoenaLine('yes') });
-  items.push({ key: 'subpoena.no', text: subpoenaLine('no') });
-  items.push({ key: 'final.closed', text: finalClosedLine() });
-  ASIDES.forEach((t, i) => items.push({ key: 'aside.' + (i + 1), text: t }));
+  items.push({ key: 'subpoena.yes', text: subpoenaLine('yes', pack) });
+  items.push({ key: 'subpoena.no', text: subpoenaLine('no', pack) });
+  items.push({ key: 'final.closed', text: finalClosedLine(pack) });
+  asideList(pack).forEach((t, i) => items.push({ key: 'aside.' + (i + 1), text: asideText(i, pack) }));
   return items;
 }
 
 module.exports = {
-  MONOLOGUES, ASIDES, ASIDE_QUIET_MS, ATTENTION, WARN_2MIN, AWARDS_INTRO, PHOTO_LINE,
-  BLACKOUT_START, BLACKOUT_END, blackoutMovedLine,
-  foundLine, suspectLine, subpoenaLine, finalClosedLine, asideText,
+  ASIDE_QUIET_MS, ASIDE_PHASES,
+  monologue,
+  attentionLine, warn2minLine, awardsIntroLine, photoLine, photoScreenLine,
+  blackoutStartLine, blackoutEndLine, blackoutMovedLine, medicalScreenLine,
+  foundLine, suspectLine, subpoenaLine, finalClosedLine,
+  asideList, asideText,
   pushNarrator, shouldAside, maybeAside, narratorInventory,
 };

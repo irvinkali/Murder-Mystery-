@@ -30,6 +30,21 @@ async function main() {
     const host = await get('/host'); assert('GET /host serves host controls', host.status === 200 && /Host controls/i.test(await host.text()));
     const prop = await get('/prop/P4'); assert('GET /prop/P4 serves the NFC landing', prop.status === 200 && /found something/i.test(await prop.text()));
     const css = await get('/app.css'); assert('static assets serve with a css content-type', (css.headers.get('content-type') || '').includes('text/css'));
+    const printables = await get('/printables'); assert('GET /printables serves the host kit', printables.status === 200 && /Print the kit/i.test(await printables.text()));
+    const invite = await get('/invite'); assert('GET /invite serves the invite kit', invite.status === 200 && /Invite kit/i.test(await invite.text()));
+
+    // The front-end takes every world-specific word from the pack, not the HTML.
+    const kit = await (await get('/api/kit')).json();
+    assert('GET /api/kit returns the pack branding, items and invite copy',
+      !!(kit.brand && kit.brand.siteTitle) && Array.isArray(kit.items) && kit.items.length > 0 &&
+      kit.items.every((i) => i.number && i.label && i.placement) &&
+      !!(kit.invite && kit.invite.short && kit.invite.long) &&
+      Array.isArray(kit.printables) && kit.printables.length > 0 &&
+      !!(kit.world && kit.world.itemNoun));
+    assert('GET /api/kit leaks no solution data',
+      !('variants' in kit) && !('matrix' in kit) && !('cast' in kit) && !('variant' in kit));
+    assert('no page ships a hardcoded pack name',
+      !/Galerie|The Last Exhibit/i.test(idxText));
 
     // API flow over HTTP.
     const created = await (await post('/api/create-game', { hostName: 'Kali' })).json();

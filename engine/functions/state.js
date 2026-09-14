@@ -7,10 +7,11 @@
 const { ok, bad, notFound, preflight } = require('../lib/api');
 const { connect, getGame, updateGame } = require('../lib/store');
 const {
-  loadRuntimePack, phaseInfo, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES, castingList,
+  loadRuntimePack, phaseName, publicVictimBlurb, playerBrief, killerUnlock, idleNudge, PHASE_MINUTES, castingList,
+  worldCopy,
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
-const { shouldAside, maybeAside, ATTENTION } = require('../lib/narrator');
+const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
@@ -40,7 +41,7 @@ exports.handler = async (event) => {
 
   // If the room has gone quiet mid-game, the narrator drops an aside.
   if (shouldAside(game)) {
-    game = (await updateGame(game.partyCode, (g) => { maybeAside(g); return g; })) || game;
+    game = (await updateGame(game.partyCode, (g) => { maybeAside(g, undefined, pack); return g; })) || game;
   }
   const charName = (id) => {
     const c = [...pack.cast, ...(pack.flex || [])].find((x) => x.id === id);
@@ -63,16 +64,26 @@ exports.handler = async (event) => {
   const publicState = {
     partyCode: game.partyCode,
     phase: game.phase,
-    phaseName: phaseInfo(game.phase).name,
+    phaseName: phaseName(game.phase, pack),
     playerCount: roster.length,
     victim: publicVictimBlurb(pack),
+    // Pack identity + the words the front-end needs (title, item noun, the
+    // public alibi question, the victim's pronouns). No plot content.
+    world: {
+      title: worldCopy(pack).title || null,
+      venue: worldCopy(pack).venue || null,
+      itemNoun: worldCopy(pack).itemNoun || null,
+      itemNounPlural: worldCopy(pack).itemNounPlural || null,
+      alibiQuestion: worldCopy(pack).alibiQuestion || null,
+      victimPronouns: worldCopy(pack).victimPronouns || null,
+    },
     roster,
     // Unclaimed characters with their game-public personas (for casting at join).
     casting: castingList(pack, game),
     narration: game.narration ? game.narration.text : null,
     narrationAudio: game.narration ? game.narration.audio : null,
     // The spoken call-to-attention played before major announcements.
-    attention: { text: ATTENTION, audio: audioName('attention') },
+    attention: { text: attentionLine(pack), audio: audioName('attention') },
     // Live narrator interjections (found exhibits, vote reactions, asides).
     narratorFeed: (game.narratorFeed || []).slice(-8).map((n) => ({ id: n.id, text: n.text, audio: n.audio, major: !!n.major })),
     screenCards,
@@ -113,7 +124,7 @@ exports.handler = async (event) => {
       lines: pack.scriptLines ? (pack.scriptLines[me.characterId] || {})[game.phase] || null : null,
       killer: unlock,
       // Idle nudge — suppressed if a find-hint already gave them something to do.
-      nudge: hasHint ? null : idleNudge(me.characterId, game.phase, idleMs),
+      nudge: hasHint ? null : idleNudge(me.characterId, game.phase, idleMs, undefined, pack),
       drops,
       alibiSubmitted: !!(game.alibi && game.alibi[q.personalCode]),
     };

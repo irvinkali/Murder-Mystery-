@@ -13,7 +13,7 @@
  * lazily on state polls, like the phase clock.
  */
 
-const { pushNarrator, BLACKOUT_START, BLACKOUT_END, blackoutMovedLine } = require('./narrator');
+const { pushNarrator, blackoutStartLine, blackoutEndLine, blackoutMovedLine } = require('./narrator');
 
 const BLACKOUT_MS = 60 * 1000;
 const ARM_DELAY_MS = 3 * 60 * 1000;   // after the benefits poll closes
@@ -49,16 +49,16 @@ function startBlackout(pack, game, nowMs) {
   const now = nowMs || Date.now();
   game.blackoutDueAt = null;
   game.blackout = { startedAt: now, endsAt: now + BLACKOUT_MS, movedProp: pickMovedProp(pack, game), ended: false };
-  pushNarrator(game, 'blackout.start', BLACKOUT_START, true); // major: bell first
+  pushNarrator(game, 'blackout.start', blackoutStartLine(pack), true); // major: bell first
   return true;
 }
 
 /** End + aftermath lines. Mutates game. */
-function endBlackout(game) {
+function endBlackout(game, pack) {
   if (!game.blackout || game.blackout.ended) return false;
   game.blackout.ended = true;
-  pushNarrator(game, 'blackout.end', BLACKOUT_END);
-  const moved = blackoutMovedLine(game.blackout.movedProp);
+  pushNarrator(game, 'blackout.end', blackoutEndLine(pack));
+  const moved = blackoutMovedLine(game.blackout.movedProp, pack);
   if (moved) pushNarrator(game, 'blackout.moved.' + game.blackout.movedProp, moved);
   return true;
 }
@@ -67,7 +67,7 @@ function endBlackout(game) {
 function maybeBlackout(pack, game, nowMs) {
   const due = blackoutDue(game, nowMs);
   if (due === 'start') startBlackout(pack, game, nowMs);
-  else if (due === 'end') endBlackout(game);
+  else if (due === 'end') endBlackout(game, pack);
   return due;
 }
 

@@ -5,7 +5,7 @@
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { connect, getGame, updateGame } = require('../lib/store');
-const { loadRuntimePack, resolvePropScan, propIdFromInput } = require('../lib/runtime');
+const { loadRuntimePack, resolvePropScan, propIdFromInput, narrationCopy, say, FALLBACK } = require('../lib/runtime');
 const { pushNarrator, foundLine } = require('../lib/narrator');
 
 exports.handler = async (event) => {
@@ -23,8 +23,11 @@ exports.handler = async (event) => {
   if (!b.personalCode || !game.players[b.personalCode]) return forbidden('join the party first');
 
   const pack = loadRuntimePack();
-  const propId = propIdFromInput(raw);
-  if (!propId) return ok({ reveal: { unknown: true, message: 'No exhibit matches that number.' } });
+  const propId = propIdFromInput(raw, pack);
+  if (!propId) {
+    const msg = say(pack, narrationCopy(pack).unknownTag) || FALLBACK.unknownTag;
+    return ok({ reveal: { unknown: true, message: msg } });
+  }
 
   const r = resolvePropScan(pack, game.variant, propId, game.phase);
   // Strip the internal prop id from the player-facing payload.
@@ -37,7 +40,7 @@ exports.handler = async (event) => {
     g.discovered[propId] = d;
     // The narrator notices the FIRST discovery of each exhibit (from Phase 2 on
     // — pre-game test taps stay silent). Finds surface as narration, not lists.
-    if (first && g.phase >= 2) pushNarrator(g, 'found.' + propId, foundLine(propId));
+    if (first && g.phase >= 2) pushNarrator(g, 'found.' + propId, foundLine(propId, pack));
     if (g.players[b.personalCode]) {
       g.players[b.personalCode].lastActive = new Date().toISOString();
       g.players[b.personalCode].scanCount = (g.players[b.personalCode].scanCount || 0) + 1;

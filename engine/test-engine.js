@@ -240,8 +240,15 @@ async function main() {
     assert('no aside while the narrator has spoken recently', !shouldAside(g));
     await updateGame(c.partyCode, (gg) => { gg.lastNarratorAt = Date.now() - 10 * 60 * 1000; return gg; });
     const s = await j(state(GET({ partyCode: c.partyCode })));
+    // Pack-agnostic: assert the MECHANISM (an aside fired, keyed and spoken),
+    // not the first pack's vocabulary — a second pack's asides are its own
+    // words. Keys are read server-side; the public feed never carries them.
+    const asideFeed = ((await getGame(c.partyCode)).narratorFeed || []).filter((n) => /^aside\./.test(n.key));
     assert('a quiet stretch produces an atmospheric aside',
-      (s.state.narratorFeed || []).some((n) => /darlings|whisper|quiet|hands|drink|art/i.test(n.text)));
+      asideFeed.length >= 1 && !!asideFeed[0].text);
+    assert('the aside also reaches the public feed without exposing its key',
+      (s.state.narratorFeed || []).some((n) => n.text === asideFeed[0].text) &&
+      (s.state.narratorFeed || []).every((n) => !('key' in n)));
 
     // The final vote closing gets its line.
     await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
@@ -266,7 +273,7 @@ async function main() {
     const inv = narratorInventory(pack);
     assert('narrator inventory covers attention, props, cast, votes, and asides',
       inv.some((i) => i.key === 'attention') &&
-      inv.filter((i) => i.key.startsWith('found.')).length === 7 &&
+      inv.filter((i) => i.key.startsWith('found.')).length === pack.props.length &&
       inv.filter((i) => i.key.startsWith('suspect.')).length === pack.cast.length &&
       inv.some((i) => i.key === 'subpoena.yes') && inv.some((i) => i.key === 'final.closed') &&
       inv.filter((i) => i.key.startsWith('aside.')).length >= 6);
@@ -402,7 +409,7 @@ async function main() {
     const inv = narratorInventory(pack);
     assert('blackout + awards lines are pre-renderable',
       inv.some((i) => i.key === 'blackout.start') && inv.some((i) => i.key === 'blackout.end') &&
-      inv.filter((i) => i.key.startsWith('blackout.moved.')).length === 7 &&
+      inv.filter((i) => i.key.startsWith('blackout.moved.')).length === pack.props.length &&
       inv.some((i) => i.key === 'awards.intro'));
   }
 
@@ -461,7 +468,8 @@ async function main() {
   // 16. Photo moment + case file.
   {
     const casefile = require('./functions/casefile').handler;
-    const { resolveKillerId } = require('./lib/runtime');
+    const { resolveKillerId, exhibitNumber } = require('./lib/runtime');
+    const firstExhibit = exhibitNumber('P1'); // numbering is pack data, not a constant
     const nameFor = (id) => pack.cast.find((x) => x.id === id).name;
     const c = await j(createGame(POST({})));
     const pcodes = [];
@@ -480,7 +488,7 @@ async function main() {
     const sealed = (await getGame(c.partyCode)).variant;
     const killerName = nameFor(resolveKillerId(pack, sealed));
     await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
-    await j(scan(POST({ partyCode: c.partyCode, personalCode: pcodes[0], exhibit: '21' })));
+    await j(scan(POST({ partyCode: c.partyCode, personalCode: pcodes[0], exhibit: firstExhibit })));
     await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
     await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: pcodes[0], id: 'final', choice: killerName })));
     await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
@@ -489,7 +497,7 @@ async function main() {
     assert('the case file opens after the reveal with the night\'s record',
       cf.solution && cf.solution.killer === killerName &&
       cf.guests.length === 10 &&
-      cf.discoveries.some((d) => d.exhibit === '21') &&
+      cf.discoveries.some((d) => d.exhibit === firstExhibit) &&
       Array.isArray(cf.awards));
   }
 
