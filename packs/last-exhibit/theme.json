@@ -2,6 +2,21 @@
   "$comment": "Presentation only. No plot content ever goes in this file, which is why it is plaintext next to the encoded pack. These values restate the engine's original gallery look, so this pack keeps exactly the face it had before themes existed.",
   "name": "The Last Exhibit",
   "fonts": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap",
+  "voice": {
+    "$comment": "The room screen reads every beat aloud with the browser's own voice. prefer is best-first; the first one the device has installed wins. This restates what the engine used to hardcode: a low, formal British reading.",
+    "prefer": [
+      "Daniel",
+      "Arthur",
+      "George",
+      "Roger",
+      "Ryan",
+      "en-GB"
+    ],
+    "rate": 0.95,
+    "pitch": 0.9,
+    "audition": "Good evening. Shall I narrate for you tonight?",
+    "edge": "en-GB-SoniaNeural"
+  },
   "vars": {
     "bg": "#0b0a0f",
     "panel": "#14121b",

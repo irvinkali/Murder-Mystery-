@@ -105,5 +105,21 @@ properties, so a new pack re-skins the entire app without touching a line of eng
 - `netlify.toml` ships `packs/**/theme.json` with the functions and routes `/api/theme.css`
   ahead of the generic `/api/*` splat.
 
+## The narrator sounds like the pack too (added 2026-09-14)
+The narration mp3 files are git-ignored and the Netlify build never renders them, so at a live
+party **every spoken line comes from the browser's own speech synthesis on the room screen**, not
+from an audio file. That fallback was hardcoded to prefer a British male voice at rate 0.95 and
+pitch 0.9 - the gallery docent - whichever game was loaded.
+
+Voice is now part of each pack's `theme.json`, read through the new `engine/lib/theme.js` and
+served to the room screen on `/api/kit`:
+
+- `prefer` is a best-first list of voice names or language tags; the first one the device actually
+  has installed wins, and a voice the host picks from the dropdown still beats all of it.
+- `rate` and `pitch` set the delivery, and `audition` is the line spoken when a voice is tried.
+- `edge` names the edge-tts voice, so a future pre-rendered pass matches the live one.
+- last-exhibit restates the old British docent exactly; reunion-1989 is an American woman at a
+  natural pace, which on an iPad resolves to Ava if present and Samantha otherwise.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.

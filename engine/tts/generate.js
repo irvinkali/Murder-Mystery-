@@ -34,10 +34,15 @@ const { loadRuntimePack } = require('../lib/runtime');
 const { narrationInventory } = require('../lib/phases');
 const { audioName } = require('../lib/runtime');
 
+const { loadTheme } = require('../lib/theme');
+
+// The pack says how its narrator sounds. theme.json's voice.edge names the
+// edge-tts voice; the env vars still win, so a one-off render can override it.
+const THEME_VOICE = ((loadTheme() || {}).voice) || {};
 const OUT = path.join(__dirname, '..', 'public', 'assets', 'narration');
-const VOICE = process.env.NARRATION_VOICE || 'en-GB-SoniaNeural'; // velvet emcee: rich, wry, low female voice
-const RATE = process.env.NARRATION_RATE || '-6%';   // near-natural pace; heavy slowing sounded staged
-const PITCH = process.env.NARRATION_PITCH || '-2Hz';
+const VOICE = process.env.NARRATION_VOICE || THEME_VOICE.edge || 'en-GB-SoniaNeural';
+const RATE = process.env.NARRATION_RATE || THEME_VOICE.edgeRate || '-6%';   // near-natural pace; heavy slowing sounded staged
+const PITCH = process.env.NARRATION_PITCH || THEME_VOICE.edgePitch || '-2Hz';
 const FORCE = process.argv.includes('--force');
 
 function haveEdgeTts() {

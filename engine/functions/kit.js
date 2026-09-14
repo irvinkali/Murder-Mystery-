@@ -14,6 +14,7 @@
 const { ok, preflight } = require('../lib/api');
 const { connect } = require('../lib/store');
 const { loadRuntimePack, propCatalog, worldCopy, say } = require('../lib/runtime');
+const { loadTheme, voiceConfig } = require('../lib/theme');
 
 exports.handler = async (event) => {
   connect(event);
@@ -54,6 +55,8 @@ exports.handler = async (event) => {
       alibiQuestion: w.alibiQuestion || null,
     },
     brand,
+    // How the narrator should sound on the room screen (from the pack's theme).
+    voice: voiceConfig(loadTheme()),
     items,
     printables,
     invite,

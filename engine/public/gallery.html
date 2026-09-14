@@ -67,7 +67,14 @@
 <audio id="narr"></audio>
 <script src="/app.js"></script>
 <script>
-applyBrand();
+// The pack's narrator settings arrive with the presentation kit; until they do,
+// the engine's neutral defaults stand in.
+let voiceCfg = { prefer: [], rate: 1, pitch: 1, audition: '' };
+applyBrand().then((k) => {
+  if (k && k.voice) voiceCfg = k.voice;
+  docentVoice = pickVoice();
+  if (audioReady) fillVoicePicker();
+});
 const party = qs('party') || Store.party;
 const AUDIO = { 1:'arrivals', 2:'unveiling', 3:'investigation', 4:'keystone', 5:'accusation', 6:'reveal' };
 const NARR_DIR = '/assets/narration/';
@@ -158,9 +165,17 @@ function pickVoice(){
   // 1) A voice the host explicitly chose from the picker, if any.
   const saved = localStorage.getItem('narrVoice');
   if (saved){ const hit = vs.find(v=>v.name===saved); if (hit) return hit; }
-  // 2) The original default selection (the first voice this game shipped with).
-  return vs.find(v=>/Daniel|Arthur|George|Roger|Ryan|en-GB/i.test(v.name+v.lang))
-      || vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
+  // 2) The pack's own preference, best first: a voice by name if this device
+  //    has it, otherwise any voice in that language. Each pack sounds like the
+  //    evening it is, and the room screen never has to know which game it runs.
+  const prefer = (voiceCfg && voiceCfg.prefer) || [];
+  for (const want of prefer){
+    const hit = vs.find(v => v.name.toLowerCase().indexOf(String(want).toLowerCase()) !== -1)
+             || vs.find(v => String(v.lang).toLowerCase().indexOf(String(want).toLowerCase()) === 0);
+    if (hit) return hit;
+  }
+  // 3) Any English voice at all.
+  return vs.find(v=>/en/i.test(v.lang)) || vs[0] || null;
 }
 function fillVoicePicker(){
   if (!('speechSynthesis' in window)) return;
@@ -179,7 +194,7 @@ function synth(text, done){
                         .replace(/,\s*,/g, ',').trim();
   const u = new SpeechSynthesisUtterance(speakText);
   if (docentVoice) u.voice = docentVoice;
-  u.rate = 0.95; u.pitch = 0.9;               // the original calm docent delivery
+  u.rate = voiceCfg.rate || 1; u.pitch = voiceCfg.pitch || 1;   // the pack's delivery
   let finished = false, keepalive = null;
   const finish = () => {
     if (finished) return; finished = true;
@@ -251,7 +266,7 @@ el('#voiceSel').addEventListener('change', () => {
   localStorage.setItem('narrVoice', el('#voiceSel').value);
   docentVoice = pickVoice();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
-  synth('Good evening. Shall I narrate for you tonight?', ()=>{});   // instant audition
+  synth(voiceCfg.audition || 'This is how I will sound tonight.', ()=>{});   // instant audition
 });
 
 async function refresh() {

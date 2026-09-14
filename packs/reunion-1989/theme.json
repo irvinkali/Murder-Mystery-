@@ -2,6 +2,21 @@
   "$comment": "Presentation only. No plot content ever goes in this file, which is why it is plaintext next to the encoded pack. Every key becomes a CSS custom property on :root, so the whole app re-skins with the pack.",
   "name": "Class of 1989",
   "fonts": "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Archivo+Black&display=swap",
+  "voice": {
+    "$comment": "An American woman, dry and unhurried, at the pace of somebody reading announcements off an index card. Ava and Samantha are the built-in US voices on an iPad; the rest are fallbacks for other devices.",
+    "prefer": [
+      "Ava",
+      "Samantha",
+      "Allison",
+      "Susan",
+      "Joanna",
+      "en-US"
+    ],
+    "rate": 1.0,
+    "pitch": 1.0,
+    "audition": "Testing. Can everybody hear me at the back?",
+    "edge": "en-US-AvaMultilingualNeural"
+  },
   "vars": {
     "bg": "#0E1018",
     "panel": "#191D2E",

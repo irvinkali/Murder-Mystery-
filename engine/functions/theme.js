@@ -15,24 +15,8 @@
  * the previous game's colours.
  */
 
-const fs = require('fs');
-const path = require('path');
 const { connect } = require('../lib/store');
-const { loadRuntimePack } = require('../lib/runtime');
-
-const PACKS = path.join(__dirname, '..', '..', 'packs');
-
-/** Which pack folder is live: the env override, else the loaded pack's id. */
-function packId() {
-  if (process.env.MYSTERY_PACK) return process.env.MYSTERY_PACK;
-  try { return loadRuntimePack().id || null; } catch (_) { return null; }
-}
-
-function readTheme(id) {
-  if (!id || !/^[a-z0-9._-]+$/i.test(id)) return null;
-  try { return JSON.parse(fs.readFileSync(path.join(PACKS, id, 'theme.json'), 'utf8')); }
-  catch (_) { return null; }
-}
+const { loadTheme } = require('../lib/theme');
 
 /* Nothing from the theme file is allowed to escape its stylesheet: a stray
  * brace or an injected </style> would break out of the rules we emit. */
@@ -71,7 +55,7 @@ function build(theme) {
 
 exports.handler = async (event) => {
   connect(event);
-  const css = build(readTheme(packId()));
+  const css = build(loadTheme());
   return {
     statusCode: 200,
     headers: {
