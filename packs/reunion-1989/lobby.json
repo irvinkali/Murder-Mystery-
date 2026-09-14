@@ -12,7 +12,7 @@
       "at": "2026-10-17T17:00:00-04:00",
       "from": "The reunion committee",
       "title": "The hall is booked. Actually booked.",
-      "body": "Third time asking. {{C1}} has the receipt, laminated, and has offered to show it to anyone who doubts it. The banner has been located. It has been in a box since 1991 and it smells like a box that has been closed since 1991. It is going up anyway."
+      "body": "Third time asking. {{C1}} has the receipt, laminated, and has offered to show it to anyone who doubts it. The banner has been located. It has been in a box since 1991 and it smells like a box that has been closed since 1991. It is going up anyway. There are rooms held at the hotel by the interstate for anyone flying in, which is most of you."
     },
     {
       "id": "b2",
@@ -38,64 +38,64 @@
   ],
   "characters": {
     "C1": {
-      "attire": "Committee-chair energy: a bright top or polo in school colors, pleated khakis or a denim skirt, white sneakers, and a name tag worn proudly all night. Going further, add a hand-lettered sash or a button reading CLASS OF '89, a fanny pack full of spare pens, and hair with as much volume as you can talk it into. Anything that looks like it was planned weeks in advance is exactly right."
+      "attire": "Committee-chair energy: a bright top or polo in school colors, pleated khakis or a denim skirt, white sneakers, and a name tag worn proudly all night. Going further, add a hand-lettered sash or a button reading CLASS OF '89, a fanny pack full of spare pens, and hair with as much volume as you can talk it into. Anything that looks like it was planned six weeks in advance is exactly right."
     },
     "C2": {
-      "attire": "Smart-casual grown-up: a blazer over a plain tee, dark jeans or trousers, and good shoes. Going further, put shoulder pads under the blazer, add a chunky watch, and carry a leather portfolio or a brick-sized phone around all night. The look is the classmate who dressed one notch above everybody else and knows it."
+      "attire": "Off the plane and straight into the room: a sharp blazer over a shell top, dark trousers or a pencil skirt, and shoes that clearly cost something. Going further, put shoulder pads under the blazer, add gold hoops and a heavy watch, and carry a leather portfolio all evening for reasons nobody can identify. The look is the classmate who dressed one notch above the room and would like you to notice the notch."
     },
     "C3": {
-      "attire": "The teacher everybody loved: a corduroy or tweed jacket with elbow patches, a turtleneck or blouse, sensible shoes, and reading glasses on a chain. Going further, add a brooch, a scarf knotted with real commitment, and a worn paperback in the pocket. Comfort is correct here, since this is somebody who has been on their feet at events like this for decades."
+      "attire": "The teacher everybody loved: a corduroy or tweed jacket with elbow patches, a soft shirt or turtleneck, sensible shoes, and reading glasses on a chain. Going further, add a knitted tie, a scarf knotted with real commitment, and a worn paperback in the pocket to be produced at the right moment. Comfort is correct here, since this is somebody who has spent a working life standing up at events like this one."
     },
     "C4": {
-      "attire": "Off duty but never quite off: a plain button-down or polo tucked in, dark jeans, a belt, and boots. Going further, add a department-looking windbreaker or ball cap, a mustache real or otherwise, and aviator sunglasses hooked in the collar. Neat and pressed beats fancy for this one."
+      "attire": "Off duty but never quite off: a crisp button-down or polo tucked in, dark jeans, a good belt, and boots. Going further, add a windbreaker with something official-looking on the chest, aviators hooked in the collar, and a campaign button for yourself pinned somewhere you can pretend you forgot about. Neat and pressed beats fancy for this one."
     },
     "C5": {
-      "attire": "Photographer black: dark jeans or trousers, a black shirt or roll-neck, flat comfortable shoes, and a real camera on a strap if you can borrow one. Going further, add a canvas vest or jacket with too many pockets, keep a lens cap in hand all evening, and wear slim eighties wire-frame glasses. Practical, unfussy, and slightly apart from the party."
+      "attire": "Photographer black: dark jeans or trousers, a black shirt or roll-neck, and flat shoes you can crouch in, plus a real camera on a strap if you can borrow one. Going further, add a canvas vest with too many pockets, slim wire-frame glasses, and a phone clamped to a little tripod in your bag so people can see the other half of the job. Practical, unfussy, and slightly apart from the party."
     },
     "C6": {
       "attire": "The jacket is the whole costume: a letterman or varsity jacket over a plain tee, jeans, and white high-tops. Going further, add a class ring, a whistle, and a school-color sweatband worn without a trace of irony. If there is no varsity jacket to be found, any sports jacket with a patch pinned on will read from across the room."
     },
     "C7": {
-      "attire": "Hardware-store practical: a flannel or work shirt over a tee, jeans, and boots. Going further, add a canvas work jacket, a store-branded cap, and a multi-tool on the belt. This is one of the easiest outfits on the list and looks right in any decade, which is entirely the point."
+      "attire": "Top-producer polish: a structured blazer over a plain top, tailored trousers, and shoes you could cross a parking lot in twice. Going further, add heavy gold jewelry, a proper blowout, sunglasses pushed up into the hair, and a stack of your own business cards to hand out at people rather than to them. Nothing soft, nothing apologetic, and one very good handbag."
     },
     "C8": {
-      "attire": "Neat and slightly over-prepared: a sweater vest or cardigan over a collared shirt, pressed trousers, and loafers. Going further, add a skinny tie, wire-rim glasses, a calculator watch, and a pocket organizer. Tuck everything in, because the tidiness is the joke."
+      "attire": "Neat and slightly over-prepared: a sweater vest or cardigan over a collared shirt, pressed trousers, and loafers. Going further, add a skinny tie, wire-rim glasses, a calculator watch, and a pocket organizer that is genuinely full. Tuck everything in, because the tidiness is the joke and also the love language."
     },
     "C9": {
-      "attire": "Dressed to host: a nice shirt or blouse with the sleeves pushed up, dark trousers, and shoes you can stand in for four hours. Going further, wear an eighties statement blazer with the sleeves rolled, plenty of gold jewelry, and hair that clearly took effort. Being slightly too dressed up for a school hall is perfect here."
+      "attire": "Dressed to host: a good blouse with the sleeves pushed up, dark trousers, and shoes you can stand in for four hours. Going further, wear a bold eighties blazer with the shoulders still in it, plenty of gold, hair that clearly took effort, and the old cheer letter pinned on as a joke that is not entirely a joke. Being slightly too dressed up for a rented hall is perfect here."
     },
     "C10": {
-      "attire": "Came straight from work: a collared shirt and trousers or a simple dress, comfortable shoes, and a pager or phone that keeps going off. Going further, keep a stethoscope in a bag rather than around the neck, add an eighties-wide tie or a shoulder-padded jacket, and push reading glasses up into the hair. Tidy, tired, and a bit rumpled by nine o'clock."
+      "attire": "Came straight off a shift and still outshines the room: a simple dress, or a silk shirt and trousers, with comfortable shoes and a phone that will not stop buzzing. Going further, bring out the 1989 homecoming tiara that has been in a drawer for thirty-five years, throw a shoulder-padded jacket over the top, and push reading glasses up into your hair. Tidy, tired, and quietly the best-dressed person in the building by nine o'clock."
     },
     "F1": {
-      "attire": "Loud and comfortable: a bright windbreaker or tank over a tee, track pants or jeans, and sneakers. Going further, add a headband, a gym bag, an eighties windbreaker in colors that should not be together, and a shaker bottle carried all night. Sunglasses worn indoors are entirely in character."
+      "attire": "Loud and comfortable: a bright windbreaker or a tank over a tee, track pants or jeans, and sneakers. Going further, add a headband, a gym bag, an eighties windbreaker in colors that should not be together, and a shaker bottle carried all night. Sunglasses worn indoors are entirely in character."
     },
     "F2": {
-      "attire": "Guest-of-a-guest smart: whatever you would wear to a nice party, plus one deliberate eighties touch such as big earrings, a bold belt, or a patterned blouse. Going further, commit to full shoulder pads in a statement color, since this is somebody who dressed up for a party they had no obligation to enjoy. Nothing here has to look strictly period."
+      "attire": "Guest-of-a-guest smart: whatever you would wear to a nice party, plus one deliberate eighties touch such as big earrings, a bold belt, or a patterned blouse. Going further, commit to full shoulder pads in a statement color, since this is somebody who dressed up properly for a party she had no obligation to enjoy. Nothing here has to look strictly period."
     },
     "F3": {
-      "attire": "Slightly too cool for the room: a denim or leather jacket over a band tee, jeans, and boots. Going further, add sunglasses, a bandana, a few rings, and hair that has not been rethought since the late eighties. The look should suggest somebody who never checked whether there was a dress code."
+      "attire": "Far too glamorous for a rented hall and entirely aware of it: a silk blouse or a wrap dress, a jacket thrown over the shoulders, and jewelry you would not leave in a hotel room. Going further, add a faux fur, oversized sunglasses kept on much too long indoors, and a scarf that requires managing. The look should say she came from somewhere nicer and stayed anyway."
     },
     "F4": {
       "attire": "Working the event: black trousers or jeans, a black or white shirt, an apron or bar towel over the shoulder, and flat shoes. Going further, clip on a tie, roll the sleeves, and keep a bottle opener and a stack of napkins on you all evening. This is the one person in the room who does not have to dress period at all."
     },
     "F5": {
-      "attire": "Respectable and a bit formal: a blazer or cardigan, a blouse or button-down, neat trousers or a knee-length skirt, and low heels or flats. Going further, try a pussy-bow blouse, pearls, and hair that has been set rather than styled. Aim for somebody dressed to be taken seriously by people much younger than them."
+      "attire": "Respectable and a bit formal: a blazer or cardigan, a blouse, neat trousers or a knee-length skirt, and low heels or flats. Going further, try a pussy-bow blouse, pearls, and hair that has been set rather than styled. Aim for somebody dressed to be taken seriously by people much younger than her."
     },
     "F6": {
-      "attire": "Roadie practical: a black tee, jeans, sneakers, and a lanyard or laminate around the neck. Going further, add a tool pouch or a roll of tape on the belt, a headset, and a checked shirt tied around the waist. Pockets matter more than period accuracy here, which is true to the character anyway."
+      "attire": "Road crew practical: a black tee, jeans, sneakers, and a laminate on a lanyard. Going further, add a tool pouch or a roll of gaff tape on the belt, a headset worn around the neck, and a checked shirt tied around the waist. Pockets matter more than period accuracy here, which is true to the character anyway."
     },
     "F7": {
-      "attire": "Diner-shift comfortable: a simple shirt or blouse, jeans or a plain skirt, an apron, and shoes made for standing. Going further, add a name-tag pin, a pencil behind the ear, an order pad in the apron pocket, and a coffee pot to carry around. Genuinely the easiest outfit on this list."
+      "attire": "Comfortable and unbothered: a simple top, jeans or a plain skirt, and shoes built for twelve hours of standing. Going further, make the color story scrubs-blue, wear a watch face-in on the wrist, keep a pen behind the ear, and carry the old order pad you never gave back in 1989. Genuinely one of the easiest outfits on this list."
     },
     "F8": {
-      "attire": "Shop teacher forever: a plaid or work shirt, a zip cardigan or work jacket, comfortable trousers, and sturdy shoes. Going further, add a shop apron, a pencil behind the ear, glasses on a cord, and a cap that has clearly been owned for decades. Comfort first, since this character is happiest sitting down and holding court."
+      "attire": "Coach forever: a polo or plaid shirt, a zip jacket in school colors, comfortable trousers, and sturdy shoes. Going further, add a whistle on a cord, a cap that has clearly been owned for decades, glasses on a chain, and a clipboard nobody asked him to bring. Comfort first, since this character is happiest sitting down and holding court."
     },
     "F9": {
-      "attire": "Easy and unbothered: a soft sweater or polo, neat jeans or chinos, and comfortable shoes. Going further, try a pastel eighties sweater with a collar popped underneath and hair with a bit of period volume. The point is somebody who dressed for a pleasant evening rather than for an audience."
+      "attire": "Easy and unbothered: a soft sweater or a pretty blouse, neat jeans, and comfortable shoes. Going further, try a pastel eighties sweater with a collar popped underneath, hair with a bit of period volume, and a wallet of photographs that opens out like an accordion. The point is somebody who dressed for a pleasant evening rather than for an audience."
     },
     "F10": {
-      "attire": "Working press: a rumpled button-down, a loosened tie, a jacket, and comfortable shoes. Going further, keep a notebook and pen out all night and add a camera or a small recorder and a press card in a pocket. Deliberately not period, since this one graduated well after 1989."
+      "attire": "Working press: a rumpled button-down or a blazer over a tee, jeans, and shoes she can stand in all night. Going further, keep a notebook and pen out the entire time, add a small recorder and earbuds, and wear the lanyard from some other event she has not got round to taking off. Deliberately not period, since this one graduated well after 1989."
     }
   }
 }

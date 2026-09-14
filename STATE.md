@@ -162,5 +162,27 @@ clean. A beat dated in the future never leaves the server.
 reunion-1989 carries four beats (Oct 17, Oct 31, Nov 14, Nov 20) and costume notes for all twenty.
 last-exhibit carries copy only, which exercises the no-beats path.
 
+## The reunion class was recast (added 2026-09-14)
+Kali's read on the first cast: too small-town and too androgynous, and her guest list is
+overwhelmingly women. The surface of all twenty characters was rewritten. The mystery underneath
+is untouched: same ids, same secrets, same implications, same four variants, same evidence chains,
+same trigger phrases.
+
+- **14 women, 3 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
+  the count is machine-checkable rather than inferred from prose.
+- **Period-correct names.** The first cast was unisex to the point of androgyny (Tandy, Reese,
+  Marion, Quinn, Emery). These are the names of people born around 1971.
+- **The town is gone.** No more sheriff's deputy, hardware store, diner, shop teacher, local paper
+  or only-doctor-for-twenty-miles. It is a large suburban high school and everyone scattered after
+  graduation, which is also why nobody has been keeping tabs on anybody for thirty-five years.
+- **The archetypes she asked for are in it**: cheer captain, homecoming queen, the one voted most
+  likely, the MLM friend, the photographer with four hundred thousand followers, the valedictorian,
+  the athletic director, the drama kid.
+
+Downstream: the casting sheet, the guest communications and `lobby.json` were rebuilt from the new
+roster. `docs/` carried no character names, so the props guide and both runbooks were unaffected.
+Party FMEU was created before the recast but nobody had claimed a character, and character ids did
+not move, so it picks up the new cast on deploy with nothing to redo.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.
