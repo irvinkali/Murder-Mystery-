@@ -80,7 +80,10 @@ Practical notes for the owner:
   nothing set, the last-exhibit pack runs, exactly as before.
 - The printables and invite pages now generate from whichever pack is loaded, so the labels,
   the numbered cards and the invitation wording always match the game you're actually hosting.
-- Each pack has its own spoiler-free props guide in `docs/`.
+- Each pack has its own spoiler-free props guide in `docs/`, and its own host runbook:
+  `docs/last-exhibit-host-runbook.md` (formerly host-runbook.md) and
+  `docs/reunion-1989-host-runbook.md`. The reunion one is also published as a Claude
+  artifact with a checklist Kali ticks off, which is the copy she actually reads.
 - Checksums above are the current ones; `engine/validate.js` pins the last-exhibit bible and
   reports a mismatch if it is edited.
 
