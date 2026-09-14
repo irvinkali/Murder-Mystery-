@@ -1,0 +1,38 @@
+{
+  "$comment": "Presentation only. No plot content ever goes in this file, which is why it is plaintext next to the encoded pack. Every key becomes a CSS custom property on :root, so the whole app re-skins with the pack.",
+  "name": "Class of 1989",
+  "fonts": "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Archivo+Black&display=swap",
+  "vars": {
+    "bg": "#0E1018",
+    "panel": "#191D2E",
+    "panel-2": "#232842",
+    "field": "#0A0C14",
+    "ink": "#F5F2EA",
+    "muted": "#9CA2BC",
+    "gold": "#FF2E88",
+    "gold-2": "#FFD447",
+    "blood": "#00C8E8",
+    "line": "#2E3452",
+    "radius": "4px",
+    "display": "\"Archivo Black\", \"Arial Black\", Impact, sans-serif",
+    "font": "\"Archivo\", \"Helvetica Neue\", Arial, sans-serif",
+    "sans": "\"Archivo\", \"Helvetica Neue\", Arial, sans-serif",
+    "body-bg": "radial-gradient(1100px 520px at 50% -12%, #1B2038 0%, transparent 62%), #0E1018"
+  },
+  "css": [
+    "body::before{content:'';position:fixed;top:0;left:0;right:0;height:6px;z-index:1000;background:linear-gradient(90deg,#FF2E88 0 25%,#00C8E8 25% 50%,#FFD447 50% 75%,#F5F2EA 75% 100%);}",
+    "h1,h2,h3,.serif{letter-spacing:-.01em;}",
+    ".eyebrow{color:#00C8E8;}",
+    ".big{color:#00C8E8;}",
+    ".pill.on{color:#FFD447;border-color:#FFD447;}",
+    "button{background:linear-gradient(180deg,#FF4D9A,#FF2E88);border-color:#FF2E88;color:#FFF5FA;border-radius:3px;}",
+    "button.ghost{color:#FFD447;border-color:#FFD447;}",
+    ".tile b{font-family:var(--display);font-size:16px;letter-spacing:-.01em;}",
+    ".note{background:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(255,46,136,.10) 28px),linear-gradient(180deg,#1B2032,#141828);border-radius:3px;}",
+    ".note .kicker{color:#00C8E8;}",
+    ".note.secret .kicker{color:#FFD447;}",
+    ".narrator .beat{color:#FFD447;}",
+    "input,select{border-radius:3px;}",
+    "#blackoutOverlay{color:#20263C;}"
+  ]
+}

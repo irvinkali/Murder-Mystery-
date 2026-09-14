@@ -95,7 +95,9 @@ function serveStatic(pathname, res) {
 const requestHandler = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname.startsWith('/api/')) {
-    return callFunction(url.pathname.slice(5), req, res, url);
+    // /api/theme.css is a stylesheet served by the `theme` function; mirrors
+    // the dedicated redirect in netlify.toml.
+    return callFunction(url.pathname.slice(5).replace(/\.css$/, ''), req, res, url);
   }
   return serveStatic(url.pathname, res);
 };

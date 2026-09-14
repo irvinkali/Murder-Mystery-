@@ -84,5 +84,26 @@ Practical notes for the owner:
 - Checksums above are the current ones; `engine/validate.js` pins the last-exhibit bible and
   reports a mismatch if it is edited.
 
+## The look changes with the pack too (added 2026-09-14)
+Words were already pack-driven; the palette was not, so both games wore the gallery's dark
+gold-and-plum. Each pack now also carries a **plaintext `theme.json`** beside its encoded bible
+holding colours, fonts, corner radius and a short list of extra CSS rules. It is presentation
+only, never plot, which is why it is the one file in a pack folder that is safe to read.
+
+`engine/functions/theme.js` serves it at `/api/theme.css`, and every page links it right after
+`app.css`. It is a real blocking stylesheet rather than something JavaScript applies afterwards,
+so the correct palette is on screen at first paint and no guest sees a flash of the other game's
+colours. `engine/public/app.css` now expresses every colour and both type faces as custom
+properties, so a new pack re-skins the entire app without touching a line of engine code.
+
+- `packs/last-exhibit/theme.json` restates the original gallery look exactly; that pack is
+  unchanged to the eye.
+- `packs/reunion-1989/theme.json` is the yearbook palette: hot pink, cyan and yellow on near-black,
+  Archivo Black titles, hard 3px corners, and a four-colour band across the top of every screen.
+  It matches the printed invitation.
+- A third pack with no `theme.json` still runs; it simply keeps the engine's default look.
+- `netlify.toml` ships `packs/**/theme.json` with the functions and routes `/api/theme.css`
+  ahead of the generic `/api/*` splat.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.

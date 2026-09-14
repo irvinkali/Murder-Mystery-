@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Invite Kit</title>
 <link rel="stylesheet" href="/app.css" />
+<link rel="stylesheet" href="/api/theme.css" />
 <style>
   .inviteCard {
     max-width: 430px; margin: 0 auto; padding: 44px 34px; text-align: center;
     background:
-      radial-gradient(420px 260px at 50% -8%, #221a2e 0%, transparent 65%),
-      linear-gradient(170deg, #17131f, #0d0b12);
-    border: 1px solid #3a3050; border-radius: 16px;
+      radial-gradient(420px 260px at 50% -8%, var(--panel-2) 0%, transparent 65%),
+      linear-gradient(170deg, var(--panel), var(--bg));
+    border: 1px solid var(--line); border-radius: var(--radius);
     box-shadow: 0 30px 80px rgba(0,0,0,.5);
   }
   .inviteCard .rule { width: 60px; height: 2px; background: var(--gold); margin: 18px auto; }
@@ -19,7 +20,7 @@
   .inviteCard .line { font-family: var(--font); font-size: 18px; margin: 4px 0; }
   .inviteCard .detail { color: var(--gold-2); font-family: var(--font); font-size: 20px; margin: 2px 0; }
   .inviteCard .fine { color: var(--muted); font-size: 12px; margin-top: 18px; line-height: 1.6; }
-  .copybox { background: #0e0c14; border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; white-space: pre-wrap; }
+  .copybox { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 14px; white-space: pre-wrap; }
   @media print {
     body { background: #fff; }
     .noprint, footer { display: none !important; }

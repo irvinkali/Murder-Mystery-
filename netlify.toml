@@ -11,7 +11,15 @@
 [functions]
   node_bundler = "esbuild"
   # Ship the encoded pack alongside the functions so they can decode it in memory.
-  included_files = ["packs/**/*.b64"]
+  included_files = ["packs/**/*.b64", "packs/**/theme.json"]
+
+# The loaded pack's skin, served as a real stylesheet so it lands before first
+# paint. Needs its own rule: the generic /api/* splat would look for a function
+# literally named "theme.css".
+[[redirects]]
+  from = "/api/theme.css"
+  to = "/.netlify/functions/theme"
+  status = 200
 
 # Friendly API path -> functions.
 [[redirects]]

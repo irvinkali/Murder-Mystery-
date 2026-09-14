@@ -10,7 +10,12 @@
   --line: #2a2536;
   --radius: 14px;
   --font: "Cormorant Garamond", "Playfair Display", Georgia, "Times New Roman", serif;
+  /* Headings and display type. A pack whose long copy wants a readable face but
+     whose titles want a heavy one sets these two differently. */
+  --display: "Cormorant Garamond", "Playfair Display", Georgia, "Times New Roman", serif;
   --sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  /* Input wells and tiles: the recessed surface, a shade under --panel. */
+  --field: #0e0c14;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -26,7 +31,7 @@ body {
 }
 .wrap { max-width: 680px; margin: 0 auto; padding: 24px 18px 64px; }
 .gallery .wrap { max-width: 1100px; }
-h1, h2, h3, .serif { font-family: var(--font); font-weight: 600; letter-spacing: .3px; }
+h1, h2, h3, .serif { font-family: var(--display); font-weight: 600; letter-spacing: .3px; }
 h1 { font-size: clamp(30px, 6vw, 52px); margin: .2em 0 .1em; }
 .eyebrow { color: var(--gold); text-transform: uppercase; letter-spacing: .32em; font-size: 12px; font-family: var(--sans); }
 .muted { color: var(--muted); }
@@ -42,7 +47,7 @@ h1 { font-size: clamp(30px, 6vw, 52px); margin: .2em 0 .1em; }
 label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
 input, select {
   width: 100%; padding: 13px 14px; font-size: 16px;
-  background: #0e0c14; color: var(--ink);
+  background: var(--field); color: var(--ink);
   border: 1px solid var(--line); border-radius: 10px;
 }
 input:focus, select:focus { outline: none; border-color: var(--gold); }
@@ -62,15 +67,18 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .reveal { border-left: 3px solid var(--gold); padding-left: 14px; }
 .reveal.locked { border-left-color: var(--blood); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.tile { text-align: left; background: #0e0c14; border: 1px solid var(--line); border-radius: 10px; padding: 12px; color: var(--ink); width: auto; margin: 0; }
-.tile b { display: block; font-family: var(--font); font-size: 17px; }
-.big { font-size: clamp(40px, 9vw, 96px); font-family: var(--font); color: var(--gold-2); }
+.tile { text-align: left; background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 12px; color: var(--ink); width: auto; margin: 0; }
+.tile b { display: block; font-family: var(--display); font-size: 17px; }
+/* A tile's supporting line stays quiet: .muted alone loses to .tile on
+   source order, and button text inherits the button weight. */
+.tile .muted { color: var(--muted); font-weight: 400; }
+.big { font-size: clamp(40px, 9vw, 96px); font-family: var(--display); color: var(--gold-2); }
 .err { color: #ff9c9c; font-size: 14px; margin-top: 10px; min-height: 1em; }
 .center { text-align: center; }
 .divider { height: 1px; background: var(--line); margin: 22px 0; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .barrow { display: grid; grid-template-columns: 1fr 3fr auto; gap: 10px; align-items: center; }
-.bar { height: 12px; background: #0e0c14; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.bar { height: 12px; background: var(--field); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
 a { color: var(--gold-2); }
 footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -117,7 +125,7 @@ footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: cen
 
 /* Collapsible host drawer on the player page (host's device only). */
 details.card > summary {
-  cursor: pointer; list-style: none; font-family: var(--font);
+  cursor: pointer; list-style: none; font-family: var(--display);
   font-size: 18px; color: var(--gold-2); letter-spacing: .02em;
 }
 details.card > summary::-webkit-details-marker { display: none; }

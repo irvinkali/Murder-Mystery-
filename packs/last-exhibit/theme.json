@@ -1,0 +1,23 @@
+{
+  "$comment": "Presentation only. No plot content ever goes in this file, which is why it is plaintext next to the encoded pack. These values restate the engine's original gallery look, so this pack keeps exactly the face it had before themes existed.",
+  "name": "The Last Exhibit",
+  "fonts": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap",
+  "vars": {
+    "bg": "#0b0a0f",
+    "panel": "#14121b",
+    "panel-2": "#1c1926",
+    "field": "#0e0c14",
+    "ink": "#ece8f5",
+    "muted": "#9a94ad",
+    "gold": "#c9a25a",
+    "gold-2": "#e6c885",
+    "blood": "#7c1f2b",
+    "line": "#2a2536",
+    "radius": "14px",
+    "display": "\"Cormorant Garamond\", \"Playfair Display\", Georgia, \"Times New Roman\", serif",
+    "font": "\"Cormorant Garamond\", \"Playfair Display\", Georgia, \"Times New Roman\", serif",
+    "sans": "\"Inter\", system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    "body-bg": "radial-gradient(1200px 600px at 50% -10%, #1a1524 0%, transparent 60%), #0b0a0f"
+  },
+  "css": []
+}
