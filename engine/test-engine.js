@@ -563,6 +563,36 @@ async function main() {
     assert('the doors cannot be opened twice', !!twice.error);
   }
 
+  // ---------------------------------------------------------------------
+  // DEPLOY. A pack's plaintext files are read from disk at request time, so
+  // they are only there in production if netlify.toml ships them. lobby.json
+  // reached production missing exactly once; this is so it cannot happen to
+  // the next one.
+  // ---------------------------------------------------------------------
+  {
+    const fs = require('fs');
+    const path = require('path');
+    const toml = fs.readFileSync(path.join(__dirname, '..', 'netlify.toml'), 'utf8');
+    const line = (toml.match(/^\s*included_files\s*=\s*\[(.+)\]\s*$/m) || [])[1] || '';
+    const globs = line.split(',').map((x) => x.trim().replace(/^["']|["']$/g, ''));
+    const covers = (file) => globs.some((g) => {
+      const re = new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*\//g, '(?:.*/)?').replace(/\*/g, '[^/]*') + '$');
+      return re.test(file);
+    });
+    const packsDir = path.join(__dirname, '..', 'packs');
+    const missing = [];
+    for (const dir of fs.readdirSync(packsDir)) {
+      const full = path.join(packsDir, dir);
+      if (!fs.statSync(full).isDirectory()) continue;
+      for (const f of fs.readdirSync(full)) {
+        const rel = `packs/${dir}/${f}`;
+        if (!covers(rel)) missing.push(rel);
+      }
+    }
+    assert('netlify.toml ships every file a pack carries', missing.length === 0);
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }
