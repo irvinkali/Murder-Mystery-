@@ -13,7 +13,7 @@ Each prop gets a clear NFC sticker (write the URL I provide to it using the free
 | P1 | A strip of four photo-booth pictures with the last frame torn off | Any photo-booth strip you have, or print four square snaps in a vertical column on one sheet and trim; tear the bottom frame off by hand, not with scissors | Free |
 | P2 | A high-school yearbook with one page cut out | Thrift store or eBay, any year, any school, the older and more battered the better; cut one page out yourself with a craft knife against a ruler | $4 to 8 thrifted |
 | P3 | Prescription pill bottle, label partially scratched off | An empty bottle you have, or ask a pharmacy for an empty; I'll provide a printable replacement label to scratch | Free |
-| P4 | An audio cassette in a cracked case, hand-labelled | Thrift store bin, or your own; write on the paper insert in ballpoint, in whatever handwriting isn't yours. Cracked case is a bonus, not a requirement | $1 |
+| P4 | An audio cassette in a cracked case, hand-labeled | Thrift store bin, or your own; write on the paper insert in ballpoint, in whatever handwriting isn't yours. Cracked case is a bonus, not a requirement | $1 |
 | P5 | A group photograph with one person cut out of it | Any group snapshot, a thrifted one is ideal and cheap; cut one figure out cleanly with a craft knife so there's a person-shaped hole | $1 thrifted |
 | P6 | A photograph with something written on the back | Any single thrifted snapshot; I'll send you the exact words and you write them on the back in ballpoint, **don't read the front and back together and don't think about it**, it's deliberately ambiguous | $1 thrifted |
 | P7 | A single key on a ring with a faded parking-permit tag | Any spare key + keyring; printable "HOLLIS HIGH, STUDENT PARKING" hang tag provided, which you should crease, scuff and age with a tea bag | Free |
@@ -22,7 +22,7 @@ Total: roughly $10 to 12, plus the NFC sticker pack (~$12 for 30; you'll use 5 t
 
 ### A note on the three photographs
 
-Buy a small stack of anonymous thrifted snapshots, most antique malls and thrift stores have a shoebox of them for pennies. You want faces you don't recognise and clothes that look roughly right for the era. Make P5 and P6 from that stack. Don't use real photos of anyone attending; it lands badly, and guests handle these a lot.
+Buy a small stack of anonymous thrifted snapshots, most antique malls and thrift stores have a shoebox of them for pennies. You want faces you don't recognize and clothes that look roughly right for the era. Make P5 and P6 from that stack. Don't use real photos of anyone attending; it lands badly, and guests handle these a lot.
 
 When you cut P5, cut **one whole figure out**, not a face, a clean silhouette-shaped hole reads much better across a room than a scribble. Use a craft knife and a ruler for the straight edges.
 

@@ -84,7 +84,7 @@ costs a mismatched character rather than a locked out guest.
 5. Place the props per the guide and tap each one once during setup.
 
 Three of the props are photographs. **Do not use photos of anyone who will be at
-the party.** A guest recognising themselves in a prop breaks the evening.
+the party.** A guest recognizing themselves in a prop breaks the evening.
 
 If a tag misbehaves, guests can always use **I found something** in the app and
 type the item number printed on its card. The meaning lives in the app, not on

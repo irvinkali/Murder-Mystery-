@@ -15,13 +15,15 @@ const path = require('path');
 const { loadPack, DEFAULT_BIBLE } = require('./lib/pack');
 
 const EXPECTED = {
-  // Checksum pin for the default bible (safe, non-spoiler). Re-pinned when the
+  // Checksum pin for the default bible (safe, non-spoiler). Re-pinned again when
+  // British spellings were corrected to American; the previous value was
+  // 9aed8f4c2eb09757074eed40c0881216. Re-pinned when the
   // player-facing copy sections (8–11) moved out of the engine and into the
   // bible; the previous value was 424fe1e3e0cd2df4010b9a71f6bf9c6c.
   // Re-pinned again when variant B gained a keystone prop (R4b) and Phase 2
   // gained script lines (R7); the previous value was
   // b5531a15dcbcf9d9d34edf6a4bf3e713.
-  md5: '9aed8f4c2eb09757074eed40c0881216',
+  md5: '38c58a4559160c9fd4294521f3fa34b5',
   coreCast: 10,
   variants: 4,
   props: 7,
