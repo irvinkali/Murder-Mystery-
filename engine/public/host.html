@@ -22,11 +22,25 @@
     <h2>Start a party</h2>
     <button id="createBtn">Create party</button>
     <div class="err" id="err"></div>
+    <details style="margin-top:16px">
+      <summary class="muted">Already started it on another device?</summary>
+      <p class="muted" style="font-size:13px;margin-top:10px">Host controls live on the device that created the party. To run them from a second device, or to get them back if that one dies, enter the party code and the <b>host key</b> shown on the live host screen.</p>
+      <label for="rParty">Party code</label>
+      <input id="rParty" autocapitalize="characters" maxlength="4" placeholder="ABCD" />
+      <label for="rHost">Host key</label>
+      <input id="rHost" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Paste the host key" />
+      <button id="resumeHost" class="ghost">Take host controls here</button>
+      <div class="err" id="rErr"></div>
+    </details>
   </div>
 
   <div class="card" id="live" style="display:none">
     <h2>Party <span id="code" class="serif" style="color:var(--gold-2)"></span></h2>
     <p class="muted"><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
+    <details><summary class="muted">Host key — for running these controls on a second device</summary>
+      <p class="muted" style="font-size:13px;margin-top:10px">Anyone with this can drive the party, so keep it to yourself. Write it down before the night: it is the only way back into host controls if this device dies.</p>
+      <div class="copybox" id="hostKey" style="background:var(--field);border:1px solid var(--line);border-radius:var(--radius);padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all"></div>
+    </details>
     <p class="muted">Playing too? <a href="/">Join as a guest on this phone →</a> — your dossier page will include a fold-out <b>Host controls</b> drawer, so you never have to switch tabs.</p>
     <div class="divider"></div>
 
@@ -94,6 +108,7 @@ function showLive() {
   el('#code').textContent = Store.party; el('#navCode').textContent = Store.party;
   const g = `${location.origin}/gallery?party=${Store.party}`;
   el('#galleryLink').href = g; el('#galleryLink').textContent = g;
+  el('#hostKey').textContent = Store.host;
 }
 function fmt(ms){ const s=Math.max(0,Math.round(ms/1000)); const m=Math.floor(s/60); return `${m}:${String(s%60).padStart(2,'0')}`; }
 
@@ -152,6 +167,19 @@ el('#createBtn').addEventListener('click', async () => {
     await api('advance', { partyCode:Store.party, hostToken:Store.host, phase:1 }); // fire Phase 1 narration
     showLive(); tick(); }
   catch(e){ el('#err').textContent=e.message; el('#createBtn').disabled=false; }
+});
+el('#resumeHost').addEventListener('click', async () => {
+  const partyCode = el('#rParty').value.trim().toUpperCase();
+  const hostToken = el('#rHost').value.trim();
+  el('#rErr').textContent = '';
+  if (!partyCode || !hostToken) { el('#rErr').textContent = 'Enter both the party code and the host key.'; return; }
+  try {
+    await api('cast', { action: 'get', partyCode, hostToken });   // host-only, reads nothing into view
+    Store.party = partyCode; Store.host = hostToken;
+    showLive(); tick();
+  } catch (e) {
+    el('#rErr').textContent = /host only|forbidden/i.test(e.message) ? 'That host key does not match this party.' : e.message;
+  }
 });
 el('#advBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host}); tick(); } catch(e){ alert(e.message); } });
 el('#pauseBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,pause:!cur.paused}); tick(); } catch(e){ alert(e.message); } });

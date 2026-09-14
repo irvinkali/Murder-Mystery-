@@ -121,5 +121,17 @@ served to the room screen on `/api/kit`:
 - last-exhibit restates the old British docent exactly; reunion-1989 is an American woman at a
   natural pace, which on an iPad resolves to Ava if present and Samantha otherwise.
 
+## Host controls can move between devices (added 2026-09-14)
+The host token was written to localStorage on whichever browser pressed Create party and there
+was no way to enter it anywhere else, so host controls were stranded on one device with no
+recovery if it died mid-party. Guests already had a seat-code resume; the host had nothing.
+
+The live host card now shows the **host key** behind a disclosure, and the setup card has
+"Already started it on another device?" taking the party code and that key. The pair is checked
+against a host-only read (`cast` with action `get`) before anything is stored, so a wrong key
+fails with a message and changes nothing. Verified across two separate browser profiles: a wrong
+key is refused, the right one takes control on a fresh device, and advancing a phase there shows
+up on the original device.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.
