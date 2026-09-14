@@ -11,6 +11,7 @@ const {
   worldCopy,
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
+const { lobbyBrief, lobbyRoom, lobbyCopy, beatsSoFar, nextBeatAt, loadLobbyFile } = require('../lib/lobby');
 const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
@@ -26,6 +27,37 @@ exports.handler = async (event) => {
   if (!game) return notFound('no such party');
 
   const pack = loadRuntimePack();
+
+  // ---------------------------------------------------------------------
+  // LOBBY. Before the host opens the doors the evening does not exist yet:
+  // no clock, no narrator, no blackout, no evidence. A guest gets the public
+  // half of their character and the beats that have already landed. This
+  // returns early on purpose, so none of the game-state code below can run
+  // and there is no path from here to a secret.
+  // ---------------------------------------------------------------------
+  if (game.lobby) {
+    const file = loadLobbyFile();
+    const now = new Date();
+    const state = {
+      partyCode: game.partyCode,
+      lobby: true,
+      phase: 0,
+      phaseName: 'Before the night',
+      playerCount: Object.keys(game.players || {}).length,
+      world: { title: worldCopy(pack).title || null, venue: worldCopy(pack).venue || null },
+      copy: lobbyCopy(file),
+      beats: beatsSoFar(now, pack, file),
+      nextBeatAt: nextBeatAt(now, file),
+      room: lobbyRoom(pack, game),
+      casting: castingList(pack, game),
+    };
+    let me = null;
+    if (q.personalCode && game.players[q.personalCode]) {
+      const p = game.players[q.personalCode];
+      me = { name: p.name, character: lobbyBrief(pack, p.characterId, file) };
+    }
+    return ok({ state, you: me });
+  }
 
   // The phase clock ticks lazily on every poll: fire the two-minute warning or
   // the automatic phase change when due. (Pure pre-check, then a re-checked

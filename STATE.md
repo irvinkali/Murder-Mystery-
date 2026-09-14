@@ -136,5 +136,31 @@ fails with a message and changes nothing. Verified across two separate browser p
 key is refused, the right one takes control on a fresh device, and advancing a phase there shows
 up on the original device.
 
+## The lobby, and joining is now idempotent (added 2026-09-14)
+Kali asked for the thing she liked about StoryPop: an interface you can poke around in as your
+character in the weeks before the party. Two parts.
+
+**Joining by name is idempotent.** `join` used to allocate a fresh seat every time, so a guest
+who claimed their character early and came back on the night would have found their reserved seat
+already taken by their own earlier self and been re-seated from whatever was left. It now returns
+the existing seat and its personal code when a name already holds one. That is what makes an early
+lobby safe, and it also rescues a guest who lost their five-letter seat code.
+
+**A party opens in the lobby.** `create-game` sets `lobby: true`; the host ends it with
+`advance {openDoors: true}`, which is when the phase clock actually starts. While the lobby is up,
+`state` returns early with a lobby-shaped response and `scan`, `alibi`, `poll` and every other host
+control are refused. A guest gets their character name, the PUBLIC persona (the brief cut at
+SECRET, the same text the host posts on the event wall), what to wear, who else has claimed a
+character, and the beats that have already landed. There is no path from the lobby response to a
+brief, a script line, a drop, a variant or the victim.
+
+`packs/<id>/lobby.json` is plaintext beside the encoded bible, like `theme.json`: copy, per-character
+costume notes, and dated beats. A beat writes a character as `{{C1}}` and the name is substituted
+when it is served, so no character name is ever written into the plaintext and the scanner stays
+clean. A beat dated in the future never leaves the server.
+
+reunion-1989 carries four beats (Oct 17, Oct 31, Nov 14, Nov 20) and costume notes for all twenty.
+last-exhibit carries copy only, which exercises the no-beats path.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.

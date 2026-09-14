@@ -15,10 +15,43 @@
     <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
   </div>
 
+  <!-- The weeks before. Everything private stays sealed until the doors open. -->
+  <div id="lobbyView" style="display:none">
+    <div class="card">
+      <h2 id="lbTitle">Before the night</h2>
+      <p class="muted" id="lbStand"></p>
+      <div class="divider"></div>
+      <div class="eyebrow" id="lbWhoLabel">You are</div>
+      <h1 id="lbName" style="margin-top:4px">…</h1>
+      <p class="brief" id="lbPersona"></p>
+      <div id="lbAttireBox" style="display:none">
+        <div class="divider"></div>
+        <div class="eyebrow">What to wear</div>
+        <p class="muted" id="lbAttire" style="margin-top:6px"></p>
+      </div>
+      <div class="divider"></div>
+      <p class="muted" style="font-size:12px;margin:0" id="lbDoors"></p>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">Seat code: <b id="lbSeat" class="serif" style="color:var(--gold-2)"></b>. You will not need it if you use this phone on the night, and typing the same name gets you the same character either way.</p>
+    </div>
+
+    <div class="card" id="lbBeatsCard" style="display:none">
+      <h2>From the committee</h2>
+      <div id="lbBeats"></div>
+      <p class="muted" id="lbNext" style="font-size:12px;margin:10px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <h2 id="lbRoomTitle">Who is coming</h2>
+      <p class="muted" id="lbRoomNote" style="font-size:13px"></p>
+      <div class="grid" id="lbRoom"></div>
+    </div>
+  </div>
+
   <!-- Host drawer — shown ONLY on the device that created the party -->
   <details class="card" id="hostPanel" style="display:none;border-color:var(--gold)">
     <summary>Host controls</summary>
     <div class="muted clock" id="hpClock" style="margin-top:10px"></div>
+    <button id="hpDoors" style="display:none">Open the doors and begin</button>
     <div class="row">
       <button class="ghost" id="hpPause" style="flex:1">Pause</button>
       <button class="ghost" id="hpExtend" style="flex:1">+5 min</button>
@@ -36,26 +69,26 @@
   </details>
 
   <!-- What happens now (all players) -->
-  <div class="narrator note" id="narration" style="display:none"></div>
+  <div class="narrator note gameOnly" id="narration" style="display:none"></div>
 
   <!-- Private in-world messages: killer unlock, branching drops, find-hints -->
-  <div id="notes"></div>
+  <div id="notes" class="gameOnly"></div>
 
   <!-- The current phase's private script line -->
-  <div class="note" id="linesBox" style="display:none">
+  <div class="note gameOnly" id="linesBox" style="display:none">
     <div class="kicker">Your lines · this moment</div>
     <div id="lineQuote"></div>
     <div class="action" id="linePrompt"></div>
   </div>
 
-  <div class="card">
+  <div class="card gameOnly">
     <h2>Your dossier</h2>
     <div class="brief" id="brief">Loading…</div>
     <div class="divider"></div>
     <p class="muted" style="font-size:12px;margin:0">Seat code: <b id="seatCode" class="serif" style="color:var(--gold-2)"></b> — if your phone dies, rejoin at the party site with this code to get your character back.</p>
   </div>
 
-  <div class="card" id="alibiBox" style="display:none;border-color:var(--gold)">
+  <div class="card gameOnly" id="alibiBox" style="display:none;border-color:var(--gold)">
     <h2 id="alibiQ">Where were you at 6:40?</h2>
     <p class="muted">Everyone is being asked. Answer honestly — or don't.</p>
     <input id="alibiInput" placeholder="Where you were, and who saw you…" />
@@ -63,7 +96,7 @@
     <div class="err" id="alibiErr"></div>
   </div>
 
-  <div class="card">
+  <div class="card gameOnly">
     <h2>I found something</h2>
     <p class="muted" id="findHelp">Tap its tag with your phone, or type the <b>number</b> printed on its card.</p>
     <div class="row">
@@ -73,14 +106,14 @@
     <div class="note" id="findBox" style="display:none"></div>
   </div>
 
-  <div class="card">
+  <div class="card gameOnly">
     <h2>The room</h2>
     <p class="muted" id="victim"></p>
     <div class="divider"></div>
     <div class="grid" id="roster"></div>
   </div>
 
-  <div class="card" id="pollCard" style="display:none">
+  <div class="card gameOnly" id="pollCard" style="display:none">
     <h2>Open question</h2>
     <div id="polls"></div>
   </div>
@@ -105,6 +138,10 @@ const hapi = (body) => api('advance', Object.assign({ partyCode: Store.party, ho
 function renderHost(state) {
   if (!isHost) return;
   el('#hostPanel').style.display = 'block';
+  // In the lobby the only host control that means anything is the one that
+  // ends it, so the rest of the drawer stays out of the way.
+  el('#hpDoors').style.display = state.lobby ? 'block' : 'none';
+  if (state.lobby) { el('#hpClock').textContent = 'The lobby is up. Nothing is running yet.'; return; }
   el('#hpGallery').href = `${location.origin}/gallery?party=${Store.party}`;
   el('#hpCase').href = `${location.origin}/casefile.html?party=${Store.party}`;
   const t = state.timing || {};
@@ -138,6 +175,10 @@ if (isHost) {
   el('#hpExtend').addEventListener('click', async()=>{ try{ await hapi({extend:5}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpAdv').addEventListener('click', async()=>{ try{ await hapi({}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpAuto').addEventListener('click', async()=>{ try{ await hapi({auto:!hostState.auto}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpDoors').addEventListener('click', async()=>{
+    if (!confirm('Open the doors? This starts Phase 1 and unlocks every dossier. There is no undo.')) return;
+    try{ await api('advance',{partyCode:Store.party,hostToken:Store.host,openDoors:true}); refresh(); }catch(e){ alert(e.message); }
+  });
   el('#hpAlibi').addEventListener('click', async()=>{ try{ await api('alibi',{action:'resolve',partyCode:Store.party,hostToken:Store.host}); alert('Resolved. Any contradiction has been flagged privately.'); }catch(e){ alert(e.message); } });
   el('#hpBlackout').addEventListener('click', async()=>{ if(!confirm('Kill the lights for 60 seconds?')) return; try{ await hapi({blackout:true}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpPhoto').addEventListener('click', async()=>{ try{ await hapi({photo:true}); refresh(); }catch(e){ alert(e.message); } });
@@ -206,9 +247,60 @@ function renderPolls(list) {
   }));
 }
 
+/** The weeks before the night. Nothing here came from the dossier: the server
+ *  sends only the public half, so there is nothing private on this page to
+ *  reveal early even to someone reading the network tab. */
+function renderLobby(state, you) {
+  const c = state.copy || {};
+  el('#lobbyView').style.display = 'block';
+  document.querySelectorAll('.gameOnly').forEach((n) => { n.style.display = 'none'; });
+  el('#phasePill').textContent = 'Not started';
+  el('#lbTitle').textContent = c.title || 'Before the night';
+  el('#lbStand').textContent = c.standfirst || '';
+  el('#lbDoors').textContent = c.doorsNote || '';
+
+  if (you && you.character) {
+    el('#charName').textContent = you.character.name;
+    el('#lbName').textContent = you.character.name;
+    el('#lbPersona').textContent = you.character.persona || '';
+    el('#lbSeat').textContent = Store.code;
+    if (you.character.attire) {
+      el('#lbAttireBox').style.display = 'block';
+      el('#lbAttire').textContent = you.character.attire;
+    }
+  } else {
+    el('#lbWhoLabel').style.display = 'none';
+    el('#lbName').style.display = 'none';
+  }
+
+  const beats = state.beats || [];
+  if (beats.length) {
+    el('#lbBeatsCard').style.display = 'block';
+    // Newest first: the thing that just landed is the reason they opened this.
+    // .note renders pre-wrap, so this template carries no stray whitespace.
+    el('#lbBeats').innerHTML = beats.slice().reverse().map((b) =>
+      `<div class="note"><div class="kicker">${esc(b.from || '')}</div>`
+      + `<b class="serif" style="font-size:19px">${esc(b.title || '')}</b>`
+      + `<div style="margin-top:8px">${esc(b.body)}</div></div>`).join('');
+  }
+  el('#lbNext').textContent = state.nextBeatAt
+    ? 'There is more to come before the night.'
+    : '';
+
+  const room = state.room || [];
+  el('#lbRoomNote').textContent = room.length
+    ? `${room.length} of you have picked up a character so far.`
+    : 'Nobody else has claimed a character yet. You are first.';
+  el('#lbRoom').innerHTML = room.map((r) =>
+    `<div class="tile"><b>${esc(r.characterName)}</b><span class="muted">${esc(r.firstName || '')}</span></div>`).join('');
+}
+
 async function refresh() {
   try {
     const { state, you } = await api(`state?partyCode=${Store.party}&personalCode=${Store.code}`);
+    if (state.lobby) { renderLobby(state, you); renderHost(state); return; }
+    el('#lobbyView').style.display = 'none';
+    document.querySelectorAll('.gameOnly').forEach((n) => { n.style.display = ''; });
     el('#phasePill').textContent = `Phase ${state.phase} · ${state.phaseName}`;
     el('#victim').textContent = state.victim || '';
     if (state.narration) { el('#narration').style.display = 'block'; el('#narration').textContent = state.narration; }

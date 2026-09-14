@@ -21,6 +21,7 @@ exports.handler = async (event) => {
   const game = await getGame(code);
   if (!game) return notFound('no such party');
   if (!b.personalCode || !game.players[b.personalCode]) return forbidden('join the party first');
+  if (game.lobby) return bad('the party has not started yet');
 
   const pack = loadRuntimePack();
   const propId = propIdFromInput(raw, pack);

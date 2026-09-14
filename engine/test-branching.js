@@ -8,7 +8,7 @@
 
 delete process.env.NETLIFY;
 
-const createGame = require('./functions/create-game').handler;
+const createGameRaw = require('./functions/create-game').handler;
 const join = require('./functions/join').handler;
 const state = require('./functions/state').handler;
 const poll = require('./functions/poll').handler;
@@ -21,6 +21,18 @@ const { visibleDrops } = require('./lib/branching');
 
 const pack = loadRuntimePack();
 const POST = (b) => ({ httpMethod: 'POST', body: JSON.stringify(b) });
+
+/* A party now opens in the LOBBY, which has no clock and no gameplay. These
+ * tests are about the evening itself, so the helper creates a party and opens
+ * the doors in one step; the lobby has its own tests. */
+const createGame = async (ev) => {
+  const res = await createGameRaw(ev);
+  const body = JSON.parse(res.body);
+  if (body.partyCode) {
+    await advance(POST({ partyCode: body.partyCode, hostToken: body.hostToken, openDoors: true }));
+  }
+  return res;
+};
 const GET = (q) => ({ httpMethod: 'GET', queryStringParameters: q });
 const j = async (r) => JSON.parse((await r).body);
 const nameOf = (id) => pack.cast.find((c) => c.id === id).name;

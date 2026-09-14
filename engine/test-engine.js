@@ -8,17 +8,30 @@
 
 delete process.env.NETLIFY; // force in-memory backend
 
-const createGame = require('./functions/create-game').handler;
+const createGameRaw = require('./functions/create-game').handler;
 const join = require('./functions/join').handler;
 const state = require('./functions/state').handler;
 const scan = require('./functions/scan').handler;
 const poll = require('./functions/poll').handler;
 const advance = require('./functions/advance').handler;
 const reveal = require('./functions/reveal').handler;
+const cast = require('./functions/cast').handler;
 const { getGame } = require('./lib/store');
 const { loadRuntimePack } = require('./lib/runtime');
 
 const POST = (body) => ({ httpMethod: 'POST', body: JSON.stringify(body) });
+
+/* Every party now opens in the LOBBY, which has no clock and no gameplay. These
+ * tests are about the evening itself, so the helper creates a party and opens
+ * the doors in one step; the lobby has its own tests. */
+const createGame = async (ev) => {
+  const res = await createGameRaw(ev);
+  const body = JSON.parse(res.body);
+  if (body.partyCode) {
+    await advance(POST({ partyCode: body.partyCode, hostToken: body.hostToken, openDoors: true }));
+  }
+  return res;
+};
 const GET = (queryStringParameters) => ({ httpMethod: 'GET', queryStringParameters });
 const j = async (res) => JSON.parse((await res).body);
 
@@ -499,6 +512,55 @@ async function main() {
       cf.guests.length === 10 &&
       cf.discoveries.some((d) => d.exhibit === firstExhibit) &&
       Array.isArray(cf.awards));
+  }
+
+  // ---------------------------------------------------------------------
+  // THE LOBBY. The weeks between casting and the party. A guest can claim
+  // their character and read the public half of it; everything else has to
+  // be unreachable, including to someone reading the raw response.
+  // ---------------------------------------------------------------------
+  {
+    const c = await j(createGameRaw(POST({})));
+    assert('a new party opens in the lobby', c.lobby === true);
+
+    await j(cast(POST({ action: 'save', partyCode: c.partyCode, hostToken: c.hostToken, reservations: { C3: 'Dana' } })));
+    const first = await j(join(POST({ partyCode: c.partyCode, name: 'Dana' })));
+    assert('a reservation is honoured in the lobby', first.character.id === 'C3' && first.returning === false);
+
+    const lob = await j(state(GET({ partyCode: c.partyCode, personalCode: first.personalCode })));
+    assert('lobby state says so and reports no phase', lob.state.lobby === true && lob.state.phase === 0);
+    assert('lobby state carries no victim, clock, narration or roster',
+      !('victim' in lob.state) && !('timing' in lob.state) &&
+      !('narration' in lob.state) && !('roster' in lob.state));
+    assert('a lobby guest gets the public half and nothing more',
+      lob.you.character.persona && !('brief' in lob.you.character) &&
+      !('lines' in lob.you) && !('killer' in lob.you) && !('drops' in lob.you));
+    assert('the public half never contains the secret marker',
+      !/SECRET/i.test(lob.you.character.persona));
+    assert('a future beat never leaves the server',
+      Array.isArray(lob.state.beats) &&
+      lob.state.beats.every((b) => !b.at || Date.parse(b.at) <= Date.now()));
+
+    // Nothing that belongs to the evening may run yet.
+    const noScan = await j(scan(POST({ partyCode: c.partyCode, personalCode: first.personalCode, exhibit: '1' })));
+    const noAdv = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+    assert('scanning and advancing are refused while the lobby is up',
+      !!noScan.error && !!noAdv.error);
+
+    // The whole point: the same name on the night returns the same seat.
+    const again = await j(join(POST({ partyCode: c.partyCode, name: '  dANa ' })));
+    assert('rejoining by name returns the same seat and character',
+      again.returning === true && again.personalCode === first.personalCode && again.character.id === 'C3');
+    const g = await getGame(c.partyCode);
+    assert('rejoining does not consume a second seat', Object.keys(g.players).length === 1);
+
+    const opened = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, openDoors: true })));
+    assert('opening the doors starts phase 1', opened.lobby === false && opened.phase === 1);
+    const now = await j(state(GET({ partyCode: c.partyCode, personalCode: first.personalCode })));
+    assert('the dossier appears only once the doors are open',
+      !now.state.lobby && !!now.you.character.brief && now.you.character.id === 'C3');
+    const twice = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, openDoors: true })));
+    assert('the doors cannot be opened twice', !!twice.error);
   }
 
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);

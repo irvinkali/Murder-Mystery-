@@ -18,7 +18,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, hostToken, phase, pause, auto, extend, blackout, photo } = parseBody(event);
+  const { partyCode, hostToken, phase, pause, auto, extend, blackout, photo, openDoors } = parseBody(event);
   if (!partyCode) return bad('partyCode required');
   const code = partyCode.toUpperCase();
 
@@ -27,6 +27,26 @@ exports.handler = async (event) => {
   if (hostToken !== game.hostToken) return forbidden('host only');
 
   const pack = loadRuntimePack();
+
+  // Open the doors: the lobby ends, the phase clock starts from now rather
+  // than from whenever the party was created, and Phase 1 speaks.
+  if (openDoors === true) {
+    if (!game.lobby) return bad('the doors are already open');
+    const { pushNarrator } = require('../lib/narrator');
+    await updateGame(code, (g) => {
+      if (!g.lobby) return g;
+      g.lobby = false;
+      g.phase = 1;
+      g.phaseStartedAt = new Date().toISOString();
+      g.paused = false; g.pausedAt = null; g.pauseAccumMs = 0;
+      g.log.push({ at: new Date().toISOString(), kind: 'doors' });
+      return g;
+    });
+    return ok({ lobby: false, phase: 1 });
+  }
+
+  // Every other host control belongs to an evening that has begun.
+  if (game.lobby) return bad('the party has not started yet; open the doors first');
 
   // Pause / resume the phase clock (auto-advance waits while paused).
   if (typeof pause === 'boolean') {

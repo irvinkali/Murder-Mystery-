@@ -23,6 +23,7 @@ exports.handler = async (event) => {
   const code = b.partyCode.toUpperCase();
   const game = await getGame(code);
   if (!game) return notFound('no such party');
+  if (game.lobby) return bad('the party has not started yet');
 
   if (b.action === 'submit') {
     if (!b.personalCode || !game.players[b.personalCode]) return forbidden('join first');

@@ -49,6 +49,13 @@ async function main() {
     // API flow over HTTP.
     const created = await (await post('/api/create-game', { hostName: 'Kali' })).json();
     assert('POST /api/create-game returns a code and hides the variant', !!created.partyCode && !('variant' in created));
+    assert('a new party opens in the lobby', created.lobby === true);
+    // The lobby has no gameplay, so the smoke run opens the doors first.
+    const lob = await (await get(`/api/state?partyCode=${created.partyCode}`)).json();
+    assert('lobby state carries no victim and no phase clock',
+      lob.state.lobby === true && !('victim' in lob.state) && !('timing' in lob.state));
+    const doors = await (await post('/api/advance', { partyCode: created.partyCode, hostToken: created.hostToken, openDoors: true })).json();
+    assert('POST /api/advance openDoors starts the evening', doors.lobby === false && doors.phase === 1);
     const j1 = await (await post('/api/join', { partyCode: created.partyCode, name: 'A' })).json();
     assert('POST /api/join assigns a character', !!j1.personalCode && !!j1.character);
     const st = await (await get(`/api/state?partyCode=${created.partyCode}&personalCode=${j1.personalCode}`)).json();

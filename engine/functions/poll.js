@@ -25,6 +25,7 @@ exports.handler = async (event) => {
   const code = b.partyCode.toUpperCase();
   const game = await getGame(code);
   if (!game) return notFound('no such party');
+  if (game.lobby) return bad('the party has not started yet');
   const pack = loadRuntimePack();
   const isHost = () => b.hostToken && b.hostToken === game.hostToken;
 

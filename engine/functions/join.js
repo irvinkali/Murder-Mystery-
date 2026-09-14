@@ -1,6 +1,11 @@
 'use strict';
 /* POST /api/join  { partyCode, name, characterId? } -> { personalCode, character }
  * Seating order:
+ *  0. The name ALREADY holds a seat in this party -> that same seat, with its
+ *     original personal code. Joining is therefore safe to repeat: a guest who
+ *     claimed their character in the lobby weeks ago arrives on the night, types
+ *     the same name, and gets the same character rather than a fresh seat out of
+ *     what is left. It also rescues anyone who lost their seat code.
  *  1. The name matches a host reservation (case/spacing ignored) -> that character.
  *  2. characterId given -> claims that unclaimed, unreserved character (casting).
  *  3. Otherwise the next unclaimed seat, core cast first, skipping reserved
@@ -29,9 +34,22 @@ exports.handler = async (event) => {
   let pcode = null;
   let alreadyClaimed = false;
   let reservedElsewhere = false;
+  let returning = false;
 
   const game = await updateGame(partyCode.toUpperCase(), (g) => {
-    assignedId = null; alreadyClaimed = false; reservedElsewhere = false; // reset on retry
+    assignedId = null; alreadyClaimed = false; reservedElsewhere = false; returning = false; // reset on retry
+
+    // Already seated under this name? Hand back the same seat, untouched.
+    const seated = Object.entries(g.players || {})
+      .find(([, p]) => normName(p.name) === want && p.characterId);
+    if (want && seated) {
+      pcode = seated[0];
+      assignedId = seated[1].characterId;
+      returning = true;
+      g.players[pcode].lastActive = new Date().toISOString();
+      return g;
+    }
+
     const taken = new Set(Object.keys(g.assignments));
     const res = g.reservations || {};
     const open = (id) => !taken.has(id);
@@ -59,5 +77,5 @@ exports.handler = async (event) => {
   if (reservedElsewhere) return bad('that character is reserved for another guest — pick another');
   if (!assignedId) return bad('party is full (all characters assigned)');
 
-  return ok({ personalCode: pcode, character: playerBrief(pack, assignedId) });
+  return ok({ personalCode: pcode, character: playerBrief(pack, assignedId), returning });
 };

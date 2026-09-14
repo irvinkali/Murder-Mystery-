@@ -36,6 +36,13 @@
 
   <div class="card" id="live" style="display:none">
     <h2>Party <span id="code" class="serif" style="color:var(--gold-2)"></span></h2>
+    <div class="card" id="doorsBox" style="display:none;border-color:var(--gold);margin-top:0">
+      <h3 style="margin-top:0">The lobby is open</h3>
+      <p class="muted" id="doorsWho">Guests can claim their character and read the public half of it. The evening has not started: no clock is running, no dossier is readable, nothing can be scanned.</p>
+      <button id="doorsBtn">Open the doors and begin</button>
+      <p class="muted" style="font-size:12px;margin-bottom:0">Press this when people are actually in the room. It starts Phase 1 and unlocks everyone's dossier at once. There is no undo.</p>
+      <div class="err" id="doorsErr"></div>
+    </div>
     <p class="muted"><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
     <details><summary class="muted">Host key — for running these controls on a second device</summary>
       <p class="muted" style="font-size:13px;margin-top:10px">Anyone with this can drive the party, so keep it to yourself. Write it down before the night: it is the only way back into host controls if this device dies.</p>
@@ -131,6 +138,20 @@ async function tick() {
   if (!Store.party) return;
   try {
     const { state } = await api(`state?partyCode=${Store.party}`);
+    if (state.lobby) {
+      el('#doorsBox').style.display = 'block';
+      const n = (state.room || []).length;
+      el('#doorsWho').textContent = n
+        ? `${n} of ${state.playerCount + (state.casting||[]).length} characters claimed. Guests can read the public half of theirs and nothing else: no clock is running, no dossier is readable, nothing can be scanned.`
+        : 'Nobody has claimed a character yet. Guests can read the public half of theirs and nothing else: no clock is running, no dossier is readable, nothing can be scanned.';
+      el('#phaseTitle').textContent = 'Before the night';
+      el('#phaseDetail').textContent = 'The lobby is up. Open the doors when the room is full.';
+      el('#phaseClock').textContent = '';
+      el('#nextUp').textContent = 'Next: Arrivals';
+      el('#pollList').innerHTML = '<span class="muted">Polls start when the doors open.</span>';
+      return;
+    }
+    el('#doorsBox').style.display = 'none';
     cur.phase = state.phase; cur.paused = state.timing && state.timing.paused;
     cur.auto = !state.timing || state.timing.autoAdvance !== false;
     el('#autoBtn').textContent = cur.auto ? 'Turn auto off' : 'Turn auto on';
@@ -180,6 +201,12 @@ el('#resumeHost').addEventListener('click', async () => {
   } catch (e) {
     el('#rErr').textContent = /host only|forbidden/i.test(e.message) ? 'That host key does not match this party.' : e.message;
   }
+});
+el('#doorsBtn').addEventListener('click', async () => {
+  if (!confirm('Open the doors? This starts Phase 1 and unlocks every dossier. There is no undo.')) return;
+  el('#doorsErr').textContent = '';
+  try { await api('advance', { partyCode: Store.party, hostToken: Store.host, openDoors: true }); tick(); }
+  catch (e) { el('#doorsErr').textContent = e.message; }
 });
 el('#advBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host}); tick(); } catch(e){ alert(e.message); } });
 el('#pauseBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,pause:!cur.paused}); tick(); } catch(e){ alert(e.message); } });

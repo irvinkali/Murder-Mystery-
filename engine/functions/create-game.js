@@ -23,6 +23,10 @@ exports.handler = async (event) => {
     partyCode: code,
     hostToken,
     createdAt: new Date().toISOString(),
+    // The party opens in the LOBBY: guests can claim their character and read
+    // the public half of it, but the evening itself has not started. The host
+    // ends it with Open the doors, which is when the phase clock really begins.
+    lobby: true,
     phase: 1,
     phaseStartedAt: new Date().toISOString(),
     autoAdvance: true, // the app runs the clock; host can pause/extend/turn off
@@ -37,5 +41,5 @@ exports.handler = async (event) => {
   await putGame(code, game);
 
   // NOTE: sealedVariant is intentionally NOT returned.
-  return ok({ partyCode: code, hostToken, phase: 1 });
+  return ok({ partyCode: code, hostToken, phase: 1, lobby: true });
 };

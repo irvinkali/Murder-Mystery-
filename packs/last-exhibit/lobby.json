@@ -1,0 +1,10 @@
+{
+  "$comment": "The lobby: what a guest can see in the weeks before the party. Presentation and costume only, never plot, which is why it is plaintext beside the encoded bible. A beat writes a character as {{C3}} and the name is substituted when it is served, so no character name is ever written down here. This pack carries copy but no beats or costume notes; the lobby simply shows less.",
+  "copy": {
+    "title": "Before the private view",
+    "standfirst": "You are cast. Here is who the room thinks you are. Everything private to you opens when the doors do.",
+    "doorsNote": "Your dossier and everything you are carrying into that room unlock on the night. Not before, not for anyone."
+  },
+  "beats": [],
+  "characters": {}
+}
