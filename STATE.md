@@ -168,7 +168,7 @@ overwhelmingly women. The surface of all twenty characters was rewritten. The my
 is untouched: same ids, same secrets, same implications, same four variants, same evidence chains,
 same trigger phrases.
 
-- **14 women, 3 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
+- **12 women, 5 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
   the count is machine-checkable rather than inferred from prose.
 - **Period-correct names.** The first cast was unisex to the point of androgyny (Tandy, Reese,
   Marion, Quinn, Emery). These are the names of people born around 1971.
@@ -183,6 +183,11 @@ Downstream: the casting sheet, the guest communications and `lobby.json` were re
 roster. `docs/` carried no character names, so the props guide and both runbooks were unaffected.
 Party FMEU was created before the recast but nobody had claimed a character, and character ids did
 not move, so it picks up the new cast on deploy with nothing to redo.
+
+Two more men (added 2026-09-14). Her guest list came back needing them, so flex F3 and F10 were
+rewritten from women to men: name, pronoun tag, costume note, and the gendered phrasing in their own
+lines. Nothing underneath moved. Both are flex, so no variant, evidence chain or prop hung on either
+of them, and the ids did not move.
 
 ## The party audit, and two gaps it found (added 2026-09-14)
 `engine/audit.js` plays 24 real games and answers the three questions that actually decide whether
