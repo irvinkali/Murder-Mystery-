@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadRuntimePack, publicPersona } = require('./runtime');
+const { displayNames } = require('./names');
 const { packId } = require('./theme');
 
 const PACKS = path.join(__dirname, '..', '..', 'packs');
@@ -108,9 +109,10 @@ function lobbyBrief(pack, characterId, file) {
 function lobbyRoom(pack, game) {
   const chars = allCharacters(pack);
   const name = (id) => { const c = chars.find((x) => x.id === id); return c ? c.name : id; };
-  return Object.values(game.players || {}).map((p) => ({
+  const shown = displayNames(game);
+  return Object.entries(game.players || {}).map(([code, p]) => ({
     characterName: name(p.characterId),
-    firstName: p.name,
+    firstName: shown[code] || p.name,
   }));
 }
 

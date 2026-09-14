@@ -12,6 +12,7 @@ const {
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
 const { lobbyBrief, lobbyRoom, lobbyCopy, beatsSoFar, nextBeatAt, loadLobbyFile } = require('../lib/lobby');
+const { displayNames } = require('../lib/names');
 const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
@@ -54,7 +55,7 @@ exports.handler = async (event) => {
     let me = null;
     if (q.personalCode && game.players[q.personalCode]) {
       const p = game.players[q.personalCode];
-      me = { name: p.name, character: lobbyBrief(pack, p.characterId, file) };
+      me = { name: displayNames(game)[q.personalCode] || p.name, character: lobbyBrief(pack, p.characterId, file) };
     }
     return ok({ state, you: me });
   }
@@ -80,11 +81,13 @@ exports.handler = async (event) => {
     return c ? c.name : id;
   };
 
-  // Room list: who's actually in, real first name + character name (public).
+  // Room list: who's actually in, real name + character name (public). The
+  // real name is a first name unless two guests here share one.
+  const shown = displayNames(game);
   const roster = Object.entries(game.players).map(([code, p]) => ({
     characterId: p.characterId,
     characterName: charName(p.characterId),
-    firstName: p.name,
+    firstName: shown[code] || p.name,
   }));
 
   // Gallery narrator cards (most recent first): find-hints, medical, etc.
@@ -150,7 +153,7 @@ exports.handler = async (event) => {
     const drops = visibleDrops(game, q.personalCode, game.phase);
     const hasHint = drops.some((d) => d.kind === 'hint');
     you = {
-      name: me.name,
+      name: shown[q.personalCode] || me.name,
       character: playerBrief(pack, me.characterId),
       // The current phase's private script line ("Your lines" card). Never future.
       lines: pack.scriptLines ? (pack.scriptLines[me.characterId] || {})[game.phase] || null : null,

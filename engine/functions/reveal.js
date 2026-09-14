@@ -5,6 +5,7 @@
  * it to the host. The host keeps advance/pause control. */
 
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
+const { displayNames } = require('../lib/names');
 const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack, getVariant, KEYSTONE_PHASE, PHASES, audioName, AUDIO_KEYS, resolveKillerId } = require('../lib/runtime');
 const { finalVoteClosed, tally } = require('../lib/pollsched');
@@ -42,10 +43,11 @@ function computeFinale(pack, game, killerId) {
   const voteCounts = finalPoll ? tally(finalPoll) : {};
   const votes = finalPoll ? finalPoll.votes : {};
   const players = game.players || {};
+  const shown = displayNames(game);
   const info = (code) => {
     const p = players[code] || {};
     const ch = pack.cast.concat(pack.flex || []).find((c) => c.id === p.characterId);
-    return { firstName: p.name || '?', characterName: ch ? ch.name : '?', scans: p.scanCount || 0, joined: p.joinedAt || '' };
+    return { firstName: shown[code] || p.name || '?', characterName: ch ? ch.name : '?', scans: p.scanCount || 0, joined: p.joinedAt || '' };
   };
 
   const awards = [];
@@ -76,13 +78,13 @@ function computeFinale(pack, game, killerId) {
       return ch && ch.name === innocent[0];
     });
     const a = award(pack, 'mostSuspected', innocent[1]);
-    awards.push({ title: a.title, firstName: seat ? seat[1].name : '', characterName: innocent[0], note: a.note });
+    awards.push({ title: a.title, firstName: seat ? (shown[seat[0]] || seat[1].name) : '', characterName: innocent[0], note: a.note });
   }
   // The killer takes a bow.
   const killerSeat = Object.entries(players).find(([, p]) => p.characterId === killerId);
   if (killerSeat) {
     const a = award(pack, caught ? 'caught' : 'perfect');
-    awards.push({ title: a.title, firstName: killerSeat[1].name, characterName: killerName, note: a.note });
+    awards.push({ title: a.title, firstName: shown[killerSeat[0]] || killerSeat[1].name, characterName: killerName, note: a.note });
   }
   return { voteCounts, caught, awards };
 }

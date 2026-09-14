@@ -4,6 +4,7 @@
  * the room by then). Any guest can pull it — it's the party favor. */
 
 const { ok, bad, notFound, forbidden, preflight } = require('../lib/api');
+const { displayNames } = require('../lib/names');
 const { connect, getGame } = require('../lib/store');
 const { loadRuntimePack, propEntry, exhibitNumber, worldCopy, say, FALLBACK } = require('../lib/runtime');
 
@@ -38,8 +39,9 @@ exports.handler = async (event) => {
   // The room's votes (aggregate) for every anonymous poll.
   const polls = Object.entries(game.pollResults || {}).map(([id, r]) => ({ id, question: r.question, counts: r.counts }));
 
-  const guests = Object.values(game.players || {}).map((p) => ({
-    firstName: p.name,
+  const shown = displayNames(game);
+  const guests = Object.entries(game.players || {}).map(([code, p]) => ({
+    firstName: shown[code] || p.name,
     characterName: chName(p.characterId),
     exhibitsExamined: p.scanCount || 0,
   }));

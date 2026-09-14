@@ -1,5 +1,6 @@
 'use strict';
-/* POST /api/join  { partyCode, name, characterId? } -> { personalCode, character }
+/* POST /api/join  { partyCode, firstName, lastName?, characterId? } -> { personalCode, character }
+ * (a single `name` is still accepted, and is read as the whole name)
  * Seating order:
  *  0. The name ALREADY holds a seat in this party -> that same seat, with its
  *     original personal code. Joining is therefore safe to repeat: a guest who
@@ -15,21 +16,25 @@
 
 const { ok, bad, notFound, preflight, parseBody, personalCode } = require('../lib/api');
 const { connect, updateGame } = require('../lib/store');
-const { loadRuntimePack, playerBrief, assignableIds, normName } = require('../lib/runtime');
+const { loadRuntimePack, playerBrief, assignableIds } = require('../lib/runtime');
+const { fullName, matchNames } = require('../lib/names');
 
 exports.handler = async (event) => {
   connect(event);
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, name, characterId } = parseBody(event);
-  if (!partyCode || !name) return bad('partyCode and name required');
+  const body0 = parseBody(event);
+  const { partyCode, characterId } = body0;
+  // The page sends a first and a last name; older callers send one `name`.
+  const want = body0.firstName
+    ? fullName(body0.firstName, body0.lastName)
+    : fullName(body0.name, '');
+  if (!partyCode || !want) return bad('partyCode and name required');
 
   const pack = loadRuntimePack();
   const seatOrder = assignableIds(pack); // core cast first, then flex
   if (characterId && !seatOrder.includes(characterId)) return bad('no such character');
-  const want = normName(name);
-
   let assignedId = null;
   let pcode = null;
   let alreadyClaimed = false;
@@ -40,12 +45,18 @@ exports.handler = async (event) => {
     assignedId = null; alreadyClaimed = false; reservedElsewhere = false; returning = false; // reset on retry
 
     // Already seated under this name? Hand back the same seat, untouched.
-    const seated = Object.entries(g.players || {})
-      .find(([, p]) => normName(p.name) === want && p.characterId);
-    if (want && seated) {
-      pcode = seated[0];
-      assignedId = seated[1].characterId;
+    const seatedHits = matchNames(want, Object.entries(g.players || {})
+      .filter(([, p]) => p.characterId)
+      .map(([code, p]) => ({ key: code, name: p.name })));
+    if (seatedHits.length === 1) {
+      pcode = seatedHits[0];
+      assignedId = g.players[pcode].characterId;
       returning = true;
+      // If they gave more of their name this time, keep the fuller version:
+      // it is what tells two guests with the same first name apart.
+      if (want.split(' ').length > String(g.players[pcode].name || '').trim().split(/\s+/).length) {
+        g.players[pcode].name = want;
+      }
       g.players[pcode].lastActive = new Date().toISOString();
       return g;
     }
@@ -53,7 +64,10 @@ exports.handler = async (event) => {
     const taken = new Set(Object.keys(g.assignments));
     const res = g.reservations || {};
     const open = (id) => !taken.has(id);
-    const match = want ? seatOrder.find((id) => open(id) && res[id] && normName(res[id]) === want) : null;
+    const resHits = matchNames(want, seatOrder
+      .filter((id) => open(id) && res[id])
+      .map((id) => ({ key: id, name: res[id] })));
+    const match = resHits.length === 1 ? resHits[0] : null;
     if (match) {
       assignedId = match;
     } else if (characterId) {
@@ -66,7 +80,7 @@ exports.handler = async (event) => {
     if (!assignedId) return g; // full (all seats claimed)
     pcode = personalCode();
     const now = new Date().toISOString();
-    g.players[pcode] = { name, characterId: assignedId, joinedAt: now, lastActive: now };
+    g.players[pcode] = { name: want, characterId: assignedId, joinedAt: now, lastActive: now };
     g.assignments[assignedId] = pcode;
     g.log.push({ at: new Date().toISOString(), kind: 'join', characterId: assignedId });
     return g;

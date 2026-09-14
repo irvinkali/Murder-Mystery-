@@ -475,7 +475,8 @@ async function main() {
     const last = await j(join(POST({ partyCode: c.partyCode, name: 'Typo Opal' })));
     assert('an unmatched guest still gets a reserved seat once nothing else is free', last.character && last.character.id === 'C1');
     const g1 = await hc({ action: 'get' });
-    assert('host roster shows who joined as each character', row(g1, 'C3').claimedBy === '  zebulon   QUARTZ ');
+    assert('host roster shows who joined as each character (stray spacing tidied)',
+      row(g1, 'C3').claimedBy === 'zebulon QUARTZ');
   }
 
   // 16. Photo moment + case file.
@@ -592,6 +593,46 @@ async function main() {
     }
     assert('netlify.toml ships every file a pack carries', missing.length === 0);
   }
+
+  // 18. Guest names: full name asked for, first name shown, more only on a clash.
+  {
+    const { displayNames, matchNames, splitName, fullName } = require('./lib/names');
+    const one = displayNames({ players: { a: { name: 'Tammy Brennan' }, b: { name: 'Dana Whitfield' } } });
+    assert('names: a unique first name shows on its own', one.a === 'Tammy' && one.b === 'Dana');
+    const two = displayNames({ players: { a: { name: 'Tracy Holcomb' }, b: { name: 'Tracy Brennan' } } });
+    assert('names: a shared first name gains a last initial', two.a === 'Tracy H.' && two.b === 'Tracy B.');
+    const three = displayNames({ players: { a: { name: 'Sam Brooks' }, b: { name: 'Sam Bell' } } });
+    assert('names: matching initials fall through to the whole last name',
+      three.a === 'Sam Brooks' && three.b === 'Sam Bell');
+    const four = displayNames({ players: { a: { name: 'Sam' }, b: { name: 'Sam Bell' } } });
+    assert('names: a guest with no last name keeps their first name', four.a === 'Sam' && four.b === 'Sam B.');
+    assert('names: split and rejoin are stable',
+      splitName('  Tammy   Van Horn ').last === 'Van Horn' && fullName(' Tammy ', ' Van Horn ') === 'Tammy Van Horn');
+    const seats = [{ key: 's1', name: 'Taylor Holcomb' }, { key: 's2', name: 'Dana Whitfield' }];
+    assert('names: a first name alone finds the one seat it can mean',
+      matchNames('Taylor', seats).length === 1 && matchNames('taylor  holcomb', seats)[0] === 's1');
+    assert('names: two different full names never match each other',
+      matchNames('Taylor Brennan', seats).length === 0);
+    assert('names: an ambiguous first name matches nothing on its own',
+      matchNames('Taylor', [{ key: 'a', name: 'Taylor Holcomb' }, { key: 'b', name: 'Taylor Brennan' }]).length === 2);
+
+    // End to end: the join page sends two fields, the room shows one name.
+    const c = await j(createGame(POST({ hostName: 'Kali' })));
+    const g1 = await j(join(POST({ partyCode: c.partyCode, firstName: 'Tracy', lastName: 'Holcomb' })));
+    const g2 = await j(join(POST({ partyCode: c.partyCode, firstName: 'Tracy', lastName: 'Brennan' })));
+    const g3 = await j(join(POST({ partyCode: c.partyCode, firstName: 'Dana', lastName: 'Whitfield' })));
+    const st2 = await j(state(GET({ partyCode: c.partyCode, personalCode: g1.personalCode })));
+    const shown = st2.state.roster.map((r) => r.firstName).sort();
+    assert('join: the room sees first names, disambiguated only where it must',
+      shown.join('|') === 'Dana|Tracy B.|Tracy H.' && !!g2.personalCode && !!g3.personalCode);
+    const again = await j(join(POST({ partyCode: c.partyCode, firstName: 'Tracy', lastName: 'Holcomb' })));
+    assert('join: typing the same name again returns the same seat',
+      again.returning === true && again.personalCode === g1.personalCode);
+    const lobbyName = await j(join(POST({ partyCode: c.partyCode, name: 'Dana' })));
+    assert('join: a guest who joined on a first name is recognized when they add a last',
+      lobbyName.personalCode === g3.personalCode);
+  }
+
 
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);

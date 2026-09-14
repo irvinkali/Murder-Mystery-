@@ -19,8 +19,10 @@
     <h2>Join the party</h2>
     <label for="party">Party code</label>
     <input id="party" autocapitalize="characters" autocomplete="off" maxlength="4" placeholder="ABCD" />
-    <label for="name">Your first name</label>
-    <input id="name" autocomplete="given-name" placeholder="What your fellow guests will call you" />
+    <label for="first">Your name</label>
+    <p class="muted" style="font-size:13px;margin:-4px 0 8px">Your own name, so the host knows who is here. At the party everyone will call you by your character's name.</p>
+    <input id="first" autocomplete="given-name" placeholder="First name" />
+    <input id="last" autocomplete="family-name" placeholder="Last name" />
     <button class="ghost" id="castBtn" type="button">Choose who you'll be (optional)</button>
     <div id="castList" style="display:none;margin-top:12px">
       <p class="muted" style="font-size:13px">These are the guests still unclaimed — you'll see only what the whole room will know about them. Tap one, or skip and be surprised.</p>
@@ -84,12 +86,13 @@ applyBrand();
   });
   el('#joinBtn').addEventListener('click', async () => {
     const partyCode = el('#party').value.trim().toUpperCase();
-    const name = el('#name').value.trim();
+    const first = el('#first').value.trim();
+    const last = el('#last').value.trim();
     el('#err').textContent = '';
-    if (!partyCode || !name) { el('#err').textContent = 'Enter the party code and your name.'; return; }
+    if (!partyCode || !first || !last) { el('#err').textContent = 'Enter the party code and your first and last name.'; return; }
     el('#joinBtn').disabled = true;
     try {
-      const body = { partyCode, name };
+      const body = { partyCode, firstName: first, lastName: last };
       if (chosenChar) body.characterId = chosenChar;
       const r = await api('join', body);
       Store.party = partyCode; Store.code = r.personalCode;
