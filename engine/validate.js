@@ -18,7 +18,10 @@ const EXPECTED = {
   // Checksum pin for the default bible (safe, non-spoiler). Re-pinned when the
   // player-facing copy sections (8–11) moved out of the engine and into the
   // bible; the previous value was 424fe1e3e0cd2df4010b9a71f6bf9c6c.
-  md5: 'b5531a15dcbcf9d9d34edf6a4bf3e713',
+  // Re-pinned again when variant B gained a keystone prop (R4b) and Phase 2
+  // gained script lines (R7); the previous value was
+  // b5531a15dcbcf9d9d34edf6a4bf3e713.
+  md5: '9aed8f4c2eb09757074eed40c0881216',
   coreCast: 10,
   variants: 4,
   props: 7,
@@ -200,6 +203,49 @@ function run() {
     check('R5', 'Every prop genuine in ≥1 variant; each variant uses 3–4 genuine props',
       'rigorous', ok,
       `all props used: ${everyPropUsed}; per-variant counts in [3,4]: ${colCountsOk}; matrix↔bullet consistent: ${consistent}`);
+  }
+
+  // ---- R4b: the keystone is an OBJECT somebody has to find ----
+  // R4 proves E6 is the last step and nothing releases it early. That is a
+  // statement about the chain. This is the runtime half: the decisive step has
+  // to hang off a prop the room can physically find, or Phase 4 has nothing to
+  // open and that night is materially easier than the other three. One pack
+  // shipped with a variant that had no keystone prop at all, which is why this
+  // rule exists.
+  {
+    const notes = [];
+    let ok = variantsOk;
+    for (const v of V) {
+      const letter = v.id || v.letter || v.key;
+      const ks = pack.props.filter((p) => {
+        const id = typeof p === 'string' ? p : p.id;
+        return ((pack.matrix[id] || {})[letter]) === 'keystone';
+      }).map((p) => (typeof p === 'string' ? p : p.id));
+      const e6 = (v.evidence.steps || []).find((st) => st.n === 6);
+      const named = e6 ? ks.filter((id) => new RegExp('\\b' + id + '\\b').test(e6.text)) : [];
+      if (ks.length !== 1) { ok = false; notes.push(`variant ${letter}: ${ks.length} keystone props (want 1)`); }
+      else if (named.length !== 1) { ok = false; notes.push(`variant ${letter}: E6 does not name its keystone prop`); }
+    }
+    check('R4b', 'Every variant hangs its keystone on a findable prop', 'rigorous', ok,
+      notes.length ? notes.join('; ') : 'all variants: exactly one keystone prop, named by E6');
+  }
+
+  // ---- R7: every character has something to say in every playable phase ----
+  // A phase where nobody is handed a line is a phase where the quiet guests go
+  // quiet. Phases 1 to 5 are played; 6 is the reveal and needs no lines.
+  {
+    const ids = [...pack.cast.map((c) => c.id), ...(pack.flex || []).map((f) => f.id)];
+    const lines = pack.scriptLines || {};
+    const gaps = [];
+    for (let ph = 1; ph <= 5; ph++) {
+      const missing = ids.filter((id) => {
+        const l = (lines[id] || {})[ph];
+        return !l || (!l.quote && !l.prompt);
+      });
+      if (missing.length) gaps.push(`phase ${ph}: ${missing.length}/${ids.length} characters with no line`);
+    }
+    check('R7', 'Every character has a private line in every played phase', 'rigorous',
+      gaps.length === 0, gaps.length ? gaps.join('; ') : `all ${ids.length} characters carry a line in phases 1-5`);
   }
 
   // ---- §7 Rule 6: any character (incl. killer) playable w/o acting skill ----

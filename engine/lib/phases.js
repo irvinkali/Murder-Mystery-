@@ -7,8 +7,8 @@
  *    now" beat per phase. Phase 1 embeds the props fairness disclosure verbatim
  *    from the content pack.
  *  - Script lines (private): each player gets ONLY their character's line for
- *    the new phase (never future phases), as an in-world note. Phase 2 is the
- *    single reaction line, delivered with the discovery/unveiling.
+ *    the new phase (never future phases), as an in-world note. Phase 2's line is
+ *    delivered with the discovery/unveiling.
  *  - Find-hints (Section 2): at Phase 3, each still-unfound prop's private hint
  *    is dealt to the two least-active players (their idle rescue). At Phase 4,
  *    each still-unfound prop's [SCREEN] narrator line goes to the gallery. Found

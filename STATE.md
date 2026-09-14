@@ -184,5 +184,48 @@ roster. `docs/` carried no character names, so the props guide and both runbooks
 Party FMEU was created before the recast but nobody had claimed a character, and character ids did
 not move, so it picks up the new cast on deploy with nothing to redo.
 
+## The party audit, and two gaps it found (added 2026-09-14)
+`engine/audit.js` plays 24 real games and answers the three questions that actually decide whether
+the night works, rather than restating that the unit tests pass. It prints counts and PASS/FAIL
+only, so it is safe to run in front of the owner.
+
+1. **Leaks.** Every endpoint, at every phase, as a player, as a bystander and with a forged seat
+   code: 2,520 payloads swept per run for the sealed variant's own text and for the killer named as
+   guilty. Zero, across all four variants.
+2. **Branching.** Two rooms voting differently end with different private content; finds change the
+   room and the narrator reacts; the 6:40 question resolves.
+3. **Engagement.** Every character has a line in every played phase, most lines name another guest
+   or set a task, the quietest seat at a table of twenty still receives something every phase, and
+   something stays locked until Phase 4.
+
+It found two real gaps, both present since the first pack and neither caused by the recast:
+
+- **Variant B had no keystone prop.** A, C and D each hang E6 on a prop that locks before Phase 4
+  and opens after it. B hung E6 on nothing, so one night in four had no gated object and Phase 4
+  released nothing. Fixed in both packs by promoting a prop B already treated as genuine. New
+  validator rule **R4b** now requires every variant to have exactly one keystone prop named by its
+  E6, so this cannot ship again.
+- **Nobody had a line in Phase 2.** Phase 2 carried a one-line reaction that the parser turned into
+  neither a quote nor a prompt, so the moment right after the discovery gave the quiet guests
+  nothing. Every character in both packs now has a Phase 2 quote and prompt. New validator rule
+  **R7** requires a line for every character in every played phase. Side effect: the share of lines
+  that point at another guest or set a task went from 64% to 84% in the reunion.
+
+`packs/last-exhibit/plot-bible.md.b64` changed, so `EXPECTED.md5` in validate.js was re-pinned.
+
+## The cast has relationships now (added 2026-09-14)
+The owner asked why a character had married into the class with no spouse present, and said the
+cast did not all have to be individuals. Four relationships were built out of existing characters:
+a married couple, two business partners, a pair estranged since 1989, and two cousins. Two of the
+four are core-to-core so the spine survives a table of ten.
+
+The rule that makes this safe: **a core character may never name a flex character**, because flex
+characters are optional and fairness rule 2 says nothing may depend on one. A core half speaks of a
+spouse in the abstract; only the flex half names the other person. Verified by script: zero
+references to a flex name anywhere in a core brief, secret or script line.
+
+The two retired teachers stay. They now read as what they are, invited guests of honour printed on
+the programme, rather than as unexplained attendees.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.
