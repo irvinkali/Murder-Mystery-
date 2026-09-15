@@ -519,6 +519,42 @@ async function main() {
       /reserved/i.test((await hc({ action: 'move', characterId: 'F3', toCharacterId: 'F6' })).error || ''));
   }
 
+  // 15d. Removing a guest. One person signing up twice under two spellings of
+  // their name takes two seats, and a drop-out leaves a seat held.
+  {
+    const c = await j(createGame(POST({})));
+    const hc = (body) => j(cast(POST({ partyCode: c.partyCode, hostToken: c.hostToken, ...body })));
+    const row = (r, id) => r.roster.find((x) => x.id === id);
+    const first = await j(join(POST({ partyCode: c.partyCode, firstName: 'Mike', lastName: 'Weaver', characterId: 'F4' })));
+    const dupe = await j(join(POST({ partyCode: c.partyCode, firstName: 'Michael', lastName: 'Weaver', characterId: 'F5' })));
+    assert('two spellings of one name take two seats', first.character.id === 'F4' && dupe.character.id === 'F5');
+    await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: dupe.personalCode, id: 'final', choice: 'anybody' })));
+
+    const denied = await cast(POST({ action: 'remove', partyCode: c.partyCode, hostToken: 'nope', characterId: 'F5' }));
+    assert('removing a guest is host only', denied.statusCode === 403);
+    assert('removing from an empty seat is refused',
+      /nobody has joined/i.test((await hc({ action: 'remove', characterId: 'F9' })).error || ''));
+
+    const gone = await hc({ action: 'remove', characterId: 'F5' });
+    assert('the host can remove a guest and the seat opens again',
+      gone.removed === 'Michael Weaver' && !row(gone, 'F5').claimedBy);
+    const s2 = await j(state(GET({ partyCode: c.partyCode })));
+    assert('a removed character returns to the guest picker', s2.state.casting.some((x) => x.id === 'F5'));
+    const orphan = await j(state(GET({ partyCode: c.partyCode, personalCode: dupe.personalCode })));
+    assert('the removed seat code stops working', !orphan.you);
+    const g2 = await getGame(c.partyCode);
+    assert('the removed guest takes their vote with them',
+      !Object.values(g2.polls || {}).some((p) => p.votes && dupe.personalCode in p.votes));
+    assert('the other sign-up is untouched', row(gone, 'F4').claimedBy === 'Mike Weaver');
+
+    await hc({ action: 'save', reservations: { F4: 'Mike Weaver', F6: 'Somebody Else' } });
+    const g3 = await hc({ action: 'remove', characterId: 'F4' });
+    assert('removing clears a reservation held in that guest name', !row(g3, 'F4').guest);
+    assert('removing leaves somebody else reservation alone', row(g3, 'F6').guest === 'Somebody Else');
+    const back = await j(join(POST({ partyCode: c.partyCode, firstName: 'Mike', lastName: 'Weaver' })));
+    assert('a removed guest can join again', back.character && back.personalCode !== first.personalCode);
+  }
+
   // 16. Photo moment + case file.
   {
     const casefile = require('./functions/casefile').handler;

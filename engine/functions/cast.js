@@ -12,6 +12,14 @@
  *          reservation alone can never undo a wrong pick, which is what this is
  *          for. Their personal code does not change, so their phone keeps
  *          working and simply shows the new character.
+ *   { action: 'remove', partyCode, hostToken, characterId }
+ *       -> same shape, after taking the guest who joined as characterId out of
+ *          the party: the seat opens again and their old seat code stops
+ *          working. For duplicate sign-ups (one person who joined twice under
+ *          two spellings of their name) and for drop-outs. Their vote and their
+ *          6:40 answer go with them so no tally counts a person who is not
+ *          there. A reservation on that character is cleared only if it was in
+ *          their name, so deliberate casting for somebody else survives.
  *
  * Reservations live on the party and are never included in /api/state, so the
  * gallery screen and players never see who was cast as whom. A guest whose
@@ -104,6 +112,36 @@ exports.handler = async (event) => {
     if (!saved) return notFound('no such party');
     if (err) return bad(err);
     return ok({ roster: hostRoster(pack, saved) });
+  }
+
+  if (action === 'remove') {
+    const valid = new Set(assignableIds(pack));
+    if (!valid.has(characterId)) return bad('no such character');
+    let err = null;
+    let removed = null;
+    const saved = await updateGame(code, (g) => {
+      err = null; removed = null;
+      const pcode = (g.assignments || {})[characterId];
+      if (!pcode) { err = 'nobody has joined as that character'; return g; }
+      const player = g.players[pcode] || {};
+      removed = player.name || '';
+      delete g.assignments[characterId];
+      delete g.players[pcode];
+      if (g.alibi) delete g.alibi[pcode];
+      for (const poll of Object.values(g.polls || {})) {
+        if (poll && poll.votes) delete poll.votes[pcode];
+      }
+      const res = g.reservations || {};
+      if (res[characterId] && matchNames(removed, [{ key: 'x', name: res[characterId] }]).length === 1) {
+        delete res[characterId];
+        g.reservations = res;
+      }
+      g.log.push({ at: new Date().toISOString(), kind: 'remove', characterId });
+      return g;
+    });
+    if (!saved) return notFound('no such party');
+    if (err) return bad(err);
+    return ok({ roster: hostRoster(pack, saved), removed });
   }
 
   return bad('unknown action');
