@@ -282,7 +282,7 @@ function secretChime(){
   } catch(e){}
 }
 function maybeChime(you, phase){
-  const sig = `${(you.drops||[]).length}|${you.killer?1:0}|${you.lines?phase:0}|${you.lines?((you.lines.more||[]).length):0}`;
+  const sig = `${(you.drops||[]).length}|${you.killer?1:0}|${you.lines?phase:0}|${you.lines?((you.lines.more||[]).length):0}|${you.goFind?you.goFind.characterId:''}`;
   if (noteSig !== null && sig !== noteSig) secretChime(); // changed → something new arrived
   noteSig = sig;
 }
@@ -298,6 +298,7 @@ function renderNotes(you) {
     parts.push(`<div class="note"><div class="kicker">${esc(kick)}</div>${esc(d.text||'')}</div>`);
   }
   if (you.nudge) parts.push(`<div class="note"><div class="kicker">A quiet word</div>${esc(you.nudge.text)}</div>`);
+  if (you.goFind) parts.push(`<div class="note"><div class="kicker">Go and find somebody</div>${esc(you.goFind.text)}</div>`);
   el('#notes').innerHTML = parts.join('');
 }
 

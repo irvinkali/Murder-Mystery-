@@ -19,6 +19,7 @@ const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs, releasedLines } = req
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
 const { awardsPublic, ownAwardVotes, ceremonyDue, advanceCeremony } = require('../lib/awards');
 const { autopilotOn, autopilotDue, runAutopilot, hostCue } = require('../lib/autopilot');
+const { goFindNudge } = require('../lib/gofind');
 
 exports.handler = async (event) => {
   connect(event);
@@ -184,6 +185,10 @@ exports.handler = async (event) => {
       killer: unlock,
       // Idle nudge — suppressed if a find-hint already gave them something to do.
       nudge: hasHint ? null : idleNudge(me.characterId, game.phase, idleMs, undefined, pack),
+      // One other seated character to go and find, once per phase from Asking
+      // Around on, so the room stops talking to the four it arrived with.
+      // Purely social: it carries nothing about the mystery.
+      goFind: goFindNudge(pack, game, me.characterId, game.phase),
       drops,
       alibiSubmitted: !!(game.alibi && game.alibi[q.personalCode]),
       // This guest's own superlative choices, so their phone can mark them.

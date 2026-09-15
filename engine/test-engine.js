@@ -1367,6 +1367,169 @@ async function main() {
   }
 
 
+  // ---------------------------------------------------------------------
+  // THE GO-FIND NUDGE. At fourteen people everybody talks to the four they
+  // arrived with. From Asking Around onward each seated guest is handed one
+  // other seated character to go and find. It is purely social: one rotation
+  // of the room per phase, so every seated character is named exactly once and
+  // the pattern of who gets named can carry no information at all.
+  // SPOILER-SAFE: asserts pairings, counts and variant-independence. The one
+  // thing it prints is PASS or FAIL.
+  // ---------------------------------------------------------------------
+  {
+    const { updateGame } = require('./lib/store');
+    const { goFindNudge, pairingsFor, seatedCharacterIds, GOFIND_FROM_PHASE } = require('./lib/gofind');
+    const ROUNDS = [3, 4, 5, 6];
+
+    const party = async (n) => {
+      const c = await j(createGame(POST({})));
+      const seats = [];
+      for (let i = 0; i < n; i++) {
+        const r = await j(join(POST({ partyCode: c.partyCode, name: 'Find' + i })));
+        seats.push(r.personalCode);
+      }
+      return { c, seats, game: await getGame(c.partyCode) };
+    };
+
+    // --- the shape of one round ---
+    {
+      const { game } = await party(14);
+      const seated = seatedCharacterIds(game);
+      assert('a full table seats fourteen characters to send people between', seated.length === 14);
+
+      let allOk = true, everNull = false;
+      const namedCount = {};
+      const sentTo = {};
+      for (const ph of ROUNDS) {
+        const pairs = pairingsFor(game, ph);
+        if (Object.keys(pairs).length !== seated.length) allOk = false;
+        const targets = [];
+        for (const id of seated) {
+          const to = pairs[id];
+          if (!to) { everNull = true; continue; }
+          if (to === id) allOk = false;                           // never yourself
+          if (!seated.includes(to)) allOk = false;                // never an empty seat
+          targets.push(to);
+          namedCount[to] = (namedCount[to] || 0) + 1;
+          (sentTo[id] = sentTo[id] || []).push(to);
+        }
+        // One rotation: everybody named exactly once in the round.
+        if (new Set(targets).size !== seated.length) allOk = false;
+      }
+      assert('every seated guest is sent to another seated character, never to themselves', allOk && !everNull);
+
+      const counts = seated.map((id) => namedCount[id] || 0);
+      assert('every seated character is named exactly the same number of times',
+        Math.min(...counts) === ROUNDS.length && Math.max(...counts) === ROUNDS.length);
+
+      assert('nobody is sent to the same person twice across the night',
+        seated.every((id) => new Set(sentTo[id]).size === sentTo[id].length));
+    }
+
+    // --- deterministic, and off before Asking Around ---
+    {
+      const { c, seats, game } = await party(12);
+      const me = game.players[seats[0]].characterId;
+      const first = goFindNudge(pack, game, me, 3);
+      assert('the nudge does not reshuffle between polls',
+        !!first && JSON.stringify(goFindNudge(pack, game, me, 3)) === JSON.stringify(first)
+        && JSON.stringify(goFindNudge(pack, await getGame(c.partyCode), me, 3)) === JSON.stringify(first));
+      assert('there is no go-find nudge before Asking Around',
+        GOFIND_FROM_PHASE === 3 && goFindNudge(pack, game, me, 1) === null
+        && goFindNudge(pack, game, me, 2) === null
+        && Object.keys(pairingsFor(game, 2)).length === 0);
+    }
+
+    // --- THE ONE THAT MATTERS: the nudges cannot know the answer ---
+    {
+      const { c, seats, game } = await party(14);
+      const seated = seatedCharacterIds(game);
+      const sequenceUnder = async (letter) => {
+        await updateGame(c.partyCode, (g) => { g.variant = letter; return g; });
+        const g = await getGame(c.partyCode);
+        const out = [];
+        for (const ph of ROUNDS) {
+          for (const id of seated) {
+            const nudge = goFindNudge(pack, g, id, ph);
+            out.push(`${ph}|${id}->${nudge ? nudge.characterId : ''}|${nudge ? nudge.text : ''}`);
+          }
+        }
+        return out.join('\n');
+      };
+      const letters = pack.variants.map((v) => v.letter);
+      const seqs = [];
+      for (const letter of letters) seqs.push(await sequenceUnder(letter));
+      assert('the same party shape produces the identical nudge sequence under all four variants',
+        letters.length === 4 && seqs.every((x) => x === seqs[0]) && seqs[0].length > 0);
+      // And nothing about the party's own seed is the variant either: two
+      // parties with the same shape pair up differently.
+      const other = await party(14);
+      const otherSeq = ROUNDS.map((ph) => seatedCharacterIds(other.game)
+        .map((id) => `${ph}|${id}->${(goFindNudge(pack, other.game, id, ph) || {}).characterId}`).join(',')).join('\n');
+      const mineSeq = ROUNDS.map((ph) => seated
+        .map((id) => `${ph}|${id}->${(goFindNudge(pack, game, id, ph) || {}).characterId}`).join(',')).join('\n');
+      assert('two parties the same size do not get the same pairings',
+        otherSeq !== mineSeq && !!seats.length);
+    }
+
+    // --- it survives the room changing under it ---
+    {
+      const { c, game } = await party(12);
+      const before = seatedCharacterIds(game);
+      const dropped = before[3];
+      await j(cast(POST({ action: 'remove', partyCode: c.partyCode, hostToken: c.hostToken, characterId: dropped })));
+      const after = await getGame(c.partyCode);
+      const left = seatedCharacterIds(after);
+      let ok = left.length === before.length - 1 && !left.includes(dropped);
+      for (const ph of ROUNDS) {
+        const pairs = pairingsFor(after, ph);
+        if (Object.keys(pairs).length !== left.length) ok = false;
+        for (const [from, to] of Object.entries(pairs)) {
+          if (to === from || !left.includes(to) || to === dropped) ok = false;
+        }
+      }
+      assert('a guest leaving mid-party never leaves anyone sent to an empty chair', ok);
+      assert('the guest who left is not handed a nudge either',
+        goFindNudge(pack, after, dropped, 3) === null);
+    }
+
+    // --- edge: a room too small to send anybody anywhere ---
+    {
+      const { game } = await party(1);
+      assert('a party of one has nobody to be sent to',
+        Object.keys(pairingsFor(game, 3)).length === 0
+        && goFindNudge(pack, game, seatedCharacterIds(game)[0], 3) === null);
+    }
+
+    // --- it reads like a person wrote it, not a form letter ---
+    {
+      const { game } = await party(14);
+      const seated = seatedCharacterIds(game);
+      const texts = [];
+      for (const ph of ROUNDS) for (const id of seated) texts.push(goFindNudge(pack, game, id, ph).text);
+      const shapes = new Set(texts.map((t) => t.replace(/[A-Z][a-z]+ [A-Z][a-z']+/g, '{name}')));
+      assert('the phrasing varies rather than reading like a form letter', shapes.size >= 5);
+      assert('every nudge names somebody and asks for nothing else',
+        texts.every((t) => t.length < 160 && !/\bP[1-7]\b/.test(t)));
+    }
+
+    // --- end to end: it reaches the phone, and only as a social note ---
+    {
+      const { c, seats } = await party(14);
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+      const mine = await j(state(GET({ partyCode: c.partyCode, personalCode: seats[0] })));
+      const g = await getGame(c.partyCode);
+      assert('the nudge reaches the guest\'s own view and names a character in the room',
+        !!(mine.you && mine.you.goFind && mine.you.goFind.text)
+        && seatedCharacterIds(g).includes(mine.you.goFind.characterId)
+        && mine.you.goFind.characterId !== g.players[seats[0]].characterId);
+      const room = await j(state(GET({ partyCode: c.partyCode })));
+      assert('one guest\'s nudge is not broadcast to the room screen',
+        JSON.stringify(room).indexOf(mine.you.goFind.text) === -1);
+    }
+  }
+
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }
