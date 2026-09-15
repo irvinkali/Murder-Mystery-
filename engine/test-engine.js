@@ -16,6 +16,7 @@ const poll = require('./functions/poll').handler;
 const advance = require('./functions/advance').handler;
 const reveal = require('./functions/reveal').handler;
 const cast = require('./functions/cast').handler;
+const lobbyVote = require('./functions/lobby-vote').handler;
 const { getGame } = require('./lib/store');
 const { loadRuntimePack } = require('./lib/runtime');
 
@@ -638,6 +639,115 @@ async function main() {
       !now.state.lobby && !!now.you.character.brief && now.you.character.id === 'C3');
     const twice = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, openDoors: true })));
     assert('the doors cannot be opened twice', !!twice.error);
+  }
+
+  // ---------------------------------------------------------------------
+  // THE WEEKLY QUESTION. Light lobby noise: everybody answers, everybody sees
+  // the tally, and nobody ever sees who answered what. The questions are pack
+  // plaintext dated like the beats, so this block pins the pack whose weekly
+  // questions it is about and freezes the clock on a date by which they have
+  // all opened. Everything private to the evening is somebody else's block:
+  // nothing here can reach a secret, because a question has no character in it.
+  // ---------------------------------------------------------------------
+  {
+    const { questionsSoFar, loadLobbyFile } = require('./lib/lobby');
+
+    // The filter on its own: one question open, one still to come.
+    const fixture = { questions: [
+      { id: 'open', at: '2020-01-01T00:00:00Z', question: 'Already asked', options: ['one', 'two'] },
+      { id: 'later', at: '2099-01-01T00:00:00Z', question: 'Not asked yet', options: ['one', 'two'] },
+    ] };
+    const filtered = questionsSoFar(new Date('2021-06-01T00:00:00Z'), fixture);
+    assert('a future lobby question never leaves the server',
+      filtered.length === 1 && filtered[0].id === 'open' &&
+      JSON.stringify(filtered).indexOf('Not asked yet') === -1);
+
+    const RealDate = Date;
+    const FROZEN = RealDate.parse('2026-11-20T18:00:00-05:00');
+    class FrozenDate extends RealDate {
+      constructor(...a) { if (a.length === 0) super(FROZEN); else super(...a); }
+      static now() { return FROZEN; }
+    }
+    const realPack = process.env.MYSTERY_PACK;
+    process.env.MYSTERY_PACK = 'reunion-1989';
+    const file = loadLobbyFile();
+    const authored = (file && file.questions) || [];
+
+    // The pack's own questions, read at a date partway through the run: the
+    // ones still to come are absent, not merely hidden.
+    const midway = '2026-10-04T12:00:00-04:00';
+    const early = questionsSoFar(new RealDate(midway), file);
+    assert('the pack\'s questions open one at a time and the rest stay on the server',
+      authored.length > 0 && early.length > 0 && early.length < authored.length &&
+      early.every((x) => RealDate.parse(x.at) <= RealDate.parse(midway)));
+
+    global.Date = FrozenDate;
+    try {
+      const c = await j(createGameRaw(POST({})));
+      const g1 = await j(join(POST({ partyCode: c.partyCode, name: 'Wexler Ondry' })));
+      const g2 = await j(join(POST({ partyCode: c.partyCode, name: 'Pomeroy Skarn' })));
+
+      const lob = await j(state(GET({ partyCode: c.partyCode, personalCode: g1.personalCode })));
+      const qs = lob.state.questions || [];
+      assert('the lobby serves the questions that have opened, with options and a tally',
+        qs.length === authored.length && qs.length > 0 &&
+        qs.every((x) => x.id && x.question && Array.isArray(x.options) && x.options.length >= 2 &&
+          x.counts && typeof x.total === 'number' && 'yourChoice' in x) &&
+        qs.every((x) => x.yourChoice === null && x.total === 0));
+
+      const q = qs[0];
+      const [optA, optB] = q.options;
+
+      const noSeat = await j(lobbyVote(POST({ partyCode: c.partyCode, id: q.id, choice: optA })));
+      assert('answering a lobby question needs a seat', !!noSeat.error);
+      const noSuch = await j(lobbyVote(POST({ partyCode: c.partyCode, personalCode: g1.personalCode, id: 'not-a-question', choice: optA })));
+      const badOpt = await j(lobbyVote(POST({ partyCode: c.partyCode, personalCode: g1.personalCode, id: q.id, choice: 'something else entirely' })));
+      assert('an unasked question and an off-list answer are both refused',
+        !!noSuch.error && !!badOpt.error);
+
+      await j(lobbyVote(POST({ partyCode: c.partyCode, personalCode: g1.personalCode, id: q.id, choice: optA })));
+      await j(lobbyVote(POST({ partyCode: c.partyCode, personalCode: g2.personalCode, id: q.id, choice: optB })));
+      const changed = await j(lobbyVote(POST({ partyCode: c.partyCode, personalCode: g1.personalCode, id: q.id, choice: optB })));
+      assert('a lobby answer is one per seat and changeable',
+        changed.question && changed.question.yourChoice === optB &&
+        changed.question.counts[optB] === 2 && changed.question.counts[optA] === 0 &&
+        changed.question.total === 2);
+
+      const mine = await j(state(GET({ partyCode: c.partyCode, personalCode: g2.personalCode })));
+      const theirs = (mine.state.questions || []).find((x) => x.id === q.id);
+      assert('each guest sees the same tally with their own answer marked',
+        theirs.yourChoice === optB && theirs.total === 2);
+
+      // Aggregate only. The seat-to-answer map exists on the game object and
+      // reaches nobody: not the voter, not another guest, not the host.
+      const raw = await getGame(c.partyCode);
+      const held = raw.lobbyAnswers && raw.lobbyAnswers[q.id];
+      const anon = JSON.stringify(await j(state(GET({ partyCode: c.partyCode }))));
+      const asMe = JSON.stringify(mine);
+      assert('the lobby tally never says who answered what',
+        !!held && Object.keys(held).length === 2 &&
+        [anon, asMe].every((s) => s.indexOf(g1.personalCode) === -1 && s.indexOf(g2.personalCode) === -1));
+
+      // The two ballots never meet: lobby answers have their own key, and a
+      // game poll cannot see them or be fed by them.
+      assert('a lobby answer never lands in a game poll',
+        !(raw.polls && raw.polls[q.id]) && Object.keys(raw.polls || {}).length === 0);
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, openDoors: true })));
+      await j(poll(POST({ action: 'create', partyCode: c.partyCode, hostToken: c.hostToken, id: q.id, question: 'A real one', options: [optA, optB] })));
+      await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: g1.personalCode, id: q.id, choice: optA })));
+      const after = await getGame(c.partyCode);
+      assert('a game vote never lands in the lobby answers either',
+        Object.keys(after.lobbyAnswers[q.id]).length === 2 &&
+        after.lobbyAnswers[q.id][g1.personalCode] === optB &&
+        after.polls[q.id].votes[g1.personalCode] === optA);
+
+      const shut = await j(lobbyVote(POST({ partyCode: c.partyCode, personalCode: g1.personalCode, id: q.id, choice: optA })));
+      assert('the lobby question closes when the doors open', !!shut.error);
+    } finally {
+      global.Date = RealDate;
+      if (realPack === undefined) delete process.env.MYSTERY_PACK;
+      else process.env.MYSTERY_PACK = realPack;
+    }
   }
 
   // ---------------------------------------------------------------------

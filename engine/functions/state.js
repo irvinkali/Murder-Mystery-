@@ -11,7 +11,7 @@ const {
   worldCopy,
 } = require('../lib/runtime');
 const { visibleDrops } = require('../lib/branching');
-const { lobbyBrief, lobbyRoom, lobbyCopy, beatsSoFar, nextBeatAt, loadLobbyFile } = require('../lib/lobby');
+const { lobbyBrief, lobbyRoom, lobbyCopy, beatsSoFar, nextBeatAt, loadLobbyFile, lobbyQuestions } = require('../lib/lobby');
 const { displayNames } = require('../lib/names');
 const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
@@ -39,6 +39,9 @@ exports.handler = async (event) => {
   if (game.lobby) {
     const file = loadLobbyFile();
     const now = new Date();
+    // The weekly question is aggregate plus the asker's own mark. A seat code
+    // that is not actually a seat here gets the counts and no mark.
+    const seat = (q.personalCode && game.players[q.personalCode]) ? q.personalCode : null;
     const state = {
       partyCode: game.partyCode,
       lobby: true,
@@ -49,6 +52,7 @@ exports.handler = async (event) => {
       copy: lobbyCopy(file),
       beats: beatsSoFar(now, pack, file),
       nextBeatAt: nextBeatAt(now, file),
+      questions: lobbyQuestions(game, now, seat, file),
       room: lobbyRoom(pack, game),
       casting: castingList(pack, game),
     };

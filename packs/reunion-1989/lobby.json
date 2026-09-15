@@ -71,6 +71,51 @@
       "body": "Doors at seven, and it starts at seven, so seven-thirty means walking in during your own introduction. Charge your phone; it is the only thing you have to bring and it holds everything that is yours. Wear the year. Eat something first, then eat again when you get here."
     }
   ],
+  "$questions": "The light question of the week. Answered in the app, results visible to everybody, and deliberately nothing to do with the mystery: a question carries no character name and no bearing on the night. A question opens on its date exactly as a beat lands on its date.",
+  "questions": [
+    {
+      "id": "q1",
+      "at": "2026-09-26T17:00:00-04:00",
+      "question": "What is the song of 1989?",
+      "options": ["Like a Prayer", "Love Shack", "Straight Up", "Eternal Flame", "Nothing from spring, obviously"]
+    },
+    {
+      "id": "q2",
+      "at": "2026-10-03T17:00:00-04:00",
+      "question": "Worst fashion crime of this class",
+      "options": ["The perm", "Acid wash, head to toe", "Shoulder pads on everything", "The rat tail"]
+    },
+    {
+      "id": "q3",
+      "at": "2026-10-10T17:00:00-04:00",
+      "question": "Where did people actually go on a Friday night?",
+      "options": ["The lot behind the grocery store", "Somebody's basement", "The all-night pancake house", "Driving around, no destination"]
+    },
+    {
+      "id": "q4",
+      "at": "2026-10-24T17:00:00-04:00",
+      "question": "Most 1989 thing in your house growing up",
+      "options": ["The console television", "A waterbed", "A wallpaper border", "A phone cord that reached the whole kitchen"]
+    },
+    {
+      "id": "q5",
+      "at": "2026-10-31T17:00:00-04:00",
+      "question": "Best movie of 1989",
+      "options": ["Batman", "Dead Poets Society", "When Harry Met Sally", "Back to the Future Part II"]
+    },
+    {
+      "id": "q6",
+      "at": "2026-11-07T17:00:00-05:00",
+      "question": "How are you arriving?",
+      "options": ["Early, to help", "On time, for once", "Fashionably late", "Whenever the traffic allows"]
+    },
+    {
+      "id": "q7",
+      "at": "2026-11-14T17:00:00-05:00",
+      "question": "Which are you on the night?",
+      "options": ["Exactly who I was", "The improved version", "Unrecognizable", "Still deciding"]
+    }
+  ],
   "characters": {
     "C1": {
       "attire": "Committee chair in a blouse with a real collar, a cardigan she will take off and put back on all night, dark trousers or a skirt, and flat shoes, with a lanyard she made herself. Going further, 1989 it properly: a pastel cardigan over a blouse with a bow at the throat, a permed bob with volume at the sides, pearl studs, and a clipboard she never once puts down. The look is somebody who has been ready since four o'clock."

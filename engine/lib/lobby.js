@@ -76,6 +76,79 @@ function beatsSoFar(now, pack, file) {
     }));
 }
 
+/*
+ * The weekly question. Light, plot-free noise: a question the room answers in
+ * the app while it waits, with the results visible to everybody.
+ *
+ * Two rules hold it apart from the game's own polls. The answers live under
+ * their own key on the game object (LOBBY_ANSWER_KEY), so a lobby answer can
+ * never be counted in a game poll or the other way round. And what leaves here
+ * is aggregate: counts per option, plus a mark on the asking guest's own
+ * choice. Which seat chose what stays on the game object and is served to
+ * nobody, the host included.
+ */
+const LOBBY_ANSWER_KEY = 'lobbyAnswers';
+
+/**
+ * The questions that have opened by `now`, oldest first. Same rule as a beat:
+ * one dated in the future is not hidden in the UI, it never leaves the server.
+ */
+function questionsSoFar(now, file) {
+  const f = file || loadLobbyFile();
+  const list = (f && Array.isArray(f.questions)) ? f.questions : [];
+  const t = (now instanceof Date ? now : new Date(now || Date.now())).getTime();
+  return list
+    .filter((q) => q && typeof q.question === 'string' && Array.isArray(q.options) && q.options.length >= 2)
+    .map((q) => ({ ...q, _at: q.at ? new Date(q.at).getTime() : 0 }))
+    .filter((q) => Number.isFinite(q._at) && q._at <= t)
+    .sort((a, b) => a._at - b._at)
+    .map((q) => ({
+      id: String(q.id || q.at || q.question || ''),
+      at: q.at || null,
+      question: String(q.question),
+      options: q.options.map((o) => String(o)),
+    }));
+}
+
+/** One question by id, but only if it has actually opened. */
+function openQuestion(id, now, file) {
+  return questionsSoFar(now, file).find((q) => q.id === id) || null;
+}
+
+/**
+ * The open questions as one guest sees them: the question, the options, the
+ * aggregate counts, and which option is theirs. The seat-to-choice map is read
+ * here and never emitted, so no payload can say who voted for what.
+ */
+function lobbyQuestions(game, now, personalCode, file) {
+  const answers = (game && game[LOBBY_ANSWER_KEY]) || {};
+  return questionsSoFar(now, file).map((q) => {
+    const cast = answers[q.id] || {};
+    const counts = {};
+    for (const o of q.options) counts[o] = 0;
+    for (const choice of Object.values(cast)) {
+      if (Object.prototype.hasOwnProperty.call(counts, choice)) counts[choice] += 1;
+    }
+    const mine = personalCode ? cast[personalCode] : undefined;
+    return {
+      id: q.id,
+      question: q.question,
+      options: q.options,
+      counts,
+      total: Object.values(counts).reduce((a, b) => a + b, 0),
+      yourChoice: (typeof mine === 'string' && q.options.includes(mine)) ? mine : null,
+    };
+  });
+}
+
+/** Record one seat's answer. One per seat per question, and changeable. */
+function recordLobbyAnswer(game, questionId, personalCode, choice) {
+  game[LOBBY_ANSWER_KEY] = game[LOBBY_ANSWER_KEY] || {};
+  game[LOBBY_ANSWER_KEY][questionId] = game[LOBBY_ANSWER_KEY][questionId] || {};
+  game[LOBBY_ANSWER_KEY][questionId][personalCode] = choice;
+  return game;
+}
+
 /** The next beat's date, so the page can say when there is more to come. */
 function nextBeatAt(now, file) {
   const f = file || loadLobbyFile();
@@ -131,4 +204,5 @@ function lobbyCopy(file) {
 module.exports = {
   loadLobbyFile, lobbyBrief, lobbyRoom, lobbyCopy,
   beatsSoFar, nextBeatAt, attireFor, resolveNames,
+  LOBBY_ANSWER_KEY, questionsSoFar, openQuestion, lobbyQuestions, recordLobbyAnswer,
 };

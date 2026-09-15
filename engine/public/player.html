@@ -40,6 +40,12 @@
       <p class="muted" id="lbNext" style="font-size:12px;margin:10px 0 0"></p>
     </div>
 
+    <div class="card" id="lbQCard" style="display:none">
+      <h2>The question this week</h2>
+      <p class="muted" style="font-size:13px">Nothing to do with the night. Answer it, change your mind as often as you like, and see where the room stands.</p>
+      <div id="lbQuestions"></div>
+    </div>
+
     <div class="card">
       <h2 id="lbRoomTitle">Who is coming</h2>
       <p class="muted" id="lbRoomNote" style="font-size:13px"></p>
@@ -247,6 +253,45 @@ function renderPolls(list) {
   }));
 }
 
+/** The light question of the week. The server sends counts and a mark on this
+ *  guest's own answer, never who chose what, so the tally below is all there is
+ *  to read even in the network tab. Newest question first, like the beats. */
+function renderLobbyQuestions(list, seated) {
+  const qs = list || [];
+  el('#lbQCard').style.display = qs.length ? 'block' : 'none';
+  if (!qs.length) return;
+  el('#lbQuestions').innerHTML = qs.slice().reverse().map((q) => {
+    const counts = q.counts || {};
+    const total = q.total || 0;
+    const voted = !!q.yourChoice;
+    const buttons = (q.options || []).map((o) =>
+      `<button class="${o === q.yourChoice ? '' : 'ghost'}"${seated ? '' : ' disabled'}`
+      + ` data-lq="${esc(q.id)}" data-lchoice="${esc(o)}">${esc(o)}</button>`).join('');
+    const bars = voted ? (q.options || []).map((o) => {
+      const n = counts[o] || 0;
+      const pct = total ? Math.round(100 * n / total) : 0;
+      return `<div class="barrow"><span>${esc(o)}${o === q.yourChoice ? ' ✓' : ''}</span>`
+        + `<span class="bar"><span style="width:${pct}%"></span></span><span class="muted">${n}</span></div>`;
+    }).join('') : '';
+    const foot = voted
+      ? `${total} ${total === 1 ? 'answer' : 'answers'} so far. Tap another to change yours.`
+      : (seated ? 'Pick one to see where the room stands.' : 'Claim a character to answer.');
+    return `<div style="margin-bottom:20px">`
+      + `<div class="serif" style="font-size:19px">${esc(q.question)}</div>`
+      + `<div class="row">${buttons}</div>`
+      + (voted ? `<div class="list" style="margin-top:12px">${bars}</div>` : '')
+      + `<p class="guidance" style="margin-top:8px">${esc(foot)}</p>`
+      + `</div>`;
+  }).join('');
+  document.querySelectorAll('[data-lq]').forEach((b) => b.addEventListener('click', async () => {
+    try {
+      await api('lobby-vote', { partyCode: Store.party, personalCode: Store.code, id: b.dataset.lq, choice: b.dataset.lchoice });
+      el('#err').textContent = '';
+      refresh();
+    } catch (e) { el('#err').textContent = e.message; }
+  }));
+}
+
 /** The weeks before the night. Nothing here came from the dossier: the server
  *  sends only the public half, so there is nothing private on this page to
  *  reveal early even to someone reading the network tab. */
@@ -286,6 +331,8 @@ function renderLobby(state, you) {
   el('#lbNext').textContent = state.nextBeatAt
     ? 'There is more to come before the night.'
     : '';
+
+  renderLobbyQuestions(state.questions || [], !!(you && you.character));
 
   const room = state.room || [];
   el('#lbRoomNote').textContent = room.length
