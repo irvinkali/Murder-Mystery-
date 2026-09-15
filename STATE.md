@@ -24,7 +24,7 @@ This file lets any Claude session (chat or Claude Code) resume work. Kali may re
 - STATE.md — this file (safe)
 - docs/ — safe docs (design doc, props guide copies)
 - packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 b5531a15dcbcf9d9d34edf6a4bf3e713)
-- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 841a06ee66b5e4333c39f6fb29aafe09)
+- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 02533c96f2771dfbebdca827751bf6aa)
 - engine/ — app code (not started)
 
 ## Progress log
@@ -168,7 +168,7 @@ overwhelmingly women. The surface of all twenty characters was rewritten. The my
 is untouched: same ids, same secrets, same implications, same four variants, same evidence chains,
 same trigger phrases.
 
-- **11 women, 6 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
+- **12 women, 5 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
   the count is machine-checkable rather than inferred from prose.
 - **Period-correct names.** The first cast was unisex to the point of androgyny (Tandy, Reese,
   Marion, Quinn, Emery). These are the names of people born around 1971.
@@ -188,17 +188,6 @@ Two more men (added 2026-09-14). Her guest list came back needing them, so flex 
 rewritten from women to men: name, pronoun tag, costume note, and the gendered phrasing in their own
 lines. Nothing underneath moved. Both are flex, so no variant, evidence chain or prop hung on either
 of them, and the ids did not move.
-
-A man in the core cast (added 2026-09-15). The guest list needed one more male part and a real one,
-so C2 was rewritten from a woman to a man: name, pronoun tag, costume note, the one gendered word in
-the dossier, and the character's name where other files print it. Because this is a core character,
-the plot was checked against it first: C2 is not the killer in any variant, is named in no evidence
-chain, holds no keystone, appears in no prop link, no world hook, no trigger phrase, no alibi flag
-and no medical reveal, and is referred to by no other character. The gender tally line in the bible's
-cast preamble was stale from the last two conversions and now states the true split. A structural
-fingerprint of 248 fields, taken before the edit and diffed after it, moved on seven: the character's
-name, pronoun tag, dossier text and its length, the bible's cast section, the defense-drop section
-header, and the costume note. Everything else is byte-identical.
 
 ## The party audit, and two gaps it found (added 2026-09-14)
 `engine/audit.js` plays 24 real games and answers the three questions that actually decide whether
