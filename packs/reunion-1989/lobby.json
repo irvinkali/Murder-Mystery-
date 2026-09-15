@@ -8,11 +8,32 @@
   },
   "beats": [
     {
+      "id": "b5",
+      "at": "2026-09-26T17:00:00-04:00",
+      "from": "The reunion committee",
+      "title": "Name tags are happening",
+      "body": "Every name tag is being written out by hand, in the handwriting of somebody who took pride in it in 1989 and has not improved since. If your name has an unusual spelling, this is the week to say so. It will not be corrected on the night. It will be laminated."
+    },
+    {
+      "id": "b6",
+      "at": "2026-10-03T17:00:00-04:00",
+      "from": "The reunion committee",
+      "title": "Parking, and the one rule about it",
+      "body": "There is parking on the street and more of it behind the building. The one rule is that nobody blocks the side door, because the side door is how the food comes in and how anybody who needs a minute gets a minute. Carpool if you can. The hotel by the interstate runs a shuttle it does not advertise."
+    },
+    {
       "id": "b1",
       "at": "2026-10-17T17:00:00-04:00",
       "from": "The reunion committee",
       "title": "The hall is booked. Actually booked.",
       "body": "Third time asking. {{C1}} has the receipt, laminated, and has offered to show it to anyone who doubts it. The banner has been located. It has been in a box since 1991 and it smells like a box that has been closed since 1991. It is going up anyway. There are rooms held at the hotel by the interstate for anyone flying in, which is most of you."
+    },
+    {
+      "id": "b7",
+      "at": "2026-10-24T17:00:00-04:00",
+      "from": "The reunion committee",
+      "title": "On the subject of the food",
+      "body": "The menu is settled and it is deliberately the food of the year: little sandwiches cut on the diagonal, a cheese ball, something in a slow cooker, and a vegetable tray nobody will finish. There will be a cake. There is a disagreement about the cake. The disagreement is ongoing."
     },
     {
       "id": "b2",
@@ -22,11 +43,25 @@
       "body": "There has been a disagreement about the playlist. One faction wants the year only. The other faction has pointed out that we graduated in June and the good songs came out in the autumn. A compromise has not been reached. Bring requests; bring stamina."
     },
     {
+      "id": "b8",
+      "at": "2026-11-07T17:00:00-05:00",
+      "from": "The reunion committee",
+      "title": "Roll call",
+      "body": "The count says we are close to a full room. If you have said you are coming and have not picked up your character yet, this is the week. If you are still deciding, decide: the hall is booked either way and your name tag is already written."
+    },
+    {
       "id": "b3",
       "at": "2026-11-14T17:00:00-05:00",
       "from": "The reunion committee",
       "title": "Somebody found the yearbooks",
       "body": "Two of them, plus the one with the page torn out that everybody remembers and nobody will admit to. They are coming. So is a slide projector that may or may not work. If you have photographs, bring photographs. People are going to want to look at each other at seventeen before they look at each other now."
+    },
+    {
+      "id": "b9",
+      "at": "2026-11-17T17:00:00-05:00",
+      "from": "The reunion committee",
+      "title": "About the slideshow",
+      "body": "There will be a slide show. Twelve slides, projected, put together from whatever was in the boxes. Nobody on the committee will say what is on all twelve. One of them has caused an argument already. Bring your own photographs anyway, because the memory table is going to need filling."
     },
     {
       "id": "b4",
