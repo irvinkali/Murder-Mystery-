@@ -24,7 +24,7 @@ This file lets any Claude session (chat or Claude Code) resume work. Kali may re
 - STATE.md — this file (safe)
 - docs/ — safe docs (design doc, props guide copies)
 - packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 b5531a15dcbcf9d9d34edf6a4bf3e713)
-- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 02533c96f2771dfbebdca827751bf6aa)
+- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 d059bb452050a7af55d48f2fcd2d3d9d)
 - engine/ — app code (not started)
 
 ## Progress log
@@ -168,7 +168,7 @@ overwhelmingly women. The surface of all twenty characters was rewritten. The my
 is untouched: same ids, same secrets, same implications, same four variants, same evidence chains,
 same trigger phrases.
 
-- **12 women, 5 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
+- **11 women, 6 men, 3 unisex**, carried as an explicit pronoun tag at the head of each dossier so
   the count is machine-checkable rather than inferred from prose.
 - **Period-correct names.** The first cast was unisex to the point of androgyny (Tandy, Reese,
   Marion, Quinn, Emery). These are the names of people born around 1971.
@@ -188,6 +188,27 @@ Two more men (added 2026-09-14). Her guest list came back needing them, so flex 
 rewritten from women to men: name, pronoun tag, costume note, and the gendered phrasing in their own
 lines. Nothing underneath moved. Both are flex, so no variant, evidence chain or prop hung on either
 of them, and the ids did not move.
+
+One more man, back on the flex bench (added 2026-09-15). The guest list needed another male part and
+this one did not have to be a big one, so F5 was rewritten from a woman to a man: first name, pronoun
+tag, the gendered words in the dossier and the slide hook, and the costume note rewritten male in
+lobby.json. The surname stayed. The public half of the character did not move at all: still the class
+valedictorian of 1989, still a middle-school principal a county over, still quietly terrified of being
+asked to say a few words. F5 is flex, so nothing was load-bearing to begin with, and that was checked
+rather than assumed: F5 is the killer in no variant, is named in no evidence chain, holds no keystone,
+appears in no prop link, no world hook, no trigger phrase, no alibi flag and no medical reveal, and no
+other character refers to F5 anywhere in a brief, secret, script line, private drop or lobby note.
+Both gender tally lines were updated, the one in the flex preamble and the one in the bible's cast
+preamble. A structural fingerprint of 436 fields, taken before the edit and diffed after it, moved on
+four: the character's name, the pronoun tag, the dossier text and the costume note. Outside the pack,
+the only lines that changed anywhere in the four decoded documents were the two tallies, the dossier
+and the script-lines heading.
+
+Noticed on the way through and fixed: packs/reunion-1989/pack.json.b64 was slightly out of date at
+HEAD. It carried a generatedFrom checksum and byte length from a bible three bytes older than the one
+on disk. Every parsed field was already identical, so rebuilding it corrected the stamp and nothing
+else, but it is worth rebuilding the reunion pack explicitly after a bible edit, because `npm run
+check` only rebuilds the default pack.
 
 ## The party audit, and two gaps it found (added 2026-09-14)
 `engine/audit.js` plays 24 real games and answers the three questions that actually decide whether
