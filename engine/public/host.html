@@ -101,6 +101,13 @@
     <p class="muted">Unlocks in Phase 6, once the final vote has closed. It plays on the gallery screen for everyone.</p>
     <button id="revealBtn" class="ghost">Play the reveal</button>
     <div class="note" id="revealBox" style="display:none"></div>
+
+    <div class="divider"></div>
+    <h3>The superlatives</h3>
+    <p class="muted">Five awards the room votes on once the reveal has played: best liar, first one you suspected, most 1989, should have been a detective, best costume. Open them with the button and everyone votes on their own phone, for somebody other than themselves.</p>
+    <p class="muted"><b>The winners appear on the room screen</b>, each with the character name and the real first name, so you know whose hand to put a gift card in. A tie shows every tied name rather than picking one. Nobody sees who voted for whom, you included.</p>
+    <button id="awardsBtn" class="ghost">Open the superlatives</button>
+    <div class="err" id="awardsErr"></div>
   </div>
   <div class="center"><button class="ghost" id="reset">Forget this party on this device</button></div>
 </div>
@@ -166,6 +173,10 @@ async function tick() {
     el('#phaseDetail').textContent = openPolls.length ? `Running: ${openPolls.join('; ')}` : 'No poll open right now.';
     el('#pauseBtn').textContent = cur.paused ? 'Resume' : 'Pause';
     renderClock(state.timing);
+    if (state.awards && state.awards.open) {
+      el('#awardsBtn').textContent = 'The superlatives are open';
+      el('#awardsBtn').disabled = true;
+    }
 
     // Poll controls: open scheduled polls + any ad-hoc, with close/extend; plus open-early/skip for this phase's scheduled ones.
     const rows = [];
@@ -224,6 +235,15 @@ el('#revealBtn').addEventListener('click', async () => {
   try { const r = await api('reveal',{partyCode:Store.party,hostToken:Store.host}); const box=el('#revealBox'); box.style.display='block';
     box.innerHTML=`<div class="kicker">Now on the gallery screen</div><div class="serif" style="font-size:20px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div><p>${esc(r.method||'')}</p>`; }
   catch(e){ alert(e.message); }
+});
+el('#awardsBtn').addEventListener('click', async () => {
+  el('#awardsErr').textContent = '';
+  try {
+    await api('awards', { action: 'open', partyCode: Store.party, hostToken: Store.host });
+    el('#awardsBtn').textContent = 'The superlatives are open';
+    el('#awardsBtn').disabled = true;
+    tick();
+  } catch (e) { el('#awardsErr').textContent = e.message; }
 });
 function renderCasting(roster) {
   const openOpts = roster.filter(c => !c.claimedBy)

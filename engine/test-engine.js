@@ -17,6 +17,7 @@ const advance = require('./functions/advance').handler;
 const reveal = require('./functions/reveal').handler;
 const cast = require('./functions/cast').handler;
 const lobbyVote = require('./functions/lobby-vote').handler;
+const awards = require('./functions/awards').handler;
 const { getGame } = require('./lib/store');
 const { loadRuntimePack } = require('./lib/runtime');
 
@@ -748,6 +749,93 @@ async function main() {
       if (realPack === undefined) delete process.env.MYSTERY_PACK;
       else process.env.MYSTERY_PACK = realPack;
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // THE SUPERLATIVES. Five gift-card awards the room votes onto the people in
+  // it, after the reveal has played and never before. One vote per seat per
+  // award, never for yourself, and the winners carry a real first name because
+  // somebody has to be handed the card. Who voted for whom is held by seat and
+  // served to nobody, the host included.
+  // ---------------------------------------------------------------------
+  {
+    const { SUPERLATIVES } = require('./lib/awards');
+    const c = await j(createGame(POST({ hostName: 'Kali' })));   // opens the doors
+    const seats = [];
+    for (const who of ['Fennimore Quill', 'Ondine Trask', 'Barnaby Skelp', 'Perpetua Vane']) {
+      seats.push(await j(join(POST({ partyCode: c.partyCode, name: who }))));
+    }
+    const ch = seats.map((s) => s.character.id);
+    const [A, B] = SUPERLATIVES.map((a) => a.id);
+    const vote = (i, target, id) => j(awards(POST({
+      action: 'vote', partyCode: c.partyCode, personalCode: seats[i].personalCode,
+      awardId: id || A, characterId: target,
+    })));
+
+    const earlyVote = await vote(0, ch[1]);
+    const earlyOpen = await j(awards(POST({ action: 'open', partyCode: c.partyCode, hostToken: c.hostToken })));
+    const before = await j(state(GET({ partyCode: c.partyCode })));
+    assert('awards voting is refused before the reveal',
+      !!earlyVote.error && !!earlyOpen.error && before.state.awards === null);
+
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
+    await j(reveal(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+
+    assert('the superlatives still wait for the host to open them', !!(await vote(0, ch[1])).error);
+    assert('a guest cannot open the superlatives',
+      !!(await j(awards(POST({ action: 'open', partyCode: c.partyCode, hostToken: 'not-the-host' })))).error);
+
+    const opened = await j(awards(POST({ action: 'open', partyCode: c.partyCode, hostToken: c.hostToken })));
+    assert('the host opens the superlatives with one button',
+      opened.open === true && opened.awards && opened.awards.results.length === 5 &&
+      opened.awards.results.every((r) => r.title && r.line && r.winners.length === 0));
+
+    assert('a guest cannot vote for themselves', !!(await vote(0, ch[0])).error);
+    assert('a vote for somebody who is not in the room is refused',
+      !!(await vote(0, 'C99')).error &&
+      !!(await j(awards(POST({ action: 'vote', partyCode: c.partyCode, personalCode: seats[0].personalCode, awardId: 'not-an-award', characterId: ch[1] })))).error);
+
+    // Award A ends level: two names on two votes each.
+    await vote(0, ch[1]); await vote(1, ch[2]); await vote(2, ch[3]); await vote(3, ch[2]);
+    await vote(0, ch[3]);                       // one seat changes its mind
+    // Award B has a clear winner and somebody behind them.
+    await vote(0, ch[1], B); await vote(1, ch[0], B); await vote(2, ch[1], B); await vote(3, ch[1], B);
+
+    const live = await j(state(GET({ partyCode: c.partyCode, personalCode: seats[0].personalCode })));
+    const res = (id) => live.state.awards.results.find((r) => r.id === id);
+    const nameOf = (id) => live.state.roster.find((r) => r.characterId === id).characterName;
+
+    assert('a superlative vote is one per seat and changeable',
+      res(A).total === 4 && (live.you.awardVotes || {})[A] === ch[3]);
+    assert('a tie reports every tied name and says so',
+      res(A).tie === true && res(A).votes === 2 && res(A).winners.length === 2 &&
+      res(A).winners.map((w) => w.characterName).sort().join('|') === [nameOf(ch[2]), nameOf(ch[3])].sort().join('|'));
+    assert('a clear winner carries the character name and the real first name',
+      res(B).tie === false && res(B).winners.length === 1 &&
+      res(B).winners[0].characterName === nameOf(ch[1]) && res(B).winners[0].firstName === 'Ondine' &&
+      res(B).votes === 3 && res(B).total === 4);
+    assert('the runner-up is a count and never a name',
+      res(B).runnerUpVotes === 1 &&
+      JSON.stringify(res(B)).indexOf(nameOf(ch[0])) === -1);
+
+    // The whole point: no payload anywhere can say who voted for whom.
+    const raw = await getGame(c.partyCode);
+    const asGuest = JSON.stringify(live);
+    const asRoom = JSON.stringify(await j(state(GET({ partyCode: c.partyCode }))));
+    const onVote = JSON.stringify(await vote(1, ch[2]));
+    const held = Object.keys(raw.awardVotes[A] || {});
+    assert('the awards payload never exposes who voted for whom',
+      held.length === 4 &&
+      seats.every((s) => [asGuest, asRoom, onVote].every((p) => p.indexOf(s.personalCode) === -1)));
+    assert('a guest is shown their own five choices and nobody else\'s',
+      Object.keys(live.you.awardVotes).sort().join('|') === [A, B].sort().join('|'));
+
+    // Three ballots, three keys, no leakage between them.
+    assert('an award vote never lands in a game poll or a lobby answer',
+      !!raw.awardVotes && !raw.lobbyAnswers &&
+      !Object.keys(raw.polls || {}).some((id) => SUPERLATIVES.some((a) => a.id === id)) &&
+      !Object.values(raw.polls || {}).some((p) => Object.values(p.votes || {}).some((v) => ch.includes(v))));
   }
 
   // ---------------------------------------------------------------------

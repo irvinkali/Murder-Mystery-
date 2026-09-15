@@ -35,6 +35,12 @@
       <div class="grid" id="awards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"></div>
       <p class="center" style="margin-top:16px"><a id="caseLink">Keep tonight — open the printable Case File →</a></p>
     </div>
+    <div id="superlatives" style="display:none">
+      <div class="divider"></div>
+      <h2>The superlatives</h2>
+      <p class="muted" id="supNote"></p>
+      <div class="grid" id="supGrid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"></div>
+    </div>
   </div>
 
   <div id="mainStage">
@@ -334,6 +340,30 @@ async function refresh() {
           enqueue('awards.intro', 'But before you compare notes over the good wine — the house has a few honours to bestow.', state.reveal.awardsIntroAudio || null);
           awards.forEach((a, i) => enqueue('award:'+i, `${a.title}: ${a.firstName}, as ${a.characterName}. ${a.note}`, null));
         }
+      }
+
+      // The superlatives, once the host has opened them. A winner per award
+      // with the character name and the real first name, because somebody has
+      // to be handed the gift card. The runner-up is a number and nothing
+      // more: who voted for whom is not on this screen or on any other.
+      const sup = state.awards;
+      el('#superlatives').style.display = (sup && sup.open) ? 'block' : 'none';
+      if (sup && sup.open) {
+        const cast = (sup.results || []).reduce((n, r) => n + (r.total || 0), 0);
+        el('#supNote').textContent = cast
+          ? 'Voted by the room. Winners collect from the host.'
+          : 'Voting is open. Pick five people on your phone.';
+        el('#supGrid').innerHTML = (sup.results || []).map((r) => {
+          const names = (r.winners || []).map((w) =>
+            `<b>${esc(w.characterName)}</b><span class="muted">${w.firstName ? esc(w.firstName) : ''}</span>`).join('');
+          const foot = !r.winners.length
+            ? 'No votes in yet.'
+            : (r.tie ? `It is a tie, on ${r.votes} ${r.votes === 1 ? 'vote' : 'votes'} each.` : `${r.votes} of ${r.total}, ahead of ${r.runnerUpVotes}.`);
+          return `<div class="tile"><span class="pill on">${esc(r.title)}</span>`
+            + (names || '<b class="muted">Still counting</b>')
+            + `<div class="muted" style="font-size:12px;margin-top:6px">${esc(r.line)}</div>`
+            + `<div class="muted" style="font-size:12px;margin-top:4px">${esc(foot)}</div></div>`;
+        }).join('');
       }
       return;
     }

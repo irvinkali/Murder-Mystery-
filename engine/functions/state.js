@@ -17,6 +17,7 @@ const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
+const { awardsPublic, ownAwardVotes } = require('../lib/awards');
 
 exports.handler = async (event) => {
   connect(event);
@@ -128,6 +129,8 @@ exports.handler = async (event) => {
     screenCards,
     pollResults,
     reveal: game.reveal || null, // set only after the Phase-6 reveal
+    // The superlatives: null until the host opens them, and counts-only after.
+    awards: awardsPublic(pack, game),
     // Live polls players can act on (guidance shown to players).
     polls: Object.entries(game.polls || {}).map(([id, p]) => ({
       id, question: p.question, options: p.options, closed: p.closed,
@@ -166,6 +169,8 @@ exports.handler = async (event) => {
       nudge: hasHint ? null : idleNudge(me.characterId, game.phase, idleMs, undefined, pack),
       drops,
       alibiSubmitted: !!(game.alibi && game.alibi[q.personalCode]),
+      // This guest's own superlative choices, so their phone can mark them.
+      awardVotes: ownAwardVotes(game, q.personalCode),
     };
     if (unlock && !me.killerSeenAt) {
       await updateGame(game.partyCode, (g) => {

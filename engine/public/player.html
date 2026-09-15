@@ -69,6 +69,7 @@
       <button class="ghost" id="hpBlackout" style="flex:1">Blackout</button>
       <button class="ghost" id="hpPhoto" style="flex:1">Portrait</button>
       <button class="ghost" id="hpReveal" style="flex:1">Reveal</button>
+      <button class="ghost" id="hpAwards" style="flex:1">Superlatives</button>
     </div>
     <div class="list" id="hpPolls" style="margin-top:10px"></div>
     <p class="muted" style="font-size:12px;margin-bottom:0">Gallery screen: <a id="hpGallery" target="_blank">open →</a> · After the reveal: <a id="hpCase" target="_blank">Case File →</a></p>
@@ -122,6 +123,13 @@
   <div class="card gameOnly" id="pollCard" style="display:none">
     <h2>Open question</h2>
     <div id="polls"></div>
+  </div>
+
+  <!-- The superlatives: the last thing of the night, once the reveal has played -->
+  <div class="card gameOnly" id="awardsCard" style="display:none;border-color:var(--gold)">
+    <h2>The superlatives</h2>
+    <p class="muted" style="font-size:13px">Five awards, one vote each, for somebody other than yourself. There are gift cards. The winners go up on the room screen.</p>
+    <div id="awardsList"></div>
   </div>
 
   <div class="center"><button class="ghost" id="leave">Leave party</button></div>
@@ -189,6 +197,7 @@ if (isHost) {
   el('#hpBlackout').addEventListener('click', async()=>{ if(!confirm('Kill the lights for 60 seconds?')) return; try{ await hapi({blackout:true}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpPhoto').addEventListener('click', async()=>{ try{ await hapi({photo:true}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpReveal').addEventListener('click', async()=>{ try{ await api('reveal',{partyCode:Store.party,hostToken:Store.host}); alert('The reveal is playing on the gallery screen.'); }catch(e){ alert(e.message); } });
+  el('#hpAwards').addEventListener('click', async()=>{ try{ await api('awards',{action:'open',partyCode:Store.party,hostToken:Store.host}); alert('The superlatives are open. Everyone votes on their phone; the winners appear on the room screen.'); refresh(); }catch(e){ alert(e.message); } });
 }
 
 // A private note arriving should be FELT: soft tone + vibration. Audio needs a
@@ -250,6 +259,38 @@ function renderPolls(list) {
   document.querySelectorAll('[data-poll]').forEach(b => b.addEventListener('click', async () => {
     try { await api('poll', { action:'vote', partyCode: Store.party, personalCode: Store.code, id: b.dataset.poll, choice: b.dataset.choice });
       b.textContent = '✓ ' + b.dataset.choice; b.disabled = true; } catch(e){ el('#err').textContent = e.message; }
+  }));
+}
+
+/** The superlatives. Everybody in the room is a candidate except the guest
+ *  doing the voting, and the server refuses a vote for yourself whatever this
+ *  page sends. The tally is not shown here: the winners belong to the room
+ *  screen, so nobody watches the count move on their own phone. */
+function renderAwards(state, you) {
+  const a = state.awards;
+  const card = el('#awardsCard');
+  if (!a || !a.open || !you || !you.character) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const mine = you.awardVotes || {};
+  const others = (a.candidates || []).filter((c) => c.characterId !== you.character.id);
+  el('#awardsList').innerHTML = (a.results || []).map((r) => {
+    const picked = mine[r.id] || '';
+    const opts = ['<option value="">Choose somebody…</option>'].concat(others.map((c) =>
+      `<option value="${esc(c.characterId)}"${c.characterId === picked ? ' selected' : ''}>${esc(c.characterName)}</option>`)).join('');
+    return `<div style="margin-bottom:18px">`
+      + `<div class="serif" style="font-size:19px">${esc(r.title)}</div>`
+      + `<div class="guidance">${esc(r.line)}</div>`
+      + `<select data-award="${esc(r.id)}">${opts}</select>`
+      + (picked ? `<p class="guidance" style="margin-top:6px">Your vote is in. Change it any time.</p>` : '')
+      + `</div>`;
+  }).join('');
+  document.querySelectorAll('[data-award]').forEach((s) => s.addEventListener('change', async () => {
+    if (!s.value) return;
+    try {
+      await api('awards', { action: 'vote', partyCode: Store.party, personalCode: Store.code, awardId: s.dataset.award, characterId: s.value });
+      el('#err').textContent = '';
+      refresh();
+    } catch (e) { el('#err').textContent = e.message; }
   }));
 }
 
@@ -357,6 +398,7 @@ async function refresh() {
     el('#roster').innerHTML = state.roster.map(c =>
       `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
     renderPolls(state.polls || []);
+    renderAwards(state, you);
     renderHost(state);
     el('#blackoutOverlay').className = state.blackout ? 'on' : '';
     // The public question and the word for a findable thing are pack copy.
