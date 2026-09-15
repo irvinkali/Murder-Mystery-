@@ -84,6 +84,7 @@
     <details id="castingBox">
       <summary><h3 style="display:inline">Casting</h3> <span class="muted">— assign characters to guests in advance</span></summary>
       <p class="muted">Type a guest's name against a character. When they join with that name (capitals and extra spaces don't matter), they get that character. A first name on its own is enough unless two guests share it, in which case write both names. Anyone else is seated from what's left. Any flex characters can be used, in any order. Nothing here appears on the gallery screen.</p>
+      <p class="muted">If somebody has already joined and ended up with the wrong character, use the "move to" box on their row. Typing a name against a different character will not move them: once a guest holds a seat, that seat is theirs, which is what stops anybody being re-seated on the night. Their phone keeps working and shows the new character next time it refreshes.</p>
       <div class="list" id="castRows"><span class="muted">Loading…</span></div>
       <button id="castSave">Save casting</button>
       <span class="muted" id="castMsg"></span>
@@ -224,10 +225,16 @@ el('#revealBtn').addEventListener('click', async () => {
   catch(e){ alert(e.message); }
 });
 function renderCasting(roster) {
+  const openOpts = roster.filter(c => !c.claimedBy)
+    .map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   el('#castRows').innerHTML = roster.map(c =>
     `<div class="barrow" style="grid-template-columns:1.2fr 1.5fr auto"><span><b>${esc(c.name)}</b>${c.flex?' <span class="pill">flex</span>':''}</span>`+
     `<input data-res="${esc(c.id)}" value="${esc(c.guest)}" placeholder="Guest name" style="margin:0" />`+
-    `<span class="muted" style="font-size:12px">${c.claimedBy?'joined: '+esc(c.claimedBy):''}</span></div>`).join('');
+    (c.claimedBy
+      ? `<span class="muted" style="font-size:12px">joined: ${esc(c.claimedBy)} <select data-movefrom="${esc(c.id)}" style="margin:0">`+
+        `<option value="">move to\u2026</option>${openOpts}</select></span>`
+      : `<span class="muted" style="font-size:12px"></span>`)+
+    `</div>`).join('');
 }
 async function loadCasting() {
   el('#castMsg').textContent = '';
@@ -235,6 +242,17 @@ async function loadCasting() {
   catch(e){ el('#castMsg').textContent = e.message; }
 }
 el('#castingBox').addEventListener('toggle', () => { if (el('#castingBox').open) loadCasting(); });
+el('#castRows').addEventListener('change', async (e) => {
+  const sel = e.target.closest && e.target.closest('[data-movefrom]');
+  if (!sel || !sel.value) return;
+  const from = sel.dataset.movefrom, to = sel.value;
+  el('#castMsg').textContent = 'Moving\u2026';
+  try {
+    const r = await api('cast',{action:'move',partyCode:Store.party,hostToken:Store.host,characterId:from,toCharacterId:to});
+    renderCasting(r.roster);
+    el('#castMsg').textContent = 'Moved. Their phone shows the new character next time it refreshes.';
+  } catch(err){ el('#castMsg').textContent = err.message; loadCasting(); }
+});
 el('#castSave').addEventListener('click', async () => {
   const reservations = {};
   document.querySelectorAll('[data-res]').forEach(i => { reservations[i.dataset.res] = i.value; });

@@ -479,6 +479,46 @@ async function main() {
       row(g1, 'C3').claimedBy === 'zebulon QUARTZ');
   }
 
+  // 15c. Moving a guest who already joined. A reservation cannot undo a wrong
+  // pick, because joining is sticky on purpose, so the host needs a real move.
+  {
+    const c = await j(createGame(POST({})));
+    const hc = (body) => j(cast(POST({ partyCode: c.partyCode, hostToken: c.hostToken, ...body })));
+    const row = (r, id) => r.roster.find((x) => x.id === id);
+    const mike = await j(join(POST({ partyCode: c.partyCode, name: 'Mike Weaver', characterId: 'F5' })));
+    assert('a guest can pick their own character', mike.character && mike.character.id === 'F5');
+
+    await hc({ action: 'save', reservations: { F3: 'Mike Weaver' } });
+    const stuck = await j(join(POST({ partyCode: c.partyCode, name: 'Mike Weaver' })));
+    assert('a reservation alone cannot move a guest who already holds a seat',
+      stuck.character && stuck.character.id === 'F5' && stuck.returning === true);
+    await hc({ action: 'save', reservations: {} });
+
+    const denied = await cast(POST({ action: 'move', partyCode: c.partyCode, hostToken: 'nope', characterId: 'F5', toCharacterId: 'F3' }));
+    assert('moving a guest is host only', denied.statusCode === 403);
+    assert('moving from an empty seat is refused', /nobody has joined/i.test((await hc({ action: 'move', characterId: 'F9', toCharacterId: 'F8' })).error || ''));
+    assert('moving to a nonexistent character is refused', /no such character/i.test((await hc({ action: 'move', characterId: 'F5', toCharacterId: 'X99' })).error || ''));
+
+    const moved = await hc({ action: 'move', characterId: 'F5', toCharacterId: 'F3' });
+    assert('the host can move a joined guest to an unclaimed character',
+      row(moved, 'F3').claimedBy === 'Mike Weaver' && !row(moved, 'F5').claimedBy);
+    assert('the move leaves the new character reserved in their name', row(moved, 'F3').guest === 'Mike Weaver');
+
+    const after = await j(state(GET({ partyCode: c.partyCode, personalCode: mike.personalCode })));
+    assert('the guest keeps their seat code and their phone shows the new character',
+      after.you && after.you.character && after.you.character.id === 'F3');
+    const rejoin = await j(join(POST({ partyCode: c.partyCode, name: 'Mike Weaver' })));
+    assert('rejoining after a move returns the new character, not the old one',
+      rejoin.character && rejoin.character.id === 'F3');
+
+    await j(join(POST({ partyCode: c.partyCode, name: 'Someone Else', characterId: 'F5' })));
+    assert('moving onto a character somebody has joined as is refused',
+      /already joined/i.test((await hc({ action: 'move', characterId: 'F3', toCharacterId: 'F5' })).error || ''));
+    await hc({ action: 'save', reservations: { F6: 'Not Mike' } });
+    assert('moving onto a character reserved for somebody else is refused',
+      /reserved/i.test((await hc({ action: 'move', characterId: 'F3', toCharacterId: 'F6' })).error || ''));
+  }
+
   // 16. Photo moment + case file.
   {
     const casefile = require('./functions/casefile').handler;
