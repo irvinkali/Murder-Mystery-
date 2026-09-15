@@ -836,6 +836,122 @@ async function main() {
       !!raw.awardVotes && !raw.lobbyAnswers &&
       !Object.keys(raw.polls || {}).some((id) => SUPERLATIVES.some((a) => a.id === id)) &&
       !Object.values(raw.polls || {}).some((p) => Object.values(p.votes || {}).some((v) => ch.includes(v))));
+
+    // -------------------------------------------------------------------
+    // THE CEREMONY. The host closes the voting and the room screen walks the
+    // five awards one at a time. The walk is server-side, so an award that is
+    // not on stage yet is not in the payload: there is nothing to read ahead.
+    // -------------------------------------------------------------------
+    const { updateGame } = require('./lib/store');
+    const { CEREMONY_ORDER, TITLE_MS, STEP_MS, findAward } = require('./lib/awards');
+    // Move the award on stage back in time, the way the phase tests do.
+    const rewind = (ms) => updateGame(c.partyCode, (g) => {
+      g.ceremony.stepStartedAt = new Date(Date.now() - ms).toISOString();
+      return g;
+    });
+    const sup = async (code) => (await j(state(GET(Object.assign({ partyCode: c.partyCode }, code ? { personalCode: code } : {}))))).state.awards;
+    const laterTitles = (i) => CEREMONY_ORDER.slice(i + 1).map((id) => findAward(id).title);
+
+    const live0 = await sup();
+    assert('the tally stays live and open right up until the host announces',
+      live0.voting === true && live0.ceremony === null && live0.results.length === 5);
+
+    const announced = await j(awards(POST({ action: 'announce', partyCode: c.partyCode, hostToken: c.hostToken })));
+    assert('a guest cannot announce the winners',
+      announced.announcing === true &&
+      !!(await j(awards(POST({ action: 'announce', partyCode: c.partyCode, hostToken: 'not-the-host' })))).error);
+    assert('voting is refused once the ceremony has started',
+      !!(await vote(0, ch[1])).error);
+
+    // Award 1 of 5: the title is up alone, and no winner has left the server.
+    const t0 = await sup();
+    assert('the ceremony opens on the first award, title alone',
+      t0.voting === false && t0.ceremony.running === true && t0.ceremony.index === 0 &&
+      t0.ceremony.stage === 'title' && t0.ceremony.count === 5 &&
+      t0.ceremony.current.id === CEREMONY_ORDER[0] && !('winners' in t0.ceremony.current) &&
+      t0.results.length === 0);
+    assert('the ceremony builds to best liar and never shows a later award early',
+      CEREMONY_ORDER[CEREMONY_ORDER.length - 1] === 'liar' &&
+      laterTitles(0).every((title) => JSON.stringify(t0).indexOf(title) === -1));
+
+    await rewind(TITLE_MS + 500);
+    const w0 = await sup();
+    assert('the title holds for a beat, then the winner goes up',
+      w0.ceremony.index === 0 && w0.ceremony.stage === 'winner' &&
+      Array.isArray(w0.ceremony.current.winners) && typeof w0.ceremony.current.speech === 'string' &&
+      w0.results.length === 1 && w0.results[0].id === CEREMONY_ORDER[0] &&
+      laterTitles(0).every((title) => JSON.stringify(w0).indexOf(title) === -1));
+
+    // The hold is generous, and the host can cut it short.
+    const holding = await sup();
+    assert('the winner is held rather than rushed past',
+      holding.ceremony.index === 0 && STEP_MS - TITLE_MS >= 15000);
+    await j(awards(POST({ action: 'next', partyCode: c.partyCode, hostToken: c.hostToken })));
+    const t1 = await sup();
+    assert('the host can skip an award forward',
+      t1.ceremony.index === 1 && t1.ceremony.stage === 'title' &&
+      t1.ceremony.current.id === CEREMONY_ORDER[1] && t1.results.length === 1);
+
+    // It also walks itself, one step at a time, when nobody touches it.
+    await rewind(STEP_MS + 500);
+    const t2 = await sup();
+    assert('the ceremony advances one award at a time on its own clock',
+      t2.ceremony.index === 2 && t2.ceremony.current.id === CEREMONY_ORDER[2] &&
+      laterTitles(2).every((title) => JSON.stringify(t2).indexOf(title) === -1));
+
+    // Walk to best liar, which is where the tie is.
+    await j(awards(POST({ action: 'next', partyCode: c.partyCode, hostToken: c.hostToken })));
+    await j(awards(POST({ action: 'next', partyCode: c.partyCode, hostToken: c.hostToken })));
+    await rewind(TITLE_MS + 500);
+    const tieUp = await sup();
+    const tied = tieUp.ceremony.current;
+    const tiedNames = [nameOf(ch[2]), nameOf(ch[3])].sort();
+    assert('a tie announces every tied name, on screen and in the speech',
+      tied.id === 'liar' && tied.tie === true && tied.winners.length === 2 &&
+      tied.winners.map((w) => w.characterName).sort().join('|') === tiedNames.join('|') &&
+      /tie/i.test(tied.speech) && tiedNames.every((n) => tied.speech.indexOf(n) !== -1));
+
+    // Every stage of the walk, and nowhere a seat code.
+    const seen = [JSON.stringify(t0), JSON.stringify(w0), JSON.stringify(t1), JSON.stringify(t2), JSON.stringify(tieUp),
+      JSON.stringify(announced), JSON.stringify(await sup(seats[0].personalCode))];
+    assert('the ceremony payload never exposes who voted for whom',
+      seats.every((s) => seen.every((p) => p.indexOf(s.personalCode) === -1)));
+
+    await j(awards(POST({ action: 'next', partyCode: c.partyCode, hostToken: c.hostToken })));
+    const done = await sup();
+    assert('the ceremony settles on all five winners together',
+      done.ceremony.done === true && done.ceremony.running === false &&
+      done.ceremony.current === null && !!done.ceremony.closing &&
+      done.results.length === 5 &&
+      done.results.map((r) => r.id).join('|') === CEREMONY_ORDER.join('|'));
+  }
+
+  // ---------------------------------------------------------------------
+  // Announcing with nobody having voted. A rented hall is a real place and
+  // this will happen; it says so on the screen rather than crowning nobody.
+  // ---------------------------------------------------------------------
+  {
+    const c = await j(createGame(POST({ hostName: 'Kali' })));
+    await j(join(POST({ partyCode: c.partyCode, name: 'Lisbeth Crandall' })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+    await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
+    await j(reveal(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+    await j(awards(POST({ action: 'open', partyCode: c.partyCode, hostToken: c.hostToken })));
+
+    const r = await j(awards(POST({ action: 'announce', partyCode: c.partyCode, hostToken: c.hostToken })));
+    const st = await j(state(GET({ partyCode: c.partyCode })));
+    const cer = st.state.awards.ceremony;
+    assert('announcing with no votes says so instead of crowning nobody',
+      r.announcing === true && r.empty === true &&
+      cer.empty === true && cer.running === false && cer.done === true &&
+      typeof cer.message === 'string' && cer.message.length > 0 &&
+      st.state.awards.results.length === 0);
+    // And it stays harmless when the clock and the skip button are poked at.
+    const poked = await j(awards(POST({ action: 'next', partyCode: c.partyCode, hostToken: c.hostToken })));
+    const again = await j(state(GET({ partyCode: c.partyCode })));
+    assert('an empty ceremony cannot be walked or crashed',
+      !poked.error && again.state.awards.ceremony.empty === true &&
+      again.state.awards.ceremony.current === null);
   }
 
   // ---------------------------------------------------------------------

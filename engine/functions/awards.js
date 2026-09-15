@@ -1,7 +1,9 @@
 'use strict';
 /* POST /api/awards - the superlatives, after the reveal.
- *   { action:'open', partyCode, hostToken }
- *   { action:'vote', partyCode, personalCode, awardId, characterId }
+ *   { action:'open',     partyCode, hostToken }   open the voting
+ *   { action:'vote',     partyCode, personalCode, awardId, characterId }
+ *   { action:'announce', partyCode, hostToken }   close voting, start the ceremony
+ *   { action:'next',     partyCode, hostToken }   skip to the next award early
  *
  * The awards round belongs to the end of the night: the host opens it once the
  * reveal has played, and voting is refused before that, so nothing here can
@@ -15,7 +17,7 @@
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack } = require('../lib/runtime');
-const { findAward, isSeated, recordAwardVote, awardsPublic } = require('../lib/awards');
+const { findAward, isSeated, recordAwardVote, awardsPublic, startCeremony, advanceCeremony } = require('../lib/awards');
 
 exports.handler = async (event) => {
   connect(event);
@@ -42,9 +44,29 @@ exports.handler = async (event) => {
     return ok({ open: true, awards: awardsPublic(pack, next || game) });
   }
 
+  // Close the voting and start the walk. Separate button from 'open' on
+  // purpose: the room watches the tally move for as long as the host lets it.
+  if (b.action === 'announce') {
+    if (b.hostToken !== game.hostToken) return forbidden('host only');
+    if (!game.reveal) return forbidden('the superlatives open once the reveal has played');
+    if (!game.awardsOpen) return forbidden('open the superlatives before announcing them');
+    const next = await updateGame(code, (g) => { if (!g.ceremony) startCeremony(g); return g; });
+    const view = awardsPublic(pack, next || game);
+    return ok({ announcing: true, empty: !!(view && view.ceremony && view.ceremony.empty), awards: view });
+  }
+
+  // The host skipping ahead, for a room that has finished reacting.
+  if (b.action === 'next') {
+    if (b.hostToken !== game.hostToken) return forbidden('host only');
+    if (!game.ceremony) return bad('the winners are not being announced yet');
+    const next = await updateGame(code, (g) => { advanceCeremony(g, true); return g; });
+    return ok({ awards: awardsPublic(pack, next || game) });
+  }
+
   if (b.action === 'vote') {
     if (!game.reveal) return forbidden('the superlatives open once the reveal has played');
     if (!game.awardsOpen) return forbidden('the superlatives are not open yet');
+    if (game.awardsClosed) return forbidden('voting has closed; the winners are being announced');
     if (!b.personalCode || !game.players[b.personalCode]) return forbidden('join the party first');
 
     const award = findAward(b.awardId);

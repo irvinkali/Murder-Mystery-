@@ -107,6 +107,12 @@
     <p class="muted">Five awards the room votes on once the reveal has played: best liar, first one you suspected, most 1989, should have been a detective, best costume. Open them with the button and everyone votes on their own phone, for somebody other than themselves.</p>
     <p class="muted"><b>The winners appear on the room screen</b>, each with the character name and the real first name, so you know whose hand to put a gift card in. A tie shows every tied name rather than picking one. Nobody sees who voted for whom, you included.</p>
     <button id="awardsBtn" class="ghost">Open the superlatives</button>
+    <p class="muted" style="margin-top:16px">When you are ready, announce them. That closes the voting and the room screen walks the five awards one at a time, title first and then the name, with about fifteen seconds on each winner to hand the card over. Best liar goes last. Skip ahead whenever the room has finished reacting.</p>
+    <div class="row">
+      <button id="announceBtn" style="flex:2">Announce the winners</button>
+      <button id="nextAwardBtn" class="ghost" style="flex:1;display:none">Next award →</button>
+    </div>
+    <div class="muted" id="awardsProgress" style="font-size:13px;margin-top:8px"></div>
     <div class="err" id="awardsErr"></div>
   </div>
   <div class="center"><button class="ghost" id="reset">Forget this party on this device</button></div>
@@ -173,10 +179,7 @@ async function tick() {
     el('#phaseDetail').textContent = openPolls.length ? `Running: ${openPolls.join('; ')}` : 'No poll open right now.';
     el('#pauseBtn').textContent = cur.paused ? 'Resume' : 'Pause';
     renderClock(state.timing);
-    if (state.awards && state.awards.open) {
-      el('#awardsBtn').textContent = 'The superlatives are open';
-      el('#awardsBtn').disabled = true;
-    }
+    renderAwardControls(state.awards);
 
     // Poll controls: open scheduled polls + any ad-hoc, with close/extend; plus open-early/skip for this phase's scheduled ones.
     const rows = [];
@@ -236,14 +239,37 @@ el('#revealBtn').addEventListener('click', async () => {
     box.innerHTML=`<div class="kicker">Now on the gallery screen</div><div class="serif" style="font-size:20px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div><p>${esc(r.method||'')}</p>`; }
   catch(e){ alert(e.message); }
 });
+// Two buttons, deliberately apart: one opens the voting and lets the room watch
+// the tally move, the other closes it and starts the ceremony.
+function renderAwardControls(a) {
+  const open = !!(a && a.open);
+  const cer = a && a.ceremony;
+  el('#awardsBtn').disabled = open;
+  el('#awardsBtn').textContent = open ? 'The superlatives are open' : 'Open the superlatives';
+  el('#announceBtn').disabled = !open || !!cer;
+  el('#announceBtn').textContent = cer ? 'Announced' : 'Announce the winners';
+  const walking = !!(cer && cer.running);
+  el('#nextAwardBtn').style.display = walking ? 'block' : 'none';
+  el('#awardsProgress').textContent = !cer ? ''
+    : cer.empty ? 'Nobody voted, so there is nothing to announce. The room screen says so.'
+    : walking ? `Announcing ${cer.index + 1} of ${cer.count}${cer.current ? ': ' + cer.current.title : ''}. It moves on by itself; skip ahead if the room is done.`
+    : 'All five are up on the room screen for photographs.';
+}
 el('#awardsBtn').addEventListener('click', async () => {
   el('#awardsErr').textContent = '';
-  try {
-    await api('awards', { action: 'open', partyCode: Store.party, hostToken: Store.host });
-    el('#awardsBtn').textContent = 'The superlatives are open';
-    el('#awardsBtn').disabled = true;
-    tick();
-  } catch (e) { el('#awardsErr').textContent = e.message; }
+  try { await api('awards', { action: 'open', partyCode: Store.party, hostToken: Store.host }); tick(); }
+  catch (e) { el('#awardsErr').textContent = e.message; }
+});
+el('#announceBtn').addEventListener('click', async () => {
+  if (!confirm('Announce the winners? This closes the voting for good and starts the ceremony on the room screen.')) return;
+  el('#awardsErr').textContent = '';
+  try { await api('awards', { action: 'announce', partyCode: Store.party, hostToken: Store.host }); tick(); }
+  catch (e) { el('#awardsErr').textContent = e.message; }
+});
+el('#nextAwardBtn').addEventListener('click', async () => {
+  el('#awardsErr').textContent = '';
+  try { await api('awards', { action: 'next', partyCode: Store.party, hostToken: Store.host }); tick(); }
+  catch (e) { el('#awardsErr').textContent = e.message; }
 });
 function renderCasting(roster) {
   const openOpts = roster.filter(c => !c.claimedBy)

@@ -37,8 +37,20 @@
     </div>
     <div id="superlatives" style="display:none">
       <div class="divider"></div>
-      <h2>The superlatives</h2>
+      <h2 id="supHeading">The superlatives</h2>
       <p class="muted" id="supNote"></p>
+      <!-- The ceremony: one award at a time, the title alone before the name -->
+      <div id="supStage" class="center" style="display:none;padding:4vh 2vw">
+        <div class="eyebrow" id="supCount"></div>
+        <div class="serif" id="supTitle" style="font-size:clamp(34px,6vw,72px);color:var(--gold-2);margin-top:8px"></div>
+        <p class="muted" id="supLine" style="font-size:clamp(15px,1.6vw,20px)"></p>
+        <div id="supWinner" style="display:none;margin-top:3vh">
+          <div class="divider"></div>
+          <div id="supTie" class="pill on" style="display:none;margin-bottom:12px">It is a tie</div>
+          <div id="supNames"></div>
+          <p class="muted" id="supVotes" style="font-size:clamp(15px,1.6vw,20px);margin-top:10px"></p>
+        </div>
+      </div>
       <div class="grid" id="supGrid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))"></div>
     </div>
   </div>
@@ -306,6 +318,105 @@ el('#voiceSel').addEventListener('change', () => {
   synth(voiceCfg.audition || 'This is how I will sound tonight.', ()=>{});   // instant audition
 });
 
+// --- the superlatives ---
+// Two lives. While the voting is open it is the live tally and the bars move as
+// people vote, which is half the fun. Once the host announces, it becomes the
+// ceremony: one award at a time, the title alone first so the room can shout a
+// guess, then the name. Everything on this screen is what the server sent, and
+// the server sends nothing past the award on stage, so there is nothing here
+// that could run ahead of the moment.
+function winnerNames(list) {
+  return (list || []).map((w) =>
+    `<div style="margin-bottom:10px"><div class="serif" style="font-size:clamp(30px,5vw,60px);color:var(--gold-2)">${esc(w.characterName)}</div>`
+    + (w.firstName ? `<div class="muted" style="font-size:clamp(16px,2vw,24px)">${esc(w.firstName)}</div>` : '')
+    + `</div>`).join('');
+}
+
+function renderSuperlatives(sup) {
+  el('#superlatives').style.display = (sup && sup.open) ? 'block' : 'none';
+  if (!sup || !sup.open) return;
+  const cer = sup.ceremony;
+  const results = sup.results || [];
+
+  // Nobody voted at all. Say so rather than crowning nobody.
+  if (cer && cer.empty) {
+    el('#supHeading').textContent = 'The superlatives';
+    el('#supStage').style.display = 'none';
+    el('#supGrid').innerHTML = '';
+    el('#supNote').textContent = cer.message || '';
+    enqueue('cer.empty', cer.message || '', null, true);
+    return;
+  }
+
+  // Still voting: the live tally.
+  if (!cer) {
+    el('#supHeading').textContent = 'The superlatives';
+    el('#supStage').style.display = 'none';
+    const cast = results.reduce((n, r) => n + (r.total || 0), 0);
+    el('#supNote').textContent = cast
+      ? 'The room is voting. Nothing is settled until the host announces it.'
+      : 'Voting is open. Pick five people on your phone.';
+    el('#supGrid').innerHTML = results.map((r) => {
+      const names = (r.winners || []).map((w) =>
+        `<b>${esc(w.characterName)}</b><span class="muted">${w.firstName ? esc(w.firstName) : ''}</span>`).join('');
+      const foot = !r.winners.length
+        ? 'No votes in yet.'
+        : (r.tie ? `Level, on ${r.votes} ${r.votes === 1 ? 'vote' : 'votes'} each.` : `${r.votes} of ${r.total}, ahead of ${r.runnerUpVotes}.`);
+      return `<div class="tile"><span class="pill on">${esc(r.title)}</span>`
+        + (names || '<b class="muted">Nothing in yet</b>')
+        + `<div class="muted" style="font-size:12px;margin-top:6px">${esc(r.line)}</div>`
+        + `<div class="muted" style="font-size:12px;margin-top:4px">${esc(foot)}</div></div>`;
+    }).join('');
+    return;
+  }
+
+  // The ceremony is walking.
+  if (cer.running && cer.current) {
+    const c = cer.current;
+    el('#supHeading').textContent = 'The superlatives';
+    el('#supNote').textContent = '';
+    el('#supGrid').innerHTML = '';
+    el('#supStage').style.display = 'block';
+    el('#supCount').textContent = `Award ${cer.index + 1} of ${cer.count}`;
+    el('#supTitle').textContent = c.title;
+    el('#supLine').textContent = c.line || '';
+    // The title is announced the moment it comes up; the queue's own dedupe
+    // means saying it again at the winner stage is a no-op, which is what
+    // catches a screen that connected halfway through an award.
+    enqueue('cer.title:' + c.id, c.announce || c.title, null, true);   // bell first
+    if (c.stage === 'winner') {
+      el('#supWinner').style.display = 'block';
+      el('#supTie').style.display = c.tie ? 'inline-block' : 'none';
+      el('#supNames').innerHTML = winnerNames(c.winners) || '<div class="muted serif" style="font-size:clamp(24px,3vw,40px)">No votes for this one</div>';
+      el('#supVotes').textContent = (c.winners || []).length
+        ? (c.tie ? `${c.votes} ${c.votes === 1 ? 'vote' : 'votes'} each, of ${c.total} cast.`
+                 : `${c.votes} ${c.votes === 1 ? 'vote' : 'votes'} of ${c.total} cast.`)
+        : '';
+      enqueue('cer.winner:' + c.id, c.speech || '', null);
+    } else {
+      el('#supWinner').style.display = 'none';
+    }
+    return;
+  }
+
+  // Done: all five together, and left there to be photographed.
+  el('#supHeading').textContent = 'The superlatives';
+  el('#supStage').style.display = 'none';
+  el('#supNote').textContent = 'Voted by the room. Gift cards from the host.';
+  el('#supGrid').innerHTML = results.map((r) => {
+    const names = (r.winners || []).map((w) =>
+      `<b>${esc(w.characterName)}</b><span class="muted">${w.firstName ? esc(w.firstName) : ''}</span>`).join('');
+    const foot = !r.winners.length
+      ? 'No votes for this one.'
+      : (r.tie ? `A tie, on ${r.votes} ${r.votes === 1 ? 'vote' : 'votes'} each.` : `${r.votes} ${r.votes === 1 ? 'vote' : 'votes'}.`);
+    return `<div class="tile"><span class="pill on">${esc(r.title)}</span>`
+      + (names || '<b class="muted">Nobody</b>')
+      + `<div class="muted" style="font-size:12px;margin-top:6px">${esc(r.line)}</div>`
+      + `<div class="muted" style="font-size:12px;margin-top:4px">${esc(foot)}</div></div>`;
+  }).join('');
+  if (cer.closing) enqueue('cer.closing', cer.closing, null);
+}
+
 async function refresh() {
   if (!party) { el('#phaseName').textContent = 'Add ?party=CODE to this URL'; return; }
   try {
@@ -346,25 +457,7 @@ async function refresh() {
       // with the character name and the real first name, because somebody has
       // to be handed the gift card. The runner-up is a number and nothing
       // more: who voted for whom is not on this screen or on any other.
-      const sup = state.awards;
-      el('#superlatives').style.display = (sup && sup.open) ? 'block' : 'none';
-      if (sup && sup.open) {
-        const cast = (sup.results || []).reduce((n, r) => n + (r.total || 0), 0);
-        el('#supNote').textContent = cast
-          ? 'Voted by the room. Winners collect from the host.'
-          : 'Voting is open. Pick five people on your phone.';
-        el('#supGrid').innerHTML = (sup.results || []).map((r) => {
-          const names = (r.winners || []).map((w) =>
-            `<b>${esc(w.characterName)}</b><span class="muted">${w.firstName ? esc(w.firstName) : ''}</span>`).join('');
-          const foot = !r.winners.length
-            ? 'No votes in yet.'
-            : (r.tie ? `It is a tie, on ${r.votes} ${r.votes === 1 ? 'vote' : 'votes'} each.` : `${r.votes} of ${r.total}, ahead of ${r.runnerUpVotes}.`);
-          return `<div class="tile"><span class="pill on">${esc(r.title)}</span>`
-            + (names || '<b class="muted">Still counting</b>')
-            + `<div class="muted" style="font-size:12px;margin-top:6px">${esc(r.line)}</div>`
-            + `<div class="muted" style="font-size:12px;margin-top:4px">${esc(foot)}</div></div>`;
-        }).join('');
-      }
+      renderSuperlatives(state.awards);
       return;
     }
     el('#revealBox').style.display = 'none'; el('#mainStage').style.display = 'block';

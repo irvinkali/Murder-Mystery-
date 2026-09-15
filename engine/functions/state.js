@@ -17,7 +17,7 @@ const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
-const { awardsPublic, ownAwardVotes } = require('../lib/awards');
+const { awardsPublic, ownAwardVotes, ceremonyDue, advanceCeremony } = require('../lib/awards');
 
 exports.handler = async (event) => {
   connect(event);
@@ -70,6 +70,12 @@ exports.handler = async (event) => {
   // mutation, so concurrent pollers don't double-fire.)
   if (autoAdvanceDue(game)) {
     game = (await updateGame(game.partyCode, (g) => { maybeAutoAdvance(pack, g); return g; })) || game;
+  }
+
+  // The awards ceremony walks itself: each award gets its title beat, its
+  // winner and its hold, then the next one comes up on the next poll.
+  if (ceremonyDue(game)) {
+    game = (await updateGame(game.partyCode, (g) => { advanceCeremony(g); return g; })) || game;
   }
 
   // The blackout set-piece starts/ends on its own clock.
