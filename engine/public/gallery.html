@@ -52,6 +52,10 @@
       </div>
     </div>
     <div class="card"><div class="narrator" id="narration"></div></div>
+    <div class="card" id="captionBox" style="display:none;border-color:var(--gold)">
+      <div class="eyebrow">Being said now</div>
+      <div class="narrator beat" id="captionText" style="font-size:clamp(20px,3vw,32px)"></div>
+    </div>
     <div class="card" id="interjectBox" style="display:none;border-color:var(--gold)">
       <div class="narrator beat" id="interjectText" style="font-size:clamp(20px,3vw,32px)"></div>
     </div>
@@ -158,6 +162,30 @@ function duck(on){
   if (pad.nodes && !pad.dark) pad.nodes.g.gain.setTargetAtTime(on ? 0.012 : (padWanted ? 0.045 : 0.0001), audioCtx.currentTime, 0.3);
 }
 
+// --- captions ---
+// Every spoken beat is also written on the screen. A rented hall with fourteen
+// people talking in it beats a synthesized voice every time, and this way the
+// room misses nothing whether the sound is on, off, or coming out of a
+// television nobody can hear over the music.
+let captionTimer = null;
+function showCaption(text){
+  if (captionTimer) { clearTimeout(captionTimer); captionTimer = null; }
+  if (!text) { el('#captionBox').style.display = 'none'; return; }
+  el('#captionText').textContent = text;
+  el('#captionBox').style.display = 'block';
+}
+function clearCaptionSoon(){
+  if (captionTimer) clearTimeout(captionTimer);
+  captionTimer = setTimeout(() => { el('#captionBox').style.display = 'none'; }, 12000);
+}
+// How long a line stays up when nobody is reading it aloud: roughly reading
+// pace, with a floor so a short line does not blink past and a ceiling so a
+// long one does not hold the screen all night.
+function readingMs(text){
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(4000, Math.min(20000, Math.round(words / 2.6 * 1000)));
+}
+
 // --- narration queue ---
 function pickVoice(){
   if (!('speechSynthesis' in window)) return null;
@@ -227,6 +255,9 @@ function playMedia(file, text, done){
   }
 }
 function playOne(item, done){
+  showCaption(item.text);
+  // Sound off: the line is still delivered, just read rather than heard.
+  if (!audioReady) { setTimeout(done, readingMs(item.text)); return; }
   duck(true);
   if (item.major) {
     // Important announcement: bell → "Your attention…" → the line itself.
@@ -238,12 +269,12 @@ function playOne(item, done){
 function pump(){
   if (speaking) return;
   const item = queue.shift();
-  if (!item){ duck(false); return; }
+  if (!item){ duck(false); clearCaptionSoon(); return; }
   speaking = true;
   playOne(item, () => { speaking = false; if (!queue.length) duck(false); pump(); });
 }
 function enqueue(key, text, file, major){
-  if (!audioReady || spoken.has(key)) return;
+  if (spoken.has(key)) return;   // captions run with or without sound
   spoken.add(key);
   queue.push({ text: text||'', file: file||null, major: !!major });
   pump();
