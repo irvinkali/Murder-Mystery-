@@ -113,6 +113,21 @@ function computeAlibi(pack, game) {
   return { targetCode, drop: { kind: 'alibi', text: entry.text } };
 }
 
+/**
+ * Close the 6:40 question, once per game. The host does this by hand from her
+ * drawer; autopilot does it for her at the end of Asking Around if she has not.
+ * Both land here, so whichever gets there first is the only one that fires.
+ * Mutates `game`; returns true if this call is the one that closed it.
+ */
+function fireAlibi(pack, game) {
+  game.branchFired = game.branchFired || {};
+  if (game.branchFired.alibi) return false;
+  const res = computeAlibi(pack, game);
+  if (res) mergeDrops(game, [res]);
+  game.branchFired.alibi = true;
+  return true;
+}
+
 /** The three most active investigators (by prop scans); ties break by join order. */
 function topScanners(game, n) {
   return Object.entries(game.players)
@@ -176,6 +191,7 @@ module.exports = {
   nearSceneRe,
   computeDefense,
   computeAlibi,
+  fireAlibi,
   computeMedical,
   topScanners,
   mergeDrops,

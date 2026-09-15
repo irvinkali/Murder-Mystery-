@@ -9,7 +9,7 @@
 const { ok, bad, notFound, forbidden, preflight, parseBody } = require('../lib/api');
 const { connect, getGame, updateGame } = require('../lib/store');
 const { loadRuntimePack } = require('../lib/runtime');
-const { computeAlibi, mergeDrops } = require('../lib/branching');
+const { fireAlibi } = require('../lib/branching');
 
 const ALIBI_PHASE = 3;
 
@@ -40,15 +40,8 @@ exports.handler = async (event) => {
   if (b.action === 'resolve') {
     if (b.hostToken !== game.hostToken) return forbidden('host only');
     if (game.phase !== ALIBI_PHASE) return bad(`alibi resolves in phase ${ALIBI_PHASE}`);
-    await updateGame(code, (g) => {
-      g.branchFired = g.branchFired || {};
-      if (g.branchFired.alibi) return g; // once per game
-      const pack = loadRuntimePack();
-      const res = computeAlibi(pack, g);
-      if (res) mergeDrops(g, [res]);
-      g.branchFired.alibi = true;
-      return g;
-    });
+    const pack = loadRuntimePack();
+    await updateGame(code, (g) => { fireAlibi(pack, g); return g; });
     // Spoiler-safe: do not tell the host whether/whom it flagged.
     return ok({ resolved: true });
   }

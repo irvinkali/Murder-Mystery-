@@ -56,6 +56,15 @@
   <!-- Host drawer — shown ONLY on the device that created the party -->
   <details class="card" id="hostPanel" style="display:none;border-color:var(--gold)">
     <summary>Host controls</summary>
+    <div class="note" id="hpCue" style="display:none;margin-top:10px">
+      <div class="kicker">Your turn</div>
+      <div id="hpCueText"></div>
+      <button id="hpCueBtn" style="margin-bottom:0">Do it</button>
+    </div>
+    <div class="row" style="align-items:center;margin-top:10px">
+      <span class="muted" style="flex:2;font-size:13px" id="hpAutopilotLabel">Run the night for me</span>
+      <button class="ghost" id="hpAutopilot" style="flex:1;margin-top:0">Turn on</button>
+    </div>
     <div class="muted clock" id="hpClock" style="margin-top:10px"></div>
     <button id="hpDoors" style="display:none">Open the doors and begin</button>
     <div class="row">
@@ -144,7 +153,8 @@ if (!Store.party || !Store.code) location.href = '/';
 const isHost = !!Store.host;
 const SCHED = { 3:['benefits'], 4:['subpoena'], 5:['final'] };
 const SCHED_LABEL = { benefits:'“Who benefits?” vote', subpoena:'“Open the files?” vote', final:'Final “who did it?” vote' };
-let hostState = { paused:false, auto:true };
+let hostState = { paused:false, auto:true, autopilot:false };
+let hostView = null;
 const fmt = ms => { const s=Math.max(0,Math.round(ms/1000)); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
 const hapi = (body) => api('advance', Object.assign({ partyCode: Store.party, hostToken: Store.host }, body));
 
@@ -154,13 +164,14 @@ function renderHost(state) {
   // In the lobby the only host control that means anything is the one that
   // ends it, so the rest of the drawer stays out of the way.
   el('#hpDoors').style.display = state.lobby ? 'block' : 'none';
-  if (state.lobby) { el('#hpClock').textContent = 'The lobby is up. Nothing is running yet.'; return; }
+  if (state.lobby) { el('#hpClock').textContent = 'The lobby is up. Nothing is running yet.'; renderAutopilot(); return; }
   el('#hpGallery').href = `${location.origin}/gallery?party=${Store.party}`;
   el('#hpCase').href = `${location.origin}/casefile.html?party=${Store.party}`;
   const t = state.timing || {};
   hostState.paused = !!t.paused; hostState.auto = t.autoAdvance !== false;
   el('#hpPause').textContent = hostState.paused ? 'Resume' : 'Pause';
   el('#hpAuto').textContent = hostState.auto ? 'Auto off' : 'Auto on';
+  renderAutopilot();
   if (t.phaseStartedAt) {
     const pausedNow = t.paused ? (Date.now() - (t.pausedAt ? Date.parse(t.pausedAt) : Date.now())) : 0;
     const elapsed = Date.now() - Date.parse(t.phaseStartedAt) - (t.pauseAccumMs||0) - pausedNow;
@@ -189,7 +200,35 @@ function renderHost(state) {
   document.querySelectorAll('[data-hclose]').forEach(b=>b.onclick=async()=>{ try{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hclose}); if(r.counts) alert('Results — '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); refresh(); }catch(e){ alert(e.message); } });
   document.querySelectorAll('[data-hopen]').forEach(b=>b.onclick=async()=>{ try{ await api('poll',{action:'open',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hopen}); refresh(); }catch(e){ alert(e.message); } });
 }
+// "Run the night for me." One switch, and one cue line at a time underneath it:
+// the app does everything it can do by itself and only speaks up when a person
+// is genuinely needed. Handing out the gift cards stays hers.
+const CUE_ACTIONS = {
+  'alibi-resolve': () => api('alibi', { action:'resolve', partyCode:Store.party, hostToken:Store.host }),
+  'awards-announce': () => api('awards', { action:'announce', partyCode:Store.party, hostToken:Store.host }),
+};
+function renderAutopilot() {
+  if (!isHost) return;
+  hostState.autopilot = !!(hostView && hostView.autopilot);
+  el('#hpAutopilot').textContent = hostState.autopilot ? 'Turn off' : 'Turn on';
+  el('#hpAutopilotLabel').textContent = hostState.autopilot
+    ? 'Running the night for you. Phases, the reveal, the superlatives and the 6:40 question all happen on their own. Every button here still works.'
+    : 'Run the night for me. The app changes phases, plays the reveal, opens the superlatives and closes the 6:40 question by itself.';
+  const cue = hostView && hostView.cue;
+  el('#hpCue').style.display = cue ? 'block' : 'none';
+  if (cue) {
+    el('#hpCueText').textContent = cue.text;
+    el('#hpCueBtn').textContent = cue.button || 'Do it';
+    el('#hpCueBtn').dataset.action = cue.action || '';
+  }
+}
 if (isHost) {
+  el('#hpAutopilot').addEventListener('click', async()=>{ try{ await hapi({autopilot:!hostState.autopilot}); refresh(); }catch(e){ alert(e.message); } });
+  el('#hpCueBtn').addEventListener('click', async()=>{
+    const run = CUE_ACTIONS[el('#hpCueBtn').dataset.action];
+    if (!run) return;
+    try { await run(); refresh(); } catch(e){ alert(e.message); }
+  });
   el('#hpPause').addEventListener('click', async()=>{ try{ await hapi({pause:!hostState.paused}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpExtend').addEventListener('click', async()=>{ try{ await hapi({extend:5}); refresh(); }catch(e){ alert(e.message); } });
   el('#hpAdv').addEventListener('click', async()=>{ try{ await hapi({}); refresh(); }catch(e){ alert(e.message); } });
@@ -420,7 +459,10 @@ function renderLobby(state, you) {
 
 async function refresh() {
   try {
-    const { state, you } = await api(`state?partyCode=${Store.party}&personalCode=${Store.code}`);
+    const q = `state?partyCode=${Store.party}&personalCode=${Store.code}`
+      + (Store.host ? `&hostToken=${encodeURIComponent(Store.host)}` : '');
+    const { state, you, host } = await api(q);
+    hostView = host || null;
     if (state.lobby) { renderLobby(state, you); renderHost(state); return; }
     el('#lobbyView').style.display = 'none';
     document.querySelectorAll('.gameOnly').forEach((n) => { n.style.display = ''; });

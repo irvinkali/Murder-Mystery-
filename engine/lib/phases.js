@@ -107,8 +107,14 @@ const WARN_BEFORE_MS = 2 * 60 * 1000;
  *  open the new phase's polls, reset the clock. Used by manual AND auto. */
 function performAdvance(pack, game, target) {
   const { autoOpen, autoClose } = require('./pollsched'); // late require: no cycle at load
+  const { autopilotLeavingPhase } = require('./autopilot'); // ditto
   const from = game.phase;
-  if (target !== from) autoClose(pack, game, from);
+  if (target !== from) {
+    autoClose(pack, game, from);
+    // Under autopilot, a question that can only resolve inside its own phase
+    // gets closed as that phase ends, even when the host advances early.
+    autopilotLeavingPhase(pack, game, from, target);
+  }
   applyPhaseTransition(pack, game, target);
   autoOpen(pack, game, target);
   game.phaseStartedAt = new Date().toISOString();

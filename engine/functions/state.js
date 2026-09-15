@@ -18,6 +18,7 @@ const { audioName } = require('../lib/runtime');
 const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs, releasedLines } = require('../lib/phases');
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
 const { awardsPublic, ownAwardVotes, ceremonyDue, advanceCeremony } = require('../lib/awards');
+const { autopilotOn, autopilotDue, runAutopilot, hostCue } = require('../lib/autopilot');
 
 exports.handler = async (event) => {
   connect(event);
@@ -70,6 +71,15 @@ exports.handler = async (event) => {
   // mutation, so concurrent pollers don't double-fire.)
   if (autoAdvanceDue(game)) {
     game = (await updateGame(game.partyCode, (g) => { maybeAutoAdvance(pack, g); return g; })) || game;
+  }
+
+  // Autopilot, if the host asked the app to run the night: the reveal plays
+  // itself once the final vote is closed, the superlatives open themselves once
+  // the reveal has had its time, and the 6:40 question closes itself at the end
+  // of Asking Around. Same lazy tick as the clock above, and every step is
+  // guarded on the state it creates, so a host who did it by hand wins.
+  if (autopilotDue(game).length) {
+    game = (await updateGame(game.partyCode, (g) => { runAutopilot(pack, g); return g; })) || game;
   }
 
   // The awards ceremony walks itself: each award gets its title beat, its
@@ -189,5 +199,12 @@ exports.handler = async (event) => {
     }
   }
 
-  return ok({ state: publicState, you });
+  // The host's own drawer. Behind her token, so it is not in the public state
+  // a guest phone or the room screen receives: one cue at a time, and only when
+  // a human is genuinely needed.
+  const host = (q.hostToken && q.hostToken === game.hostToken)
+    ? { autopilot: autopilotOn(game), cue: hostCue(pack, game) }
+    : null;
+
+  return ok({ state: publicState, you, host });
 };

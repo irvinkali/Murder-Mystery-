@@ -43,6 +43,11 @@
       <p class="muted" style="font-size:12px;margin-bottom:0">Press this when people are actually in the room. It starts Phase 1 and unlocks everyone's dossier at once. There is no undo.</p>
       <div class="err" id="doorsErr"></div>
     </div>
+    <div class="card" id="cueBox" style="display:none;border-color:var(--gold);margin-top:0">
+      <h3 style="margin-top:0">Your turn</h3>
+      <p id="cueText" style="margin-top:0"></p>
+      <button id="cueBtn">Do it</button>
+    </div>
     <p class="muted"><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
     <details><summary class="muted">Host key — for running these controls on a second device</summary>
       <p class="muted" style="font-size:13px;margin-top:10px">Anyone with this can drive the party, so keep it to yourself. Write it down before the night: it is the only way back into host controls if this device dies.</p>
@@ -69,6 +74,10 @@
     <div class="row" style="align-items:center;margin-top:8px">
       <span class="muted" style="flex:2;font-size:13px" id="autoLabel">Auto-advance is on — phases change themselves when time runs out (with a 2-minute warning).</span>
       <button id="autoBtn" class="ghost" style="flex:1;margin-top:0">Turn auto off</button>
+    </div>
+    <div class="row" style="align-items:center;margin-top:8px">
+      <span class="muted" style="flex:2;font-size:13px" id="autopilotLabel">Run the night for me.</span>
+      <button id="autopilotBtn" class="ghost" style="flex:1;margin-top:0">Turn on</button>
     </div>
 
     <div class="divider"></div>
@@ -123,7 +132,8 @@ applyBrand();
 const PHASE_NAMES = ['', 'Arrivals', 'The Unveiling', 'Investigation', 'The Keystone', 'Accusation', 'The Reveal'];
 const SCHED = { 3:['benefits'], 4:['subpoena'], 5:['final'] };
 const SCHED_LABEL = { benefits:'“Who benefits?” vote', subpoena:'“Open the files?” vote', final:'Final “who did it?” vote' };
-let cur = { phase: 1, paused: false, auto: true };
+let cur = { phase: 1, paused: false, auto: true, autopilot: false };
+let hostView = null;
 
 function showLive() {
   el('#setup').style.display = 'none'; el('#live').style.display = 'block';
@@ -131,6 +141,27 @@ function showLive() {
   const g = `${location.origin}/gallery?party=${Store.party}`;
   el('#galleryLink').href = g; el('#galleryLink').textContent = g;
   el('#hostKey').textContent = Store.host;
+}
+// "Run the night for me": the switch, and the one cue line that goes with it.
+// The app does everything it can do on its own; this is only the moments where
+// a person has to say something out loud or hand somebody a gift card.
+const CUE_ACTIONS = {
+  'alibi-resolve': () => api('alibi', { action:'resolve', partyCode:Store.party, hostToken:Store.host }),
+  'awards-announce': () => api('awards', { action:'announce', partyCode:Store.party, hostToken:Store.host }),
+};
+function renderAutopilot() {
+  cur.autopilot = !!(hostView && hostView.autopilot);
+  el('#autopilotBtn').textContent = cur.autopilot ? 'Turn off' : 'Turn on';
+  el('#autopilotLabel').textContent = cur.autopilot
+    ? 'Running the night for you. Phases, the reveal, the superlatives and the 6:40 question happen on their own, and every control on this page still works.'
+    : 'Run the night for me. The app changes phases, plays the reveal, opens the superlatives and closes the 6:40 question by itself. Announcing the winners stays yours.';
+  const cue = hostView && hostView.cue;
+  el('#cueBox').style.display = cue ? 'block' : 'none';
+  if (cue) {
+    el('#cueText').textContent = cue.text;
+    el('#cueBtn').textContent = cue.button || 'Do it';
+    el('#cueBtn').dataset.action = cue.action || '';
+  }
 }
 function fmt(ms){ const s=Math.max(0,Math.round(ms/1000)); const m=Math.floor(s/60); return `${m}:${String(s%60).padStart(2,'0')}`; }
 
@@ -152,7 +183,9 @@ function renderClock(timing) {
 async function tick() {
   if (!Store.party) return;
   try {
-    const { state } = await api(`state?partyCode=${Store.party}`);
+    const { state, host } = await api(`state?partyCode=${Store.party}&hostToken=${encodeURIComponent(Store.host)}`);
+    hostView = host || null;
+    renderAutopilot();
     if (state.lobby) {
       el('#doorsBox').style.display = 'block';
       const n = (state.room || []).length;
@@ -227,6 +260,12 @@ el('#doorsBtn').addEventListener('click', async () => {
 el('#advBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host}); tick(); } catch(e){ alert(e.message); } });
 el('#pauseBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,pause:!cur.paused}); tick(); } catch(e){ alert(e.message); } });
 el('#extendBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,extend:5}); tick(); } catch(e){ alert(e.message); } });
+el('#autopilotBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,autopilot:!cur.autopilot}); tick(); } catch(e){ alert(e.message); } });
+el('#cueBtn').addEventListener('click', async () => {
+  const run = CUE_ACTIONS[el('#cueBtn').dataset.action];
+  if (!run) return;
+  try { await run(); tick(); } catch(e){ alert(e.message); }
+});
 el('#autoBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,auto:!cur.auto}); tick(); } catch(e){ alert(e.message); } });
 el('#pollBtn').addEventListener('click', async () => {
   const question=el('#pq').value.trim(); const options=el('#po').value.split(',').map(s=>s.trim()).filter(Boolean);

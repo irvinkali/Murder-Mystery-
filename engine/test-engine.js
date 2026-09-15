@@ -1137,6 +1137,236 @@ async function main() {
   }
 
 
+  // ---------------------------------------------------------------------
+  // AUTOPILOT: "Run the night for me." Kali is playing the busiest character
+  // in the room and hosting it, and there is nobody to hand the phone to. With
+  // the switch on the app runs the evening itself: phases on the clock, the
+  // reveal when the final vote closes, the superlatives once the reveal has
+  // played, the 6:40 question at the end of Asking Around. Handing out the
+  // gift cards stays hers. Every manual control keeps working, and nothing
+  // fires twice.
+  // SPOILER-SAFE: asserts that a reveal exists and what fired, never its text.
+  // ---------------------------------------------------------------------
+  {
+    const { updateGame } = require('./lib/store');
+    const { revealDue, hostCue, REVEAL_PLAYOUT_MS, AWARDS_SETTLE_MS } = require('./lib/autopilot');
+    const alibi = require('./functions/alibi').handler;
+
+    const edit = (code, fn) => updateGame(code, (g) => { fn(g); return g; });
+    const guestPoll = (c, seat) => j(state(GET({ partyCode: c.partyCode, personalCode: seat })));
+    const hostPoll = (c) => j(state(GET({ partyCode: c.partyCode, hostToken: c.hostToken })));
+    const didAuto = async (c, what) =>
+      ((await getGame(c.partyCode)).log || []).filter((e) => e.kind === 'autopilot' && String(e.did || '').includes(what)).length;
+
+    // A party sat at Phase 6 with the final ballot closed behind it.
+    const atTheEnd = async ({ autopilot }) => {
+      const c = await j(createGame(POST({})));
+      const seats = [];
+      for (let i = 0; i < 10; i++) {
+        const r = await j(join(POST({ partyCode: c.partyCode, name: 'Auto' + i })));
+        seats.push(r.personalCode);
+      }
+      if (autopilot) await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 5 })));
+      await j(poll(POST({ action: 'vote', partyCode: c.partyCode, personalCode: seats[0], id: 'final', choice: pack.cast[0].name })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 6 })));
+      return { c, seats };
+    };
+
+    // --- the switch itself ---
+    {
+      const c = await j(createGame(POST({})));
+      const before = await getGame(c.partyCode);
+      const on = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      const after = await getGame(c.partyCode);
+      const off = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: false })));
+      assert('autopilot is off until the host turns it on, and turning it on turns auto-advance on with it',
+        !before.autopilot && on.autopilot === true && after.autopilot === true
+        && after.autoAdvance === true && off.autopilot === false);
+      const notHost = await j(advance(POST({ partyCode: c.partyCode, hostToken: 'not-the-host', autopilot: true })));
+      assert('only the host can switch autopilot on', !!notHost.error);
+      // Remembered on the party, so a second device with the host key finds it on.
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      const otherDevice = await hostPoll(c);
+      const otherParty = await j(createGame(POST({})));
+      assert('the switch is remembered per party, not per device',
+        otherDevice.host.autopilot === true && !(await getGame(otherParty.partyCode)).autopilot);
+    }
+
+    // --- the reveal plays itself, once, and only after the final vote closes ---
+    {
+      const { c, seats } = await atTheEnd({ autopilot: true });
+      assert('autopilot will not reveal while the final vote is still open',
+        revealDue({ autopilot: true, phase: 6, polls: { final: { closed: false } } }) === false
+        && revealDue({ autopilot: true, phase: 5, polls: { final: { closed: true } } }) === false);
+
+      await guestPoll(c, seats[0]);
+      const g = await getGame(c.partyCode);
+      assert('autopilot plays the reveal itself once Phase 6 has started and the final vote has closed',
+        !!(g.reveal && g.reveal.at) && (await didAuto(c, 'reveal')) === 1);
+
+      const firstAt = g.reveal.at;
+      for (let i = 0; i < 4; i++) await guestPoll(c, seats[i % seats.length]);
+      assert('autopilot fires the reveal exactly once, however many phones are polling',
+        (await didAuto(c, 'reveal')) === 1 && (await getGame(c.partyCode)).reveal.at === firstAt);
+
+      // --- and then the superlatives, but only once the reveal has played ---
+      assert('the superlatives do not open over the top of a reveal that is still playing',
+        !(await getGame(c.partyCode)).awardsOpen);
+      await edit(c.partyCode, (x) => { x.reveal.at = new Date(Date.now() - REVEAL_PLAYOUT_MS - 1000).toISOString(); });
+      await guestPoll(c, seats[0]);
+      assert('autopilot opens the superlatives once the reveal has finished playing',
+        !!(await getGame(c.partyCode)).awardsOpen && (await didAuto(c, 'awards')) === 1);
+      for (let i = 0; i < 4; i++) await guestPoll(c, seats[i % seats.length]);
+      assert('autopilot opens the superlatives exactly once', (await didAuto(c, 'awards')) === 1);
+
+      // --- announcing the winners is never automated ---
+      await edit(c.partyCode, (x) => {
+        x.awardsOpenedAt = new Date(Date.now() - 10 * AWARDS_SETTLE_MS).toISOString();
+        x.awardsLastVoteAt = new Date(Date.now() - 10 * AWARDS_SETTLE_MS).toISOString();
+      });
+      for (let i = 0; i < 4; i++) await guestPoll(c, seats[i % seats.length]);
+      const end = await getGame(c.partyCode);
+      assert('autopilot never announces the winners: somebody has to be holding the gift cards',
+        !end.ceremony && !end.awardsClosed && (await didAuto(c, 'announce')) === 0);
+    }
+
+    // --- with the switch off, the app touches nothing ---
+    {
+      const { c, seats } = await atTheEnd({ autopilot: false });
+      for (let i = 0; i < 5; i++) await guestPoll(c, seats[i % seats.length]);
+      const g = await getGame(c.partyCode);
+      assert('with autopilot off nothing fires itself',
+        !g.reveal && !g.awardsOpen && !(g.branchFired || {}).alibi
+        && !(g.log || []).some((e) => e.kind === 'autopilot' && e.did));
+    }
+
+    // --- it never repeats something the host did by hand ---
+    {
+      const { c, seats } = await atTheEnd({ autopilot: false });
+      await j(reveal(POST({ partyCode: c.partyCode, hostToken: c.hostToken })));
+      await j(awards(POST({ action: 'open', partyCode: c.partyCode, hostToken: c.hostToken })));
+      const byHand = await getGame(c.partyCode);
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      for (let i = 0; i < 4; i++) await guestPoll(c, seats[i % seats.length]);
+      const after = await getGame(c.partyCode);
+      assert('autopilot never re-fires a reveal the host already played herself',
+        after.reveal.at === byHand.reveal.at && (await didAuto(c, 'reveal')) === 0);
+      assert('autopilot never re-opens superlatives the host already opened herself',
+        after.awardsOpenedAt === byHand.awardsOpenedAt && (await didAuto(c, 'awards')) === 0);
+    }
+
+    // --- the 6:40 question closes itself at the end of Asking Around ---
+    {
+      const c = await j(createGame(POST({})));
+      const g1 = await j(join(POST({ partyCode: c.partyCode, name: 'Sixforty One' })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+      await guestPoll(c, g1.personalCode);
+      assert('the 6:40 question stays open while Asking Around still has time in it',
+        !((await getGame(c.partyCode)).branchFired || {}).alibi);
+      // Wind the phase clock to its last minute.
+      await edit(c.partyCode, (x) => {
+        x.phaseStartedAt = new Date(Date.now() - (PHASE_MINUTES[3] * 60000 - 30000)).toISOString();
+      });
+      await guestPoll(c, g1.personalCode);
+      assert('the 6:40 question resolves itself at the end of Asking Around',
+        !!((await getGame(c.partyCode)).branchFired || {}).alibi);
+    }
+
+    // A host who advances early must not strand it: it can only resolve inside
+    // its own phase, so leaving that phase closes it on the way out.
+    {
+      const c = await j(createGame(POST({})));
+      await j(join(POST({ partyCode: c.partyCode, name: 'Sixforty Two' })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 4 })));
+      assert('advancing out of Asking Around early does not strand the 6:40 question',
+        !!((await getGame(c.partyCode)).branchFired || {}).alibi);
+    }
+
+    // --- the cue: one instruction at a time, only when a person is needed ---
+    {
+      const c = await j(createGame(POST({})));
+      const g1 = await j(join(POST({ partyCode: c.partyCode, name: 'Cue Guest' })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+
+      const lobbyish = await hostPoll(c);
+      assert('there is no cue at the start of the evening, when nothing is needed',
+        lobbyish.host && lobbyish.host.cue === null);
+
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+      const asking = await hostPoll(c);
+      const cue = asking.host.cue;
+      assert('during Asking Around the cue asks the room out loud where they were at 6:40',
+        !!cue && cue.id === 'ask-alibi' && /6:40/.test(cue.text) && !!cue.button && cue.action === 'alibi-resolve');
+      assert('the cue is one instruction, not a list',
+        cue && !Array.isArray(cue) && typeof cue.text === 'string');
+
+      // Host-only. A guest phone and the room screen both send no host token.
+      const asGuest = await guestPoll(c, g1.personalCode);
+      const asRoom = await j(state(GET({ partyCode: c.partyCode })));
+      const asWrongKey = await j(state(GET({ partyCode: c.partyCode, hostToken: 'not-the-host' })));
+      assert('the cue is host-only and never reaches a guest or the room screen',
+        asGuest.host === null && asRoom.host === null && asWrongKey.host === null
+        && [asGuest, asRoom, asWrongKey].every((v) => JSON.stringify(v).indexOf(cue.text) === -1));
+
+      // Doing the thing clears the cue.
+      await j(alibi(POST({ action: 'resolve', partyCode: c.partyCode, hostToken: c.hostToken })));
+      const done = await hostPoll(c);
+      assert('the cue clears once she has done the thing it asked for', done.host.cue === null);
+    }
+
+    // The other moment a person is needed: the gift cards.
+    {
+      const { c, seats } = await atTheEnd({ autopilot: true });
+      await guestPoll(c, seats[0]);
+      await edit(c.partyCode, (x) => { x.reveal.at = new Date(Date.now() - REVEAL_PLAYOUT_MS - 1000).toISOString(); });
+      await guestPoll(c, seats[0]);
+      const fresh = await hostPoll(c);
+      assert('no cue while the room is still voting on the superlatives', fresh.host.cue === null);
+      await edit(c.partyCode, (x) => {
+        x.awardsOpenedAt = new Date(Date.now() - 3 * AWARDS_SETTLE_MS).toISOString();
+        x.awardsLastVoteAt = new Date(Date.now() - 3 * AWARDS_SETTLE_MS).toISOString();
+      });
+      const settled = await hostPoll(c);
+      assert('once the voting settles the cue tells her to announce the winners and hand out the cards',
+        !!settled.host.cue && settled.host.cue.id === 'announce-winners'
+        && /gift card/i.test(settled.host.cue.text) && settled.host.cue.action === 'awards-announce');
+      await j(awards(POST({ action: 'announce', partyCode: c.partyCode, hostToken: c.hostToken })));
+      const announced = await hostPoll(c);
+      assert('the gift-card cue clears once the winners have been announced', announced.host.cue === null);
+    }
+
+    // --- a floor, not a cage: every manual control still works ---
+    {
+      const c = await j(createGame(POST({})));
+      const g1 = await j(join(POST({ partyCode: c.partyCode, name: 'Manual Guest' })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, autopilot: true })));
+      const adv = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+      const paused = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, pause: true })));
+      const resumed = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, pause: false })));
+      const autoOff = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, auto: false })));
+      const extended = await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, extend: 5 })));
+      const resolved = await j(alibi(POST({ action: 'resolve', partyCode: c.partyCode, hostToken: c.hostToken })));
+      const still = await getGame(c.partyCode);
+      assert('with autopilot on she can still advance, pause, extend and resolve by hand',
+        adv.phase === 3 && paused.paused === true && resumed.paused === false
+        && extended.extendedMinutes === 5 && resolved.resolved === true && still.autopilot === true);
+      assert('she can take the clock back without giving up the rest of autopilot',
+        autoOff.autoAdvance === false && still.autoAdvance === false && still.autopilot === true);
+      // A paused phase stops the autopilot clock too: nothing creeps forward
+      // while she has the room held.
+      const { alibiDue } = require('./lib/autopilot');
+      const held = { autopilot: true, phase: 3, paused: true, pausedAt: Date.now(),
+        phaseStartedAt: new Date(Date.now() - 10 * PHASE_MINUTES[3] * 60000).toISOString(), branchFired: {} };
+      assert('a paused phase does not let autopilot close the 6:40 question behind her',
+        alibiDue(held) === false && alibiDue({ ...held, paused: false }) === true && !!g1.personalCode);
+    }
+  }
+
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

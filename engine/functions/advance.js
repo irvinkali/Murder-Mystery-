@@ -3,6 +3,7 @@
  *   { partyCode, hostToken, phase? }          advance now (next, or explicit)
  *   { partyCode, hostToken, pause: bool }     pause/resume the phase clock
  *   { partyCode, hostToken, auto: bool }      turn auto-advance on/off
+ *   { partyCode, hostToken, autopilot: bool } run the night for her (or stop)
  *   { partyCode, hostToken, extend: minutes } add time to the current phase
  *
  * Phases otherwise advance THEMSELVES on the schedule (see lib/phases.js);
@@ -18,7 +19,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, hostToken, phase, pause, auto, extend, blackout, photo, openDoors } = parseBody(event);
+  const { partyCode, hostToken, phase, pause, auto, autopilot, extend, blackout, photo, openDoors } = parseBody(event);
   if (!partyCode) return bad('partyCode required');
   const code = partyCode.toUpperCase();
 
@@ -77,6 +78,21 @@ exports.handler = async (event) => {
     let fired = false;
     await updateGame(code, (g) => { fired = startBlackout(pack, g); return g; });
     return fired ? ok({ blackout: true }) : bad('the blackout has already happened');
+  }
+
+  // "Run the night for me." Stored on the game, so it is remembered per party
+  // rather than per device: she can pick up a different phone and it is still
+  // on. Switching it on switches auto-advance on with it, because a night that
+  // runs itself has to change its own phases; the auto toggle still works
+  // afterwards, so she can take the clock back without giving up the rest.
+  if (typeof autopilot === 'boolean') {
+    const next = await updateGame(code, (g) => {
+      g.autopilot = autopilot;
+      if (autopilot) g.autoAdvance = true;
+      g.log.push({ at: new Date().toISOString(), kind: 'autopilot', on: autopilot });
+      return g;
+    });
+    return ok({ autopilot: !!next.autopilot, autoAdvance: next.autoAdvance !== false });
   }
 
   // Auto-advance on/off.

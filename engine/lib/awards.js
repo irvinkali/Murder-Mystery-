@@ -96,6 +96,9 @@ function recordAwardVote(game, awardId, personalCode, characterId) {
   game[AWARD_VOTE_KEY] = game[AWARD_VOTE_KEY] || {};
   game[AWARD_VOTE_KEY][awardId] = game[AWARD_VOTE_KEY][awardId] || {};
   game[AWARD_VOTE_KEY][awardId][personalCode] = characterId;
+  // When the last vote landed, so the host's drawer can tell a room still
+  // voting from a room that has finished and is waiting on the gift cards.
+  game.awardsLastVoteAt = new Date().toISOString();
   return game;
 }
 
