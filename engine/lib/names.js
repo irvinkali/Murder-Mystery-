@@ -12,7 +12,7 @@
 const norm = (s) => String(s == null ? '' : s).normalize('NFKC').replace(/\s+/g, ' ').trim();
 const key = (s) => norm(s).toLowerCase();
 
-/** "Tammy Brennan" -> { first: 'Tammy', last: 'Brennan' }. One word is all first. */
+/** "Marlow Ashgrove" -> { first: 'Marlow', last: 'Ashgrove' }. One word is all first. */
 function splitName(full) {
   const parts = norm(full).split(' ').filter(Boolean);
   return { first: parts[0] || '', last: parts.slice(1).join(' ') };
@@ -66,7 +66,7 @@ function displayNames(game) {
  *
  * An exact full-name match wins. Failing that, a one-word name matches on the
  * first name alone, so a reservation the host wrote as "Taylor" still catches
- * a guest who types "Taylor Holcomb", and a guest who claimed a character with
+ * a guest who types "Taylor Pellit", and a guest who claimed a character with
  * one name in the lobby gets that same seat back when they type both on the
  * night. Two full names that differ never match each other, and ambiguity is
  * never resolved by guessing: two Taylors return two hits and the caller falls
