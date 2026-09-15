@@ -23,7 +23,7 @@ const FALLBACK_AWARDS = {
   sharpestEye: { title: 'Sharpest Eye', note: 'Examined {count} {items}.' },
   mostSuspected: { title: 'Most Suspected Innocent', note: 'Collected {count} accusation{s} while entirely innocent.' },
   caught: { title: 'Caught Red-Handed', note: 'The room saw through it. Take a bow anyway.' },
-  perfect: { title: 'The Perfect Crime', note: 'Fooled the room to the very end. Take a bow — carefully.' },
+  perfect: { title: 'The Perfect Crime', note: 'Fooled the room to the very end. Take a bow, carefully.' },
 };
 
 /** One award, rendered from pack copy with {count}, {s} and {items} filled. */
