@@ -229,14 +229,20 @@ async function auditTalk() {
   // something. Count the ones that name another character or set a task.
   let pointed = 0, total = 0;
   const otherNames = ids.map(nameOf).filter(Boolean);
+  const textOf = (l) => (typeof l === 'string' ? l
+    : [l && l.quote, l && l.reaction, l && l.prompt].filter(Boolean).join(' '));
   for (const id of ids) {
     for (const ph of Object.keys(lines[id] || {})) {
-      const l = lines[id][ph];
-      const text = typeof l === 'string' ? l : [l && l.quote, l && l.prompt].filter(Boolean).join(' ');
-      total++;
-      const namesSomeone = otherNames.some((n) => n !== nameOf(id) && text.includes(n));
-      const setsATask = /\b(ask|tell|find|get|go|bring|show|make|corner|accuse|deny|admit|offer|warn)\b/i.test(text);
-      if (namesSomeone || setsATask) pointed++;
+      const entry = lines[id][ph];
+      // Count the phase's opening line AND everything it drips later on.
+      const all = [entry].concat((entry && entry.more) || []);
+      for (const l of all) {
+        const text = textOf(l);
+        total++;
+        const namesSomeone = otherNames.some((n) => n !== nameOf(id) && text.includes(n));
+        const setsATask = /\b(ask|tell|find|get|go|bring|show|make|corner|accuse|deny|admit|offer|warn)\b/i.test(text);
+        if (namesSomeone || setsATask) pointed++;
+      }
     }
   }
   assert('most private lines point at another guest or set a task',

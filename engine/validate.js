@@ -13,6 +13,7 @@
 
 const path = require('path');
 const { loadPack, DEFAULT_BIBLE } = require('./lib/pack');
+const { PHASE_MINUTES } = require('./lib/runtime');
 
 const EXPECTED = {
   // Checksum pin for the default bible (safe, non-spoiler). Re-pinned again when
@@ -235,19 +236,47 @@ function run() {
   // ---- R7: every character has something to say in every playable phase ----
   // A phase where nobody is handed a line is a phase where the quiet guests go
   // quiet. Phases 1 to 5 are played; 6 is the reveal and needs no lines.
+  //
+  // How MANY lines a phase carries is the pack's call. A long phase wants more
+  // than one prompt to get through it, a short one does not. What the validator
+  // insists on is that the pack made that call for EVERYBODY: within a phase,
+  // no character may be handed fewer lines than their neighbours. It also
+  // insists that any dripped line lands in order and inside its own phase.
   {
     const ids = [...pack.cast.map((c) => c.id), ...(pack.flex || []).map((f) => f.id)];
     const lines = pack.scriptLines || {};
+    const depthOf = (id, ph) => {
+      const l = (lines[id] || {})[ph];
+      if (!l || (!l.quote && !l.prompt && !l.reaction)) return 0;
+      return 1 + ((l.more || []).length);
+    };
     const gaps = [];
+    const shape = [];
     for (let ph = 1; ph <= 5; ph++) {
-      const missing = ids.filter((id) => {
-        const l = (lines[id] || {})[ph];
-        return !l || (!l.quote && !l.prompt);
-      });
-      if (missing.length) gaps.push(`phase ${ph}: ${missing.length}/${ids.length} characters with no line`);
+      const depths = ids.map((id) => depthOf(id, ph));
+      const deepest = Math.max(...depths);
+      shape.push(`ph${ph}:${deepest}`);
+      const missing = depths.filter((d) => d === 0).length;
+      if (missing) { gaps.push(`phase ${ph}: ${missing}/${ids.length} characters with no line`); continue; }
+      const thin = depths.filter((d) => d < deepest).length;
+      if (thin) gaps.push(`phase ${ph}: ${thin}/${ids.length} characters carry fewer than the ${deepest} lines the rest get`);
+      // Drip offsets must climb, and must land inside the phase they belong to.
+      const allotted = PHASE_MINUTES[ph] || 0;
+      const badDrip = ids.filter((id) => {
+        const more = ((lines[id] || {})[ph] || {}).more || [];
+        let prev = 0;
+        return more.some((m) => {
+          const at = m.afterMin || 0;
+          const bad = at <= prev || (allotted && at >= allotted);
+          prev = at;
+          return bad;
+        });
+      }).length;
+      if (badDrip) gaps.push(`phase ${ph}: ${badDrip} characters have drip offsets that do not climb or fall outside the ${allotted}-minute phase`);
     }
     check('R7', 'Every character has a private line in every played phase', 'rigorous',
-      gaps.length === 0, gaps.length ? gaps.join('; ') : `all ${ids.length} characters carry a line in phases 1-5`);
+      gaps.length === 0, gaps.length ? gaps.join('; ')
+        : `all ${ids.length} characters carry the same depth of line in every played phase (${shape.join(' ')}), dripped in order inside the phase`);
   }
 
   // ---- §7 Rule 6: any character (incl. killer) playable w/o acting skill ----

@@ -84,8 +84,7 @@
   <!-- The current phase's private script line -->
   <div class="note gameOnly" id="linesBox" style="display:none">
     <div class="kicker">Your lines · this moment</div>
-    <div id="lineQuote"></div>
-    <div class="action" id="linePrompt"></div>
+    <div id="lineList"></div>
   </div>
 
   <div class="card gameOnly">
@@ -244,7 +243,7 @@ function secretChime(){
   } catch(e){}
 }
 function maybeChime(you, phase){
-  const sig = `${(you.drops||[]).length}|${you.killer?1:0}|${you.lines?phase:0}`;
+  const sig = `${(you.drops||[]).length}|${you.killer?1:0}|${you.lines?phase:0}|${you.lines?((you.lines.more||[]).length):0}`;
   if (noteSig !== null && sig !== noteSig) secretChime(); // changed → something new arrived
   noteSig = sig;
 }
@@ -267,8 +266,14 @@ function renderLines(you) {
   const L = you.lines;
   if (!L) { el('#linesBox').style.display = 'none'; return; }
   el('#linesBox').style.display = 'block';
-  el('#lineQuote').textContent = L.reaction ? '“' + L.reaction + '”' : '“' + (L.quote||'') + '”';
-  el('#linePrompt').textContent = L.prompt ? ('To do: ' + L.prompt) : '';
+  // The phase's opening line, then whatever the phase clock has released since.
+  const all = [L].concat(L.more || []);
+  el('#lineList').innerHTML = all.map((e, i) => {
+    const said = e.reaction ? e.reaction : (e.quote || '');
+    return (i ? '<div class="divider"></div>' : '')
+      + '<div>“' + esc(said) + '”</div>'
+      + (e.prompt ? '<div class="action">To do: ' + esc(e.prompt) + '</div>' : '');
+  }).join('');
 }
 
 function renderPolls(list) {

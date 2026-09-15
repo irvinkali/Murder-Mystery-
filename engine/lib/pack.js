@@ -254,8 +254,17 @@ function loadBranching(b64Path) {
 /**
  * Parse the per-phase script lines + escalating find-hints + fairness
  * disclosure. Pure structure — no plot literals; text flows from the source.
+ *
+ * A bullet is `- PH3 QUOTE: "..." | PROMPT: ...`. An optional `+N` on the phase
+ * marker (`- PH3+12 ...`) is a DRIP: that entry does not exist for the player
+ * until N minutes of real play have passed in the phase. A long phase can carry
+ * several, and packs stagger the offsets per character so the whole room is not
+ * handed a new line at the same instant.
+ *
  * Returns { scriptLines, findHints, fairnessDisclosure }.
- *   scriptLines[charId][phaseNumber] = { quote, prompt } | { reaction }
+ *   scriptLines[charId][phaseNumber] = { quote, prompt } | { reaction }, plus an
+ *     optional `more: [...]` on any phase that drips
+ *   each `more` entry = { quote, prompt, afterMin } | { reaction, afterMin }
  *   findHints[propId] = { ph3, ph4 }
  */
 function parseScriptLines(text) {
@@ -275,7 +284,7 @@ function parseScriptLines(text) {
   const marks = [];
   let hm;
   while ((hm = headRe.exec(s1)) !== null) marks.push({ id: hm[1], at: hm.index, after: headRe.lastIndex });
-  const lineRe = /^-\s*PH([1-5])\s+(QUOTE|REACTION):\s*"([^"]*)"(?:\s*\|\s*PROMPT:\s*([^\n]+))?/gm;
+  const lineRe = /^-\s*PH([1-5])(?:\+(\d+))?\s+(QUOTE|REACTION):\s*"([^"]*)"(?:\s*\|\s*PROMPT:\s*([^\n]+))?/gm;
   for (let i = 0; i < marks.length; i++) {
     const end = i + 1 < marks.length ? marks[i + 1].at : s1.length;
     const body = s1.slice(marks[i].after, end);
@@ -284,8 +293,22 @@ function parseScriptLines(text) {
     lineRe.lastIndex = 0;
     while ((lm = lineRe.exec(body)) !== null) {
       const phase = Number(lm[1]);
-      if (lm[2] === 'REACTION') byPhase[phase] = { reaction: lm[3].trim() };
-      else byPhase[phase] = { quote: lm[3].trim(), prompt: (lm[4] || '').trim() };
+      const afterMin = lm[2] === undefined ? 0 : Number(lm[2]);
+      const entry = lm[3] === 'REACTION'
+        ? { reaction: lm[4].trim() }
+        : { quote: lm[4].trim(), prompt: (lm[5] || '').trim() };
+      if (afterMin === 0 || !byPhase[phase]) {
+        // The phase-change line. Anything already dripped stays attached to it.
+        const dripped = byPhase[phase] && byPhase[phase].more;
+        if (dripped) entry.more = dripped;
+        byPhase[phase] = entry;
+      } else {
+        // A timed line. `more` appears only on phases that actually drip, so a
+        // pack with one line per phase serializes exactly as it always did.
+        entry.afterMin = afterMin;
+        const base = byPhase[phase];
+        base.more = (base.more || []).concat(entry).sort((a, b) => a.afterMin - b.afterMin);
+      }
     }
     scriptLines[marks[i].id] = byPhase;
   }

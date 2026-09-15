@@ -19,7 +19,8 @@ const cast = require('./functions/cast').handler;
 const lobbyVote = require('./functions/lobby-vote').handler;
 const awards = require('./functions/awards').handler;
 const { getGame } = require('./lib/store');
-const { loadRuntimePack } = require('./lib/runtime');
+const { loadRuntimePack, PHASE_MINUTES } = require('./lib/runtime');
+const path = require('path');
 
 const POST = (body) => ({ httpMethod: 'POST', body: JSON.stringify(body) });
 
@@ -1021,6 +1022,118 @@ async function main() {
     const lobbyName = await j(join(POST({ partyCode: c.partyCode, name: 'Dana' })));
     assert('join: a guest who joined on a first name is recognized when they add a last',
       lobbyName.personalCode === g3.personalCode);
+  }
+
+
+  // ---------------------------------------------------------------------
+  // CARRYING THE MIDDLE OF THE EVENING. The two long phases (Asking Around,
+  // The Hard Part) run 35 and 25 minutes with fourteen people in the room, and
+  // one prompt apiece will not hold them. They carry three lines each now, and
+  // the second and third are withheld until the phase clock reaches them, so a
+  // guest gets something new every ten minutes or so instead of a wall of text.
+  // SPOILER-SAFE: these assert counts, offsets and name-overlap only. No line
+  // text, no character name and no secret is ever printed.
+  // ---------------------------------------------------------------------
+  {
+    const { loadPack } = require('./lib/pack');
+    const { releasedLines, phaseElapsedMs } = require('./lib/phases');
+    const MIDDLE = [3, 4];
+    const SHORT = [1, 2, 5];
+
+    // --- shape, on the pack that is actually being played ---
+    const authored = loadPack(path.join(__dirname, '..', 'packs', 'reunion-1989', 'plot-bible.md.b64'));
+    const everyone = [...authored.cast, ...(authored.flex || [])].map((c) => c.id);
+    const lines = authored.scriptLines || {};
+    const depth = (id, ph) => {
+      const l = (lines[id] || {})[ph];
+      return l ? 1 + ((l.more || []).length) : 0;
+    };
+
+    assert('the two long middle phases carry three lines for every character',
+      everyone.length === 20 && MIDDLE.every((ph) => everyone.every((id) => depth(id, ph) === 3)));
+
+    assert('the short phases still carry exactly one line each',
+      SHORT.every((ph) => everyone.every((id) => depth(id, ph) === 1)));
+
+    // The later lines drip: offsets climb, and land inside their own phase.
+    const dripOk = MIDDLE.every((ph) => everyone.every((id) => {
+      const more = (lines[id][ph].more || []);
+      if (more.length !== 2) return false;
+      return more[0].afterMin > 0 && more[1].afterMin > more[0].afterMin
+        && more[1].afterMin < PHASE_MINUTES[ph];
+    }));
+    assert('every extra middle-phase line is timed, in order, inside its phase', dripOk);
+
+    // Staggered per character, so the whole room is not looking down at once.
+    const spread = (ph, i) => new Set(everyone.map((id) => lines[id][ph].more[i].afterMin)).size;
+    assert('the drip offsets are staggered across the cast, not shared by everyone',
+      MIDDLE.every((ph) => spread(ph, 0) >= 5 && spread(ph, 1) >= 5));
+
+    // Flex characters are optional and may not be in the room, so a core
+    // character's line may never send a guest to one. The other way round is
+    // fine: flex may name core freely.
+    {
+      const flexNames = (authored.flex || []).map((f) => f.name).filter(Boolean);
+      const coreIds = new Set(authored.cast.map((c) => c.id));
+      let offenders = 0;
+      for (const id of everyone) {
+        if (!coreIds.has(id)) continue;
+        for (const ph of Object.keys(lines[id])) {
+          const entry = lines[id][ph];
+          for (const l of [entry].concat(entry.more || [])) {
+            const text = [l.quote, l.reaction, l.prompt].filter(Boolean).join(' ');
+            if (flexNames.some((n) => text.includes(n))) offenders++;
+          }
+        }
+      }
+      assert('no core character\'s line sends a guest to an optional flex character', offenders === 0);
+    }
+
+    // --- the mechanism, on a stub pack, so it is testable without the plot ---
+    {
+      const stub = { scriptLines: { X1: { 3: {
+        quote: 'first', prompt: 'do the first thing',
+        more: [
+          { quote: 'second', prompt: 'do the second thing', afterMin: 10 },
+          { quote: 'third', prompt: 'do the third thing', afterMin: 22 },
+        ],
+      } } } };
+      const at = (min, extra) => Object.assign({ phase: 3, phaseStartedAt: new Date(Date.now() - min * 60000).toISOString() }, extra || {});
+      const count = (min, extra) => (releasedLines(stub, at(min, extra), 'X1') || {}).more.length;
+
+      assert('a middle phase opens with one line and holds the other two back',
+        count(0) === 0 && count(9) === 0);
+      assert('the second line arrives on the phase clock, the third still waits',
+        count(10) === 1 && count(21) === 1);
+      assert('the third line arrives later in the same phase',
+        count(22) === 2 && count(40) === 2);
+
+      // A pause stops the drip: the clock that withholds lines is real play
+      // time, the same clock auto-advance runs on.
+      const paused = at(30, { paused: true, pausedAt: Date.now() - 25 * 60000 });
+      assert('a paused phase does not keep dripping lines',
+        phaseElapsedMs(paused) < 10 * 60000 && (releasedLines(stub, paused, 'X1') || {}).more.length === 0);
+
+      assert('a character with nothing for this phase still gets nothing',
+        releasedLines(stub, at(40), 'NOBODY') === null &&
+        releasedLines({ scriptLines: null }, at(40), 'X1') === null);
+    }
+
+    // --- end to end: a withheld line never leaves the server ---
+    {
+      const c = await j(createGame(POST({ hostName: 'Kali' })));
+      const g = await j(join(POST({ partyCode: c.partyCode, name: 'Ondry Wexlin' })));
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase: 3 })));
+      const fresh = await j(state(GET({ partyCode: c.partyCode, personalCode: g.personalCode })));
+      const served = fresh.you && fresh.you.lines;
+      const late = (((loadRuntimePack().scriptLines || {})[fresh.you.character.id] || {})[3] || {}).more || [];
+      const timed = late.filter((m) => (m.afterMin || 0) > 0);
+      assert('a phase that has just started serves none of its timed lines',
+        !!served && (served.more || []).length === 0);
+      assert('the withheld text is nowhere in the payload the phone receives',
+        timed.every((m) => JSON.stringify(fresh).indexOf(m.quote) === -1
+          && (!m.prompt || JSON.stringify(fresh).indexOf(m.prompt) === -1)));
+    }
   }
 
 

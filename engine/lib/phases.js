@@ -125,6 +125,27 @@ function phaseElapsedMs(game, nowMs) {
   return now - Date.parse(game.phaseStartedAt) - (game.pauseAccumMs || 0) - pausedNow;
 }
 
+/**
+ * The script lines this character may see RIGHT NOW in the current phase.
+ *
+ * A phase's first line lands at the phase change. Long phases carry extra
+ * entries marked with a minute offset, and those stay on the server until that
+ * much real play has elapsed (pauses excluded), so the middle of the evening
+ * drips instead of arriving as a wall of text. Returns null when the character
+ * has nothing for this phase.
+ */
+function releasedLines(pack, game, characterId, nowMs) {
+  if (!pack || !pack.scriptLines) return null;
+  const base = (pack.scriptLines[characterId] || {})[game.phase] || null;
+  if (!base) return null;
+  const more = base.more || [];
+  if (!more.length) return base;
+  const elapsed = phaseElapsedMs(game, nowMs);
+  return Object.assign({}, base, {
+    more: more.filter((m) => elapsed >= (m.afterMin || 0) * 60000),
+  });
+}
+
 /** This phase's allotted time, including any host-added extension. */
 function phaseAllottedMs(game) {
   const base = (PHASE_MINUTES[game.phase] || 0) * 60000;
@@ -181,6 +202,6 @@ function narrationInventory(pack) {
 }
 
 module.exports = {
-  narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory,
+  narrationFor, leastActive, unfoundProps, applyPhaseTransition, narrationInventory, releasedLines,
   performAdvance, phaseElapsedMs, phaseAllottedMs, autoAdvanceDue, maybeAutoAdvance, WARN_BEFORE_MS,
 };

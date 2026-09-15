@@ -15,7 +15,7 @@ const { lobbyBrief, lobbyRoom, lobbyCopy, beatsSoFar, nextBeatAt, loadLobbyFile,
 const { displayNames } = require('../lib/names');
 const { shouldAside, maybeAside, attentionLine } = require('../lib/narrator');
 const { audioName } = require('../lib/runtime');
-const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs } = require('../lib/phases');
+const { autoAdvanceDue, maybeAutoAdvance, phaseAllottedMs, releasedLines } = require('../lib/phases');
 const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout');
 const { awardsPublic, ownAwardVotes, ceremonyDue, advanceCeremony } = require('../lib/awards');
 
@@ -168,8 +168,9 @@ exports.handler = async (event) => {
     you = {
       name: shown[q.personalCode] || me.name,
       character: playerBrief(pack, me.characterId),
-      // The current phase's private script line ("Your lines" card). Never future.
-      lines: pack.scriptLines ? (pack.scriptLines[me.characterId] || {})[game.phase] || null : null,
+      // This phase's private script lines ("Your lines" card). Never a future
+      // phase, and never a drip entry whose minute has not come round yet.
+      lines: releasedLines(pack, game, me.characterId),
       killer: unlock,
       // Idle nudge — suppressed if a find-hint already gave them something to do.
       nudge: hasHint ? null : idleNudge(me.characterId, game.phase, idleMs, undefined, pack),
