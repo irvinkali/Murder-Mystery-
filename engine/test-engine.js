@@ -1463,13 +1463,18 @@ async function main() {
         letters.length === 4 && seqs.every((x) => x === seqs[0]) && seqs[0].length > 0);
       // And nothing about the party's own seed is the variant either: two
       // parties with the same shape pair up differently.
-      const other = await party(14);
-      const otherSeq = ROUNDS.map((ph) => seatedCharacterIds(other.game)
-        .map((id) => `${ph}|${id}->${(goFindNudge(pack, other.game, id, ph) || {}).characterId}`).join(',')).join('\n');
-      const mineSeq = ROUNDS.map((ph) => seated
-        .map((id) => `${ph}|${id}->${(goFindNudge(pack, game, id, ph) || {}).characterId}`).join(',')).join('\n');
-      assert('two parties the same size do not get the same pairings',
-        otherSeq !== mineSeq && !!seats.length);
+      // Sampled over several parties rather than compared two at a time: with
+      // this many seats two parties can legitimately draw the same pairing by
+      // chance, and a gate that fails at random is a gate nobody trusts.
+      const pairingOf = (g, ids) => ROUNDS.map((ph) => ids
+        .map((id) => `${ph}|${id}->${(goFindNudge(pack, g, id, ph) || {}).characterId}`).join(',')).join('\n');
+      const shapes = new Set([pairingOf(game, seated)]);
+      for (let i = 0; i < 5; i++) {
+        const other = await party(14);
+        shapes.add(pairingOf(other.game, seatedCharacterIds(other.game)));
+      }
+      assert('parties the same size do not all get the same pairings',
+        shapes.size > 1 && !!seats.length);
     }
 
     // --- it survives the room changing under it ---

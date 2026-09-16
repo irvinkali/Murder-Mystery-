@@ -8,6 +8,13 @@
   functions = "engine/functions"
   command = "cd engine && npm install && npm run build-pack && npm run validate && sh tts/build-narration.sh"
 
+# Which pack this deployment runs. It is also set on the site itself for the
+# functions; naming it here is what lets the BUILD know, which the narration
+# renderer needs. Without it the build defaults to last-exhibit and would
+# render 63 files nobody plays.
+[build.environment]
+  MYSTERY_PACK = "reunion-1989"
+
 [functions]
   node_bundler = "esbuild"
   # Ship the encoded pack alongside the functions so they can decode it in memory.
