@@ -308,6 +308,19 @@ el('#audioBtn').addEventListener('click', () => {
   if (audioReady){
     try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch(e){}
     docentVoice = pickVoice(); fillVoicePicker(); el('#voiceRow').style.display = 'block';
+    // Wake the speech engine inside the click that enabled sound. Chrome drops
+    // the first utterance of a page otherwise, which is why the narrator stayed
+    // silent until the voice was changed in the picker and changed back. A
+    // silent syllable spoken here costs nothing and nobody hears it.
+    try {
+      if ('speechSynthesis' in window) {
+        const prime = new SpeechSynthesisUtterance(' ');
+        if (docentVoice) prime.voice = docentVoice;
+        prime.volume = 0;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(prime);
+      }
+    } catch (e) { /* no speech synthesis: the captions carry the evening */ }
     if (curTrack) { const p = el('#ambient').play(); if (p && p.catch) p.catch(()=>{ padWanted = true; padEnsure(); padTune(); }); }
     else { padWanted = true; padEnsure(); padTune(); }
     pump();
