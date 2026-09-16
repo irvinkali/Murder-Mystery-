@@ -483,6 +483,61 @@ function parseFrontend(sectionBody) {
   return { brand, invite, printables };
 }
 
+
+/**
+ * The deduction layer (bible section 13). Pure structure, generic patterns, no
+ * plot literals: every line is `- KEY | field | field`.
+ *
+ * It carries four things the engine needs and cannot invent:
+ *   readings   what an exhibit says when it is not saying everything, per tier,
+ *              the SAME under every answer so the reply shape carries nothing
+ *   chain      five links, four of them held by named core characters, that
+ *              together name the answer and separately name nobody
+ *   cleared    why a member of the answer set is out, published by the staged
+ *              releases one at a time
+ *   leads      a false lead per non-answer core character, with the find that
+ *              clears it again before the reveal
+ */
+function parseDeduction(sectionBody) {
+  if (!sectionBody) return null;
+  const out = {
+    readings: {}, answerSet: [], holders: {}, traits: {}, links: {},
+    cleared: {}, leads: {}, token: '',
+  };
+  const re = /^-\s*([A-Z][A-Z0-9]*(?: [A-Z0-9]+)*)\s*\|\s*([^\n]*)$/gm;
+  let m;
+  let seen = 0;
+  while ((m = re.exec(sectionBody)) !== null) {
+    const key = m[1].trim();
+    const fields = m[2].split('|').map((x) => x.trim());
+    const rest = fields[0];
+    const parts = key.split(/\s+/);
+    seen++;
+    if (parts[0] === 'READING' && parts.length === 3) {
+      const tier = Number(String(parts[2]).replace(/[^0-9]/g, ''));
+      if (!out.readings[parts[1]]) out.readings[parts[1]] = {};
+      out.readings[parts[1]][tier] = rest;
+    } else if (key === 'ANSWER SET') {
+      out.answerSet = fields.filter((x) => /^C\d+$/.test(x));
+    } else if (parts[0] === 'HOLDER' && parts.length === 2) {
+      out.holders[parts[1]] = rest;
+    } else if (key === 'TOKEN') {
+      out.token = rest;
+    } else if (parts[0] === 'TRAIT' && parts.length === 2) {
+      out.traits[parts[1]] = rest;
+    } else if (parts[0] === 'LINK' && parts.length === 2) {
+      out.links[parts[1]] = rest;
+    } else if (parts[0] === 'CLEARED' && parts.length === 2) {
+      out.cleared[parts[1]] = rest;
+    } else if (parts[0] === 'LEAD' && parts.length === 2) {
+      out.leads[parts[1]] = { lead: rest, clear: fields[1] || '' };
+    } else {
+      seen--;
+    }
+  }
+  return seen ? out : null;
+}
+
 /** Facts the resolver needs that used to be baked into the engine. */
 function parseWorld(sectionBody) {
   const rows = parseKeyedLines(sectionBody);
@@ -558,6 +613,7 @@ function loadPack(b64Path) {
   const polls = parsePollCopy(findSection('POLL COPY'));
   const world = parseWorld(findSection('WORLD'));
   const frontend = parseFrontend(findSection('FRONT-END'));
+  const deduction = parseDeduction(findSection('DEDUCTION'));
 
   return {
     checksum: md5(text),
@@ -580,6 +636,8 @@ function loadPack(b64Path) {
     polls,
     world,
     frontend,
+    deduction,
+    readings: deduction ? deduction.readings : null,
   };
 }
 
@@ -598,6 +656,7 @@ module.exports = {
   parsePollCopy,
   parseWorld,
   parseFrontend,
+  parseDeduction,
   parseBlocks,
   // exported for unit-level reuse if ever needed
   _internal: { splitSections, parseCast, parseRoster, parseVariants, parseMatrix, parseEvidenceChain, parseKeyedLines },

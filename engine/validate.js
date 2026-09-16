@@ -13,7 +13,8 @@
 
 const path = require('path');
 const { loadPack, DEFAULT_BIBLE } = require('./lib/pack');
-const { PHASE_MINUTES } = require('./lib/runtime');
+const { PHASE_MINUTES, resolvePropScan, sanitizeReading } = require('./lib/runtime');
+const DED = require('./lib/deduction');
 
 const EXPECTED = {
   // Checksum pin for the default bible (safe, non-spoiler). Re-pinned again when
@@ -24,7 +25,11 @@ const EXPECTED = {
   // Re-pinned again when variant B gained a keystone prop (R4b) and Phase 2
   // gained script lines (R7); the previous value was
   // b5531a15dcbcf9d9d34edf6a4bf3e713.
-  md5: '38c58a4559160c9fd4294521f3fa34b5',
+  // Re-pinned when the deduction layer landed: every step of the evidence chain
+  // gained a phase, the exhibit readings were authored so a dead end and a step
+  // that has not opened look alike, and the shortest and longest replies were
+  // evened up. The previous value was 38c58a4559160c9fd4294521f3fa34b5.
+  md5: 'a518781264f371bcc061c5ac788814fd',
   coreCast: 10,
   variants: 4,
   props: 7,
@@ -287,6 +292,186 @@ function run() {
       ruleStated
         ? 'rule present; enforced by killer do/don\'t scripts in printables/host tools (Step 5)'
         : 'rule statement not found');
+  }
+
+
+  // ---- D1..D6: the deduction layer -------------------------------------
+  // These are the rules that stop the night being solvable by one person, early,
+  // from objects alone. They are written as measurements rather than assertions:
+  // D1 enumerates every subset of the private links instead of trusting that
+  // four are needed, and D2 sweeps every exhibit under every answer at every
+  // phase instead of trusting that the replies look alike.
+  {
+    // The CHAIN, not merely the section: a pack may author exhibit readings
+    // without a seated chain, and D1/D5/D6 do not apply to one that has not.
+    const D = DED.layer(pack);
+    const phases = [1, 2, 3, 4, 5];
+    const letters = V.map((v) => v.letter);
+
+    // D2: the SHAPE of what an exhibit says back must be identical under all
+    // four answers, at every phase. This is the leak that shipped: three
+    // distinguishable reply classes whose pattern across the seven exhibits was
+    // unique to each answer, readable without understanding a word of it.
+    {
+      const fingerprint = (letter, phase) => pack.props.map((pr) => {
+        const r = resolvePropScan(pack, letter, pr, phase);
+        return Object.keys(r).filter((k) => k !== 'propId').sort().join('+') +
+          (r.reading ? ':said' : ':silent') + ':' + (r.entries || 0);
+      }).join('|');
+      // And which exhibits say something new at each phase turn. If a live one
+      // settled while the dead ends kept moving, re-reading all seven either
+      // side of a phase change would name the answer.
+      const churn = (letter, a, b) => pack.props.map((pr) =>
+        (resolvePropScan(pack, letter, pr, a).reading === resolvePropScan(pack, letter, pr, b).reading) ? '.' : 'c').join('');
+      let ok = variantsOk;
+      const bad = [];
+      for (const phase of phases) {
+        const seen = new Set(letters.map((l) => fingerprint(l, phase)));
+        if (seen.size !== 1) { ok = false; bad.push('phase ' + phase + ': ' + seen.size + ' distinct'); }
+      }
+      for (const [a, b] of [[1, 2], [2, 3], [3, 4], [4, 5]]) {
+        const seen = new Set(letters.map((l) => churn(l, a, b)));
+        if (seen.size !== 1) { ok = false; bad.push('boundary ' + a + '-' + b + ': ' + seen.size + ' distinct'); }
+      }
+      check('D2', 'Exhibit replies are indistinguishable in shape across all answers',
+        'rigorous', ok, bad.length ? bad.join('; ') : 'one fingerprint at every phase and one change-pattern at every phase turn (' + phases.length + ' phases, 4 turns)');
+    }
+
+    // D3: and comparable in weight, so "that one gave me a paragraph and this
+    // one gave me a line" is not a tell either.
+    {
+      // Comparable, not identical: measured as a RATIO rather than an absolute
+      // band, because one pack writes its evidence as case notes and another
+      // writes it as paragraphs, and neither is wrong. What matters is that no
+      // reply is conspicuously heavier or lighter than its neighbours.
+      const FLOOR = 80, RATIO = 2.5;
+      let lo = Infinity, hi = 0, empty = 0;
+      for (const letter of letters) for (const phase of phases) for (const pr of pack.props) {
+        const t = (resolvePropScan(pack, letter, pr, phase).reading || '');
+        if (!t) empty++;
+        // Per ENTRY: a reply accumulates one entry per phase, so measuring the
+        // whole reply would just measure how late in the evening it is.
+        for (const part of t.split('\n\n')) { lo = Math.min(lo, part.length); hi = Math.max(hi, part.length); }
+      }
+      // A pack with no authored readings falls back to the catalog flourish for
+      // every dead end, which keeps the SHAPE uniform (D2) but leaves the
+      // WEIGHT uneven wherever that pack writes its evidence shorter or longer
+      // than its flourishes. That is a real residual tell, so it is reported
+      // rather than hidden - but it is a missing-content finding, not a broken
+      // rule, so it does not fail a pack that has not authored the layer yet.
+      const authored = !!pack.readings;
+      const ratio = lo > 0 && lo !== Infinity ? hi / lo : Infinity;
+      const ok = variantsOk && !empty && lo >= FLOOR && ratio <= RATIO;
+      const spread = empty + ' empty; shortest entry ' + (lo === Infinity ? 0 : lo) + ', longest ' + hi +
+        ' (ratio ' + (ratio === Infinity ? 'n/a' : ratio.toFixed(2)) + ', limit ' + RATIO + ', floor ' + FLOOR + ')';
+      if (authored) {
+        check('D3', 'Every exhibit reply is present and of comparable weight', 'rigorous', ok, spread);
+      } else {
+        check('D3', 'Every exhibit reply is present and of comparable weight', 'deferred', true,
+          'no exhibit readings authored for this pack - replies fall back to the catalog flourish. ' +
+          spread + '. Uneven weight is still a visible difference; author READING lines to close it.');
+      }
+    }
+
+    // D4: nothing a guest reads may carry the authoring scaffolding. The chain
+    // ordinal tells them how far along a six-step chain they are and the
+    // internal exhibit id is not supposed to leave the server; both were being
+    // rendered inside the prose, not only in the payload fields, so stripping
+    // the fields alone did not close it. This rule stops new authoring from
+    // reintroducing either of them.
+    {
+      let hits = 0;
+      for (const letter of letters) for (const phase of phases) for (const pr of pack.props) {
+        const t = resolvePropScan(pack, letter, pr, phase).reading || '';
+        if (/\bP[1-9]\d*\b/.test(t) || /^\s*E[1-9]\b/.test(t) || /KEYSTONE/i.test(t)) hits++;
+      }
+      const sanOk = sanitizeReading('E6 KEYSTONE: P4 a thing happened') === 'a thing happened';
+      check('D4', 'No served text carries a chain ordinal or an internal exhibit id',
+        'rigorous', hits === 0 && sanOk,
+        hits + ' served readings carrying scaffolding; sanitizer self-test: ' + (sanOk ? 'pass' : 'FAIL'));
+    }
+
+    if (!D) {
+      check('D1', 'Answer needs four separate seats (seated chain)', 'deferred', true,
+        'no deduction layer authored for this pack - it runs without a seated chain');
+      check('D5', 'Answer set narrows one step at a time, never to one in public', 'deferred', true,
+        'no deduction layer authored for this pack');
+      check('D6', 'False leads point away from the answer and are cleared in play', 'deferred', true,
+        'no deduction layer authored for this pack');
+    } else {
+      const DRAWS = 200;
+      const seals = [];
+      for (const v of V) for (let i = 0; i < DRAWS / V.length; i++) {
+        const seal = DED.sealDeduction(pack, v.letter);
+        if (seal) seals.push({ variant: v.letter, seal, assignments: {} });
+      }
+
+      // D1: four seats, proven by enumerating every subset of the private links
+      // with every public release already in hand.
+      {
+        let minSeats = Infinity, worstThree = Infinity, unreachable = 0;
+        for (const g of seals) {
+          const m = DED.minimumSeats(pack, g);
+          if (m === Infinity) unreachable++;
+          minSeats = Math.min(minSeats, m);
+          for (const row of DED.subsetReport(pack, g)) {
+            if (row.seats <= 3) worstThree = Math.min(worstThree, row.remaining);
+          }
+        }
+        const ok = seals.length > 0 && !unreachable && minSeats === 4 && worstThree >= 2;
+        check('D1', 'Answer needs four separate seats (seated chain)', 'rigorous', ok,
+          seals.length + ' sealed draws; fewest seats that reach one answer: ' + minSeats +
+          '; best any three seats can do: ' + worstThree + ' answers left; unreachable draws: ' + unreachable);
+      }
+
+      // D5: the public half narrows four to three to two and stops there.
+      {
+        let ok = seals.length > 0;
+        const notes = [];
+        for (const g of seals) {
+          const none = DED.solve(pack, g, new Set()).size;
+          const one = DED.solve(pack, g, new Set(['clearEarly'])).size;
+          const two = DED.solve(pack, g, new Set(['clearEarly', 'clearMid'])).size;
+          const withLink = DED.solve(pack, g, new Set(['clearEarly', 'clearMid', 'L0'])).size;
+          if (!(none === 4 && one === 3 && two === 2 && withLink === 2)) {
+            ok = false; if (notes.length < 3) notes.push(none + '/' + one + '/' + two + '/' + withLink);
+          }
+        }
+        check('D5', 'Answer set narrows one step at a time, never to one in public',
+          'rigorous', ok, ok ? 'four, then three, then two, and the public half stops there'
+            : 'saw ' + notes.join(' ') + ' (want 4/3/2/2)');
+      }
+
+      // D6: the structure around the chain. Holders and leads must be core, must
+      // never be the answer, and every lead must have the find that takes it back.
+      {
+        const answers = new Set(D.answerSet);
+        const holders = Object.values(D.holders || {});
+        const leadIds = Object.keys(D.leads || {});
+        const nameOfId = (id) => String((pack.cast.find((c) => c.id === id) || {}).name || 'no-such-name');
+        const holdersCore = holders.every((id) => coreIds.has(id));
+        const holdersInnocent = holders.every((id) => !answers.has(id));
+        const holdersDistinct = new Set(holders).size === holders.length && holders.length === 4;
+        const answersCore = D.answerSet.every((id) => coreIds.has(id));
+        const answersCoverKillers = V.every((v) => D.answerSet.some((id) =>
+          String(v.killer).toUpperCase().includes(nameOfId(id).toUpperCase())));
+        const leadsCore = leadIds.every((id) => coreIds.has(id));
+        const leadsInnocent = leadIds.every((id) => !answers.has(id));
+        const leadsPaired = leadIds.every((id) => D.leads[id].lead && D.leads[id].clear);
+        const traitsForAnswers = D.answerSet.every((id) => !!(D.traits || {})[id]);
+        const secondHandsPool = Object.keys(D.traits || {})
+          .filter((id) => !answers.has(id) && !holders.includes(id) && coreIds.has(id));
+        const ok = holdersCore && holdersInnocent && holdersDistinct && answersCore &&
+          answersCoverKillers && leadsCore && leadsInnocent && leadsPaired && leadIds.length >= 1 &&
+          traitsForAnswers && secondHandsPool.length >= 1;
+        check('D6', 'False leads point away from the answer and are cleared in play',
+          'rigorous', ok,
+          holders.length + ' link holders (core, never the answer: ' + (holdersCore && holdersInnocent) + '); ' +
+          leadIds.length + ' leads, each with its clearing find: ' + leadsPaired + '; ' +
+          'answer set of ' + D.answerSet.length + ' covers every variant killer: ' + answersCoverKillers + '; ' +
+          'second-hands pool: ' + secondHandsPool.length);
+      }
+    }
   }
 
   // ---- Player-count sweep 10..20 (Rule 2 interacts: 10-player omits flex) ----

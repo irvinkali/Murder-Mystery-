@@ -116,15 +116,20 @@ async function main() {
   const sealed = (await getGame(partyCode)).variant; // read locally; never printed
   const keystoneProp = pack.props.find((p) => (pack.matrix[p] || {})[sealed] === 'keystone');
 
+  const e6Text = (pack.variants.find((v) => v.letter === sealed).evidence.steps
+    .find((st) => st.n === 6) || {}).text || '';
+  const e6Tail = e6Text.replace(/^\s*E\d+\s*(?:KEYSTONE\s*:\s*)?/i, '').slice(-60);
+
   if (keystoneProp) {
     const early = await j(scan(POST({ partyCode, personalCode: codes[0], propId: keystoneProp })));
     assert('keystone prop is NOT revealed before Phase 4',
-      !(early.reveal.extra && early.reveal.extra.keystone));
+      !!early.reveal.reading && !early.reveal.reading.includes(e6Tail));
+    assert('the early reply carries no shape tell (one field, no flag)',
+      early.reveal.extra === undefined && early.reveal.locked === undefined);
 
     await j(advance(POST({ partyCode, hostToken, phase: 4 })));
     const late = await j(scan(POST({ partyCode, personalCode: codes[0], propId: keystoneProp })));
-    assert('keystone prop reveals at Phase 4',
-      !!(late.reveal.extra && late.reveal.extra.keystone));
+    assert('keystone prop reveals at Phase 4', late.reveal.reading.includes(e6Tail));
   } else {
     assert('sealed variant has a keystone prop (or keystone is a non-prop clue)', true);
   }
@@ -136,12 +141,14 @@ async function main() {
     const kProp = pack.props.find((p) => (pack.matrix[p] || {})[v.letter] === 'keystone');
     if (!kProp) continue; // keystone is a non-prop clue in this variant
     sweepProps++;
+    const tail = ((v.evidence.steps.find((st) => st.n === 6) || {}).text || '')
+      .replace(/^\s*E\d+\s*(?:KEYSTONE\s*:\s*)?/i, '').slice(-60);
     const before = resolvePropScan(pack, v.letter, kProp, 3);
     const at = resolvePropScan(pack, v.letter, kProp, 4);
-    assert(`variant ${v.letter}: keystone prop locked in Phase 3`,
-      !(before.extra && before.extra.keystone));
+    assert(`variant ${v.letter}: keystone prop withheld in Phase 3`,
+      !!before.reading && !before.reading.includes(tail));
     assert(`variant ${v.letter}: keystone prop unlocks in Phase 4`,
-      !!(at.extra && at.extra.keystone));
+      !!at.reading && at.reading.includes(tail));
   }
   assert('at least one variant exposes its keystone via a prop', sweepProps >= 1);
 
@@ -1554,10 +1561,12 @@ async function main() {
     assert('a guest claimed a seat in the lobby', !!seatCode && !!seatChar);
 
     await j(advance(POST({ partyCode, hostToken, openDoors: true })));
-    await j(scan(POST({ partyCode, personalCode: seatCode, propId: 'P1' })));
     await j(poll(POST({ action: 'create', partyCode, hostToken, id: 'rq1', question: 'Who?', options: ['A', 'B'] })));
     await j(poll(POST({ action: 'vote', partyCode, personalCode: seatCode, id: 'rq1', choice: 'A' })));
     await j(advance(POST({ partyCode, hostToken, phase: 3 })));
+    // A find only registers once the body has been found, so this has to come
+    // after the phase change, not during Arrivals.
+    await j(scan(POST({ partyCode, personalCode: seatCode, propId: 'P1' })));
     const mid = await getGame(partyCode);
     mid.players[seatCode].killerSeenAt = new Date().toISOString();   // as a mid-game unlock would
     const playedVariant = mid.variant;

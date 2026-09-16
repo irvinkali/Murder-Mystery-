@@ -497,8 +497,10 @@ async function examine(value) {
     const { reveal } = await api('scan', { partyCode: Store.party, personalCode: Store.code, exhibit: value });
     if (reveal.unknown) { box.innerHTML = `<div class="muted">${esc(reveal.message||'Nothing matches that number.')}</div>`; return; }
     let html = `<div class="kicker">You found something</div><div class="serif" style="font-size:20px">${esc(reveal.label||'')}</div><p class="muted">${esc(reveal.blurb||'')}</p>`;
-    if (reveal.locked) { box.className = 'note secret'; html += `<p>${esc(reveal.lockedHint||'Not yet.')}</p>`; }
-    else { box.className = 'note'; if (reveal.extra) html += `<p>${esc(reveal.extra.text)}</p>`; else html += `<p class="muted">Nothing more reveals itself — for now.</p>`; }
+    // One class of reply for every exhibit, always. Do not branch on anything
+    // here: a differently styled box is exactly the tell this removed.
+    box.className = 'note';
+    html += String(reveal.reading||'').split('\n\n').map((para) => `<p>${esc(para)}</p>`).join('');
     box.innerHTML = html;
   } catch (e) { box.textContent = e.message; }
 }

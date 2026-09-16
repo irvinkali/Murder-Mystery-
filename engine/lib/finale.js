@@ -15,6 +15,7 @@
 const { displayNames } = require('./names');
 const { loadRuntimePack, getVariant, KEYSTONE_PHASE, PHASES, audioName, AUDIO_KEYS, resolveKillerId } = require('./runtime');
 const { tally } = require('./pollsched');
+const { revealNotes } = require('./deduction');
 const { narrationCopy, say, worldCopy, FALLBACK } = require('./runtime');
 
 // Award titles and notes are pack copy; these neutral shapes are the fallback.
@@ -118,6 +119,9 @@ function buildReveal(pack, game) {
     caught: finale.caught,
     awards: finale.awards,
     awardsIntroAudio: audioName('awards.intro'),
+    // So nobody goes home holding a lead nobody ever took back, and so the
+    // person the evidence still fitted at the end is named as innocent out loud.
+    notes: revealNotes(pack, game),
   };
 }
 

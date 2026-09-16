@@ -21,6 +21,7 @@
 const { mergeDrops } = require('./branching');
 const { audioName, AUDIO_KEYS, PHASE_MINUTES, PHASES } = require('./runtime');
 const { monologue, medicalScreenLine, narratorInventory, pushNarrator, warn2minLine } = require('./narrator');
+const { applyDeductionPhase, fireOutstanding } = require('./deduction');
 
 /** Build the phase narration card (Phase 1 appends the fairness disclosure). */
 function narrationFor(pack, phase) {
@@ -91,7 +92,12 @@ function applyPhaseTransition(pack, game, newPhase) {
     }
   }
 
-  return { phase: newPhase, hintCount, unfound: unfound.length };
+  // 4) The deduction layer: the false lead and the first two private links
+  //    land in the third phase, the last two and the second staged release in
+  //    the fourth. See lib/deduction.js.
+  const ded = applyDeductionPhase(pack, game, newPhase);
+
+  return { phase: newPhase, hintCount, unfound: unfound.length, deduction: ded.fired };
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +117,9 @@ function performAdvance(pack, game, target) {
   const from = game.phase;
   if (target !== from) {
     autoClose(pack, game, from);
+    // Anything the leaving phase owed the room that the room never triggered
+    // itself: a question that was skipped, a keystone nobody read.
+    fireOutstanding(pack, game, from);
     // Under autopilot, a question that can only resolve inside its own phase
     // gets closed as that phase ends, even when the host advances early.
     autopilotLeavingPhase(pack, game, from, target);

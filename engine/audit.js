@@ -5,7 +5,8 @@
  * the game rather than by reading the code:
  *
  *   1. LEAKS     Can any player-visible payload, at any phase, reach the sealed
- *                solution before the reveal?
+ *                solution before the reveal - in its words, or in the shape of
+ *                what it declines to say?
  *   2. BRANCHING Does the evening actually change with what the room votes and
  *                what people find, or does it run on rails?
  *   3. TALK      Does every player have something to say and something to do in
@@ -146,6 +147,110 @@ async function auditLeaks() {
   info('sealed variants exercised', `${variantsSeen.size} distinct across 24 games`);
 }
 
+
+// ---------------------------------------------------------------------------
+// 1b. WITHHELD PATTERN
+//
+// The sweep above looks for the sealed answer's own words. That is not how this
+// leaked the first time. Nothing was ever said: the answer was readable from
+// the PATTERN of what the app declined to say - which exhibits answered with
+// evidence, which announced themselves as not-yet, which stayed quiet, and
+// which of them stopped changing once they had spoken. Seven exhibits, three
+// visibly different replies, and the pattern across them was unique to each of
+// the four sealed answers at every phase, including before anybody had died.
+//
+// So this plays all four answers side by side and asks a classifier the same
+// question a guest with a good memory would: from the shape of the replies
+// alone, how many of the four can I tell apart? One means the pattern carries
+// nothing. Four means it carries everything.
+// ---------------------------------------------------------------------------
+async function auditWithheld() {
+  console.log('\n\x1b[1m1b. Does the pattern of what is NOT said give it away?\x1b[0m');
+  const letters = pack.variants.map((v) => v.letter);
+  const phases = [1, 2, 3, 4, 5];
+
+  // Play one real game per sealed answer, and read the exhibits through the
+  // endpoint a guest actually uses rather than through the resolver.
+  const games = {};
+  for (const letter of letters) {
+    const c = await j(createGame(POST({})));
+    await updateGame(c.partyCode, (g) => { g.variant = letter; return g; });
+    await openDoors(c);
+    const codes = await seat(c.partyCode, 12);
+    games[letter] = { c, code: codes[0], replies: {} };
+    for (const phase of phases) {
+      await j(advance(POST({ partyCode: c.partyCode, hostToken: c.hostToken, phase })));
+      const row = [];
+      for (const pid of Object.keys(propCatalog(pack))) {
+        const r = await j(scan(POST({ partyCode: c.partyCode, personalCode: codes[0], exhibit: exhibitNumber(pid, pack) })));
+        row.push(r.reveal || {});
+      }
+      games[letter].replies[phase] = row;
+    }
+  }
+
+  // Shape: which fields came back, whether anything was said, how many things
+  // have been noticed so far. Never the words themselves.
+  const shapeOf = (rev) => Object.keys(rev).filter((k) => k !== 'label' && k !== 'blurb').sort().join('+') +
+    (rev.reading ? ':said' : ':silent') + ':' + String(rev.reading || '').split('\n\n').length;
+  let worstPhase = 1;
+  for (const phase of phases) {
+    const pats = letters.map((l) => games[l].replies[phase].map(shapeOf).join('|'));
+    worstPhase = Math.max(worstPhase, new Set(pats).size);
+  }
+  assert('the shape of the replies tells the four answers apart: no', worstPhase === 1,
+    `best a shape classifier can do across ${phases.length} phases: ${worstPhase} of ${letters.length} answers distinguished`);
+
+  // Churn: which exhibits say something new at each phase turn. A live exhibit
+  // that speaks once and then sits still is as good as a labelled one.
+  let worstTurn = 1;
+  for (let i = 1; i < phases.length; i++) {
+    const a = phases[i - 1], b = phases[i];
+    const pats = letters.map((l) => games[l].replies[a]
+      .map((rev, k) => (String(rev.reading || '') === String(games[l].replies[b][k].reading || '') ? '.' : 'c')).join(''));
+    worstTurn = Math.max(worstTurn, new Set(pats).size);
+  }
+  assert('which exhibits change at a phase turn tells them apart: no', worstTurn === 1,
+    `best a change-pattern classifier can do: ${worstTurn} of ${letters.length} answers distinguished`);
+
+  // Weight: how much each exhibit said, coarsely. This one is reported rather
+  // than demanded, because evidence is as long as it needs to be; what matters
+  // is that it can never single an answer out on its own.
+  let worstWeight = 1;
+  for (const B of [200, 300, 400, 500]) {
+    for (const phase of phases) {
+      const pats = letters.map((l) => games[l].replies[phase]
+        .map((rev) => Math.floor(String(rev.reading || '').length / B)).join(''));
+      worstWeight = Math.max(worstWeight, new Set(pats).size);
+    }
+  }
+  // The bar here is what a person can actually perceive - "that one gave me a
+  // good deal more than this one" - not what a character count can separate.
+  // Demanding that every reply be the same length would mean writing every
+  // piece of evidence to a word budget, which is a worse game. So the invariant
+  // is that no reply is conspicuously heavier than its neighbours, and the
+  // character-counting figure is printed beside it so nobody forgets it exists.
+  let eLo = Infinity, eHi = 0;
+  for (const letter of letters) for (const phase of phases) for (const rev of games[letter].replies[phase]) {
+    for (const part of String(rev.reading || '').split('\n\n')) { eLo = Math.min(eLo, part.length); eHi = Math.max(eHi, part.length); }
+  }
+  const ratio = eLo > 0 && eLo !== Infinity ? eHi / eLo : Infinity;
+  assert('no exhibit answers at a conspicuously different weight from its neighbours',
+    ratio <= 2.5, `longest reply is ${ratio === Infinity ? 'n/a' : ratio.toFixed(2)}x the shortest (limit 2.5x)`);
+  info('residual: counting characters', `a classifier that measures reply length can still tell ${worstWeight} of ${letters.length} answers apart`);
+
+  // And the private half: the set of things a seat is holding must not vary
+  // with the answer either - only their contents may.
+  const kinds = {};
+  for (const letter of letters) {
+    const g = await getGame(games[letter].c.partyCode);
+    kinds[letter] = [...new Set(Object.values(g.drops || {}).flat().map((d) => d.kind))].sort().join(',');
+  }
+  assert('the kinds of private note in the room do not vary with the answer',
+    new Set(Object.values(kinds)).size === 1,
+    `${new Set(Object.values(kinds)).size} distinct sets of note kinds across the four answers`);
+}
+
 // ---------------------------------------------------------------------------
 // 2. BRANCHING
 // ---------------------------------------------------------------------------
@@ -269,16 +374,24 @@ async function auditTalk() {
   const c2 = await j(createGame(POST({})));
   await openDoors(c2);
   const codes2 = await seat(c2.partyCode, 12);
+  const g2v = (await getGame(c2.partyCode)).variant;
+  // The last words of a variant's keystone step, held in memory and only ever
+  // compared against - never printed.
+  const tailOf = (letter, propId) => {
+    const v = pack.variants.find((x) => x.letter === letter);
+    const st = (v.evidence.steps || []).find((s2) => new RegExp('\\b' + propId + '\\b').test(s2.text) && s2.n === 6);
+    return st ? st.text.replace(/^\s*E\d+\s*(?:KEYSTONE\s*:\s*)?/i, '').slice(-50) : '\u0000never';
+  };
   let lockedEarly = 0, openLater = 0;
   await j(advance(POST({ partyCode: c2.partyCode, hostToken: c2.hostToken, phase: 3 })));
   for (const pid of Object.keys(propCatalog(pack))) {
     const r = await j(scan(POST({ partyCode: c2.partyCode, personalCode: codes2[0], exhibit: exhibitNumber(pid, pack) })));
-    if (r.reveal && r.reveal.locked) lockedEarly++;
+    if (r.reveal && r.reveal.reading && !r.reveal.reading.includes(tailOf(g2v, pid))) lockedEarly++;
   }
   await j(advance(POST({ partyCode: c2.partyCode, hostToken: c2.hostToken, phase: 4 })));
   for (const pid of Object.keys(propCatalog(pack))) {
     const r = await j(scan(POST({ partyCode: c2.partyCode, personalCode: codes2[0], exhibit: exhibitNumber(pid, pack) })));
-    if (r.reveal && !r.reveal.locked && r.reveal.extra) openLater++;
+    if (r.reveal && r.reveal.reading && r.reveal.reading.includes(tailOf(g2v, pid))) openLater++;
   }
   assert('something stays locked until Phase 4 and opens after it',
     lockedEarly > 0 && openLater > 0, `${lockedEarly} still shut in Phase 3, ${openLater} giving up more in Phase 4`);
@@ -291,6 +404,7 @@ async function auditTalk() {
 async function main() {
   console.log(`\n\x1b[1mParty audit\x1b[0m  \x1b[2mpack ${pack.id}, ${CHARS.length} characters, ${pack.variants.length} sealed endings\x1b[0m`);
   await auditLeaks();
+  await auditWithheld();
   await auditBranching();
   await auditTalk();
   console.log(`\n${fail === 0 ? '\x1b[32m✓ AUDIT CLEAN' : '\x1b[31m✗ AUDIT FOUND PROBLEMS'}\x1b[0m  (${pass}/${pass + fail})\n`);

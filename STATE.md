@@ -23,8 +23,8 @@ This file lets any Claude session (chat or Claude Code) resume work. Kali may re
 ## File map
 - STATE.md — this file (safe)
 - docs/ — safe docs (design doc, props guide copies)
-- packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 b5531a15dcbcf9d9d34edf6a4bf3e713)
-- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 d059bb452050a7af55d48f2fcd2d3d9d)
+- packs/last-exhibit/plot-bible.md.b64 — SPOILER master document (base64; md5 a518781264f371bcc061c5ac788814fd)
+- packs/reunion-1989/plot-bible.md.b64 — SPOILER master document for story pack #2 (base64; md5 7f5ee4731f7d156e06931b381bf840c7)
 - engine/ — app code (not started)
 
 ## Progress log
@@ -312,6 +312,66 @@ hashed only the logical key, so every pack produced identical filenames and the 
 screen served the gallery's audio. The pack id is now part of the hash.
 
 Gate, both packs: engine 245/245, branching 21/21, smoke 18/18, validate 15/15, spoiler-scan clean.
+
+## The night stopped being solvable alone, and early (added 2026-09-16)
+
+A predictability audit played every sealed answer at ten, fourteen and twenty seats and asked, phase
+by phase, how much of the field a guest could actually rule out. The answer was: all of it, in the
+second phase, by one person, without reading anything. Tapping an exhibit produced one of three
+visibly different replies - a paragraph of evidence, a differently styled "not yet", or nothing - and
+the PATTERN of those three across the seven exhibits was unique to each sealed answer at every phase,
+including before the body was found. Two taps identified the night in most cases; five always did.
+The wording never leaked. The shape did.
+
+Four changes, in the order they were made.
+
+**Every exhibit now answers the same way.** One field, one paragraph, always, under every answer at
+every phase. A dead end, a step whose moment has not come, and a step that is live are now the same
+object to a guest. Each pack authors three readings per exhibit, one per tier of the evening, and a
+reply ACCUMULATES one entry at every phase turn - which matters, because if a live exhibit spoke once
+and then sat still while the dead ends kept moving, re-reading all seven either side of a phase
+change would have named the answer just as well. The engine also strips the authoring scaffolding out
+of evidence prose: the chain-step ordinal and the internal exhibit id were being rendered to guests
+inside the sentence, not only in the payload fields, so removing the fields alone would not have
+closed it. A validator rule now refuses any pack that reintroduces either.
+
+**The answer takes four separate seats.** Five links: one published to the room in the fourth phase,
+four held privately by four core characters who are the same four under every answer and are never
+themselves the answer. Two of the links put a name to something and are worth nothing until a fourth
+holder puts a time on them, which is what makes the fourth seat necessary rather than decorative. The
+validator enumerates every subset of the links against the pack's own semantics rather than taking
+it on trust: the floor is four seats, and the best any three can do is leave two answers standing.
+All four holders are core, so this holds at a table of ten with no flex present.
+
+**The field narrows one step at a time.** Four, then three when the room closes its own question in
+Asking Around, then two on entering The Hard Part, and nothing after that. A room that has not done
+the private work walks into Accusations holding two names and an argument.
+
+**There is a false lead every night, and it is always taken back.** Drawn at random, pointing at a
+core character who is never the answer under any variant, published in Asking Around and cleared to
+the whole room in The Hard Part, so nobody spends the evening wrongly accused and nobody goes home
+holding something that was never withdrawn.
+
+Measured after the change, at ten, fourteen and twenty seats, identically: four answers standing
+through Arrivals and The Back Room, three through Asking Around, two in The Hard Part on a guest's
+own phone, and one only for a guest who has combined what four different seats are holding. A room
+that shares everything gets there in The Hard Part. Nothing reaches the answer before Asking Around
+is over.
+
+Four engine faults found by the same audit and fixed: typing exhibit numbers with no object in hand
+marked them found for the whole room and silently switched off every find-hint the evening had;
+repeat taps of one exhibit counted as new finds, and that count decides who receives the partial
+release and one of the awards; the payload carried the chain ordinal and a flag naming the gated
+step; and the comment in the resolver asserted an invariant the code did not hold.
+
+`engine/audit.js` now also tests the pattern of what is WITHHELD - shape, what changes at a phase
+turn, reply weight, and the kinds of private note in the room - because the verbatim-text sweep it
+had passed cleanly all the way through the leak.
+
+Both bibles changed, so both packs were rebuilt and `EXPECTED.md5` was re-pinned. The seated chain,
+the staged releases and the false leads are authored for reunion-1989 only; last-exhibit has the
+exhibit readings and every engine fix, and runs without a seated chain. Gate, both packs: fairness
+21/21, engine 246/246, branching 21/21, smoke 18/18, audit 14/14, spoiler-scan clean.
 
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.

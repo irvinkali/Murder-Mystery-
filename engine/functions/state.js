@@ -20,6 +20,7 @@ const { blackoutDue, maybeBlackout, blackoutActive } = require('../lib/blackout'
 const { awardsPublic, ownAwardVotes, ceremonyDue, advanceCeremony } = require('../lib/awards');
 const { autopilotOn, autopilotDue, runAutopilot, hostCue } = require('../lib/autopilot');
 const { goFindNudge } = require('../lib/gofind');
+const { tokenLinkDue, fireTokenLink } = require('../lib/deduction');
 
 exports.handler = async (event) => {
   connect(event);
@@ -87,6 +88,13 @@ exports.handler = async (event) => {
   // winner and its hold, then the next one comes up on the next poll.
   if (ceremonyDue(game)) {
     game = (await updateGame(game.partyCode, (g) => { advanceCeremony(g); return g; })) || game;
+  }
+
+  // The public link of the seated chain, if the room has got most of the way
+  // through the phase it belongs to without anybody reading the exhibit that
+  // would have released it. Same lazy tick as the clock above.
+  if (tokenLinkDue(pack, game)) {
+    game = (await updateGame(game.partyCode, (g) => { fireTokenLink(pack, g); return g; })) || game;
   }
 
   // The blackout set-piece starts/ends on its own clock.

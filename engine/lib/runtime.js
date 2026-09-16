@@ -7,7 +7,10 @@
  *    returned to any client until the Reveal phase (6).
  *  - Evidence text (from the encoded pack) is only ever served in response to a
  *    deliberate in-game action (scanning a prop, an assigned drop), gated by
- *    phase. The keystone (E6) is never served before Phase 4.
+ *    phase. Every step of the chain has a phase, not just the keystone, and
+ *    the keystone (E6) is never served before Phase 4.
+ *  - Every exhibit answers with exactly one paragraph in exactly one field, in
+ *    every variant at every phase, so the shape of the reply carries nothing.
  *  - Each player receives only their OWN character brief, never another's.
  *
  * There are no world literals in this file. Every player-facing string — prop
@@ -279,40 +282,79 @@ function capacity(pack) {
 }
 
 /**
- * Resolve what scanning a prop reveals, for the active (sealed) variant at the
- * current phase. Never leaks the variant identity; never serves the keystone
- * before Phase 4.
+ * Strip the authoring scaffolding out of an evidence step before a guest reads
+ * it. A step is written as `E4 P1 photo-booth strip: ...` for the validator's
+ * benefit; the ordinal tells a guest how far along a six-step chain they are,
+ * and `P1` is an internal id that is never supposed to leave the server. Both
+ * come off here, so what reaches a phone is the sentence and nothing else.
+ */
+function sanitizeReading(text) {
+  if (!text) return text;
+  return String(text)
+    .replace(/^\s*E\d+\s*(?:KEYSTONE\s*:\s*)?/i, '')
+    .replace(/\bP[1-9]\d*\s+/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Which phase each evidence step becomes readable in. The chain is released
+// across the evening instead of all at once: the opening steps land with the
+// discovery, the middle of the chain during the long investigation phase, and
+// the last two - the keystone among them - only in the fourth phase.
+const STEP_PHASE = { 1: 2, 2: 2, 3: 3, 4: 3, 5: KEYSTONE_PHASE, 6: KEYSTONE_PHASE };
+function stepPhase(n) { return STEP_PHASE[n] || KEYSTONE_PHASE; }
+// Which tier of generic reading an exhibit gives at a given phase.
+function readingTier(phase) { return phase >= KEYSTONE_PHASE ? 4 : (phase >= 3 ? 3 : 2); }
+const READING_TIERS = [2, 3, 4];
+const READING_SEP = '\n\n';
+
+/**
+ * What tapping an exhibit says, for the sealed variant at the current phase.
+ *
+ * EVERY exhibit answers, in every variant, at every phase, with one paragraph
+ * in one field. That is deliberate and it is load-bearing.
+ *
+ * An earlier build returned the evidence text for a live exhibit, a separately
+ * styled "not yet" note for the gated one, and nothing at all for a dead end.
+ * Those three replies are externally distinguishable, and the PATTERN of them
+ * across the seven exhibits was unique to each sealed answer at every phase. A
+ * guest who tapped two exhibits could read the answer off the SHAPE of the
+ * replies without understanding a word of the content, and the phase gate did
+ * not help, because a gated exhibit announced itself as the gated one.
+ *
+ * So there is no longer any observable difference between a dead end, a step
+ * whose moment has not come round, and a step that is live. All three return
+ * `reading`, and nothing else. Do not reintroduce a second field, a flag, or a
+ * different style for any of these cases.
  */
 function resolvePropScan(pack, variantLetter, propId, phase) {
   const catalog = propEntry(propId, pack);
   if (!catalog) return { propId, unknown: true };
 
   const base = { propId, label: say(pack, catalog.label), blurb: say(pack, catalog.blurb) };
+  // The reply a pack that has authored nothing else still gives: the exhibit's
+  // own flourish, which every pack writes for every prop, so the shape holds.
+  const fallback = say(pack, catalog.flourish) || say(pack, catalog.blurb) ||
+    say(pack, narrationCopy(pack).lockedHint) || FALLBACK.lockedHint;
 
   const v = getVariant(pack, variantLetter);
-  if (!v) return base;
+  const tiers = READING_TIERS.filter((t) => t <= readingTier(phase));
 
-  const kind = (pack.matrix[propId] || {})[variantLetter] || 'herring';
-
-  // Find the evidence step (if any) that this prop surfaces in this variant.
-  const step = (v.evidence.steps || []).find((s) => new RegExp('\\b' + propId + '\\b').test(s.text));
-
-  // Herring in this variant, or no evidence tie: show only the neutral catalog
-  // entry. Players cannot distinguish "herring" from "not yet unlocked", which
-  // is what keeps every prop feeling important (per the design requirement).
-  if (kind === 'herring' || !step) {
-    return { ...base, extra: null };
-  }
-
-  // Gate the keystone until Phase 4 under all paths (fairness rule 4).
-  const isKeystone = kind === 'keystone' || step.n === 6;
-  if (isKeystone && phase < KEYSTONE_PHASE) {
-    const hint = say(pack, narrationCopy(pack).lockedHint) || FALLBACK.lockedHint;
-    return { ...base, extra: null, locked: true, lockedHint: hint };
-  }
-
-  // Evidence-bearing and unlocked: reveal the evidence-step text.
-  return { ...base, extra: { step: step.n, text: step.text, keystone: isKeystone } };
+  // An exhibit's reply is what has been noticed about it SO FAR: one entry per
+  // tier of the evening, oldest first, and it gains exactly one entry at every
+  // phase boundary. That last part is not cosmetic. If a live exhibit simply
+  // swapped its text once and then sat still while the dead ends kept changing,
+  // then re-reading all seven before and after a phase turn would show you
+  // which ones had settled, and which ones settle is unique to each answer -
+  // the original leak, wearing a different coat. Every exhibit gains an entry
+  // at every boundary under every answer, so that comparison says nothing.
+  const step = v && (v.evidence.steps || []).find((s2) => new RegExp('\\b' + propId + '\\b').test(s2.text));
+  const parts = tiers.map((t) => {
+    if (step && stepPhase(step.n) === t) return sanitizeReading(say(pack, step.text));
+    const authored = ((pack.readings || {})[propId] || {})[t];
+    return say(pack, authored) || fallback;
+  });
+  return { ...base, reading: parts.join(READING_SEP), entries: parts.length };
 }
 
 // Rescue prompts for players who have gone quiet, in the pack's own voice. They
@@ -426,6 +468,12 @@ module.exports = {
   assignableIds,
   capacity,
   resolvePropScan,
+  stepPhase,
+  readingTier,
+  READING_TIERS,
+  READING_SEP,
+  sanitizeReading,
+  STEP_PHASE,
   resolveKillerId,
   killerUnlock,
   idleNudge,

@@ -18,6 +18,7 @@
 const { matchCharByLabel, computeDefense, computeMedical, mergeDrops } = require('./branching');
 const { audioName, AUDIO_KEYS, say } = require('./runtime');
 const { pushNarrator, suspectLine, subpoenaLine, finalClosedLine } = require('./narrator');
+const { fireEarlyRelease, fireLeadCleared } = require('./deduction');
 
 const KEYSTONE_PHASE = 4;
 
@@ -142,6 +143,12 @@ function closePoll(pack, game, pollId) {
   // Narrator interjections — names come from the pack at runtime; the audio
   // key is the character ID so the line is pre-renderable per cast member.
   const anyVotes = Object.values(counts).some((n) => n > 0);
+  // The staged releases are EARNED: the first name comes off the list because
+  // the room closed its own question, and the false lead is withdrawn because
+  // the room settled the files. A phase change fires either as a backstop.
+  if (pollId === 'benefits') fireEarlyRelease(pack, game);
+  if (pollId === 'subpoena') fireLeadCleared(pack, game);
+
   if (pollId === 'benefits' && anyVotes) {
     const win = winningOption(counts);
     const winId = matchCharByLabel(pack, win);

@@ -20,6 +20,7 @@
  */
 
 const { selectVariant } = require('./runtime');
+const { sealDeduction } = require('./deduction');
 const { LOBBY_ANSWER_KEY } = require('./lobby');
 
 /* What survives a reset: who is in the room and who they are playing. */
@@ -47,6 +48,7 @@ function resetToLobby(pack, game, now) {
   next.phase = 1;
   next.phaseStartedAt = at;
   next.variant = selectVariant(pack);
+  next.seal = sealDeduction(pack, next.variant);
 
   // A party that has just been put back is not being played. Auto-advance is on
   // by default at creation, which is how a party left alone walks itself to the
@@ -55,6 +57,7 @@ function resetToLobby(pack, game, now) {
   next.autopilot = false;
 
   next.discovered = {};
+  next.released = {};
   next.polls = {};
   next.log = [{ at: game.createdAt || at, kind: 'created' }, { at, kind: 'reset' }];
   return next;

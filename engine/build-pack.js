@@ -48,6 +48,11 @@ function main() {
     polls: pack.polls,
     world: pack.world,
     frontend: pack.frontend,
+    // The deduction layer: exhibit readings, the seated chain, the staged
+    // releases and the false leads (bible section 13). Optional: a pack without
+    // one still builds and still runs, it just has no seated chain.
+    deduction: pack.deduction,
+    readings: pack.readings,
   };
 
   // Serialize in memory only; emit base64 exclusively.
@@ -66,6 +71,8 @@ function main() {
   console.log('  variants:        ', pack.variants.length);
   console.log('  props:           ', pack.props.length);
   console.log('  flex:            ', pack.flex.length);
+  console.log('  exhibit readings:', pack.readings ? Object.keys(pack.readings).length * 3 : 0);
+  console.log('  seated chain:    ', pack.deduction ? Object.keys(pack.deduction.holders).length + ' private links, ' + Object.keys(pack.deduction.leads).length + ' false leads' : 'not authored');
   console.log('  encoded bytes:   ', Buffer.byteLength(wrapped, 'utf8'));
 }
 
