@@ -1530,6 +1530,63 @@ async function main() {
   }
 
 
+
+  // --- back to the lobby -------------------------------------------------
+  // A party gets started by accident, or on purpose to rehearse. The casting is
+  // the expensive thing in the room, so a reset has to keep it and throw the
+  // evening away, and it must not leave the rehearsal's answer behind.
+  {
+    console.log('\nBack to the lobby');
+    const raw = await j(createGameRaw(POST({ hostName: 'Reset' })));
+    const partyCode = raw.partyCode, hostToken = raw.hostToken;
+
+    assert('a party in the lobby cannot be sent back to it',
+      !!(await j(advance(POST({ partyCode, hostToken, backToLobby: true })))).error);
+
+    await j(cast(POST({ partyCode, hostToken, action: 'save', reservations: { C1: 'Reserved Guest' } })));
+    const guest = await j(join(POST({ partyCode, name: 'Reset Guest' })));
+    const seatCode = guest.personalCode, seatChar = (guest.character || {}).id;
+    assert('a guest claimed a seat in the lobby', !!seatCode && !!seatChar);
+
+    await j(advance(POST({ partyCode, hostToken, openDoors: true })));
+    await j(scan(POST({ partyCode, personalCode: seatCode, propId: 'P1' })));
+    await j(poll(POST({ action: 'create', partyCode, hostToken, id: 'rq1', question: 'Who?', options: ['A', 'B'] })));
+    await j(poll(POST({ action: 'vote', partyCode, personalCode: seatCode, id: 'rq1', choice: 'A' })));
+    await j(advance(POST({ partyCode, hostToken, phase: 3 })));
+    const mid = await getGame(partyCode);
+    mid.players[seatCode].killerSeenAt = new Date().toISOString();   // as a mid-game unlock would
+    const playedVariant = mid.variant;
+    assert('the party really was played before the reset',
+      mid.lobby === false && mid.phase === 3 && Object.keys(mid.discovered).length > 0 && Object.keys(mid.polls).length > 0);
+
+    assert('a stranger cannot send the party back to the lobby',
+      !!(await j(advance(POST({ partyCode, hostToken: 'not-the-host', backToLobby: true })))).error);
+
+    const back = await j(advance(POST({ partyCode, hostToken, backToLobby: true })));
+    const g2 = await getGame(partyCode);
+    assert('the reset answers with the lobby and the seat count', back.lobby === true && back.seats === 1);
+    assert('the party is in the lobby again', g2.lobby === true && g2.phase === 1);
+    assert('the seat survived with the same character', !!g2.players[seatCode] && g2.players[seatCode].characterId === seatChar);
+    assert('the guest can still use their own code', !!(await j(state(GET({ partyCode, personalCode: seatCode })))).you);
+    assert('the typed-in reservation survived', JSON.stringify(g2.reservations || {}).indexOf('C1') !== -1);
+    assert('what the evening produced is gone',
+      Object.keys(g2.discovered || {}).length === 0
+      && Object.keys(g2.polls || {}).length === 0
+      && !g2.narratorFeed && !g2.screenCards && !g2.narration && !g2.drops && !g2.reveal);
+    assert('the seat forgot what it was shown', !g2.players[seatCode].killerSeenAt && !g2.players[seatCode].scanCount);
+    assert('a reset party does not run its own clock', g2.autoAdvance === false && !g2.autopilot);
+    assert('the room screen sees a lobby, not a phase', (await j(state(GET({ partyCode })))).state.lobby === true);
+
+    // The sealed variant is drawn again, so a rehearsal cannot teach the answer.
+    const drawn = new Set([playedVariant, g2.variant]);
+    for (let i = 0; i < 30; i++) {
+      await j(advance(POST({ partyCode, hostToken, openDoors: true })));
+      await j(advance(POST({ partyCode, hostToken, backToLobby: true })));
+      drawn.add((await getGame(partyCode)).variant);
+    }
+    assert('the solution is drawn again on every reset', drawn.size > 1);
+  }
+
   console.log(`\n${fail === 0 ? '\x1b[32m✓ ENGINE OK' : '\x1b[31m✗ ENGINE FAILURES'}\x1b[0m  (${pass}/${pass + fail})\n`);
   process.exit(fail === 0 ? 0 : 1);
 }

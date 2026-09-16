@@ -281,5 +281,22 @@ caterer alone; the note-taker is in 1989 costume like everybody else.
 Gate after the change, run against BOTH packs: fairness 15/15, engine 117/117, branching 21/21,
 smoke 18/18, audit 10/10, spoiler-scan clean on the default pack. `npm run check` green.
 
+## Back to the lobby, and the room's own silence
+
+A party can be put back. `POST /api/advance {backToLobby:true}` (host only, "Back to the lobby" on
+the host screen) rebuilds the game from a CARRY list in `engine/lib/reset.js`: seats, the characters
+they hold, the typed-in reservations and the lobby answers survive, and everything the evening
+produced is dropped by construction rather than by a delete list, so a field added by a later
+feature cannot survive a reset by accident. Auto-advance and autopilot come back off, and the sealed
+variant is drawn again, because a rehearsal must never teach the answer to the night being played.
+
+The room screen's generative pad is now per pack. `theme.json` `ambient.pad:false` turns it off;
+last-exhibit keeps it, reunion-1989 runs silent between narration because the room has its own
+music and the pad sits under everything as a hum. The pad only ever played because there are no
+files in `/assets/audio`, which is still true.
+
+Gate after this change, both packs: engine 245/245, branching 21/21, smoke 18/18, validate 15/15,
+spoiler-scan clean.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.

@@ -79,6 +79,10 @@
       <span class="muted" style="flex:2;font-size:13px" id="autopilotLabel">Run the night for me.</span>
       <button id="autopilotBtn" class="ghost" style="flex:1;margin-top:0">Turn on</button>
     </div>
+    <div class="row" style="align-items:center;margin-top:8px">
+      <span class="muted" style="flex:2;font-size:13px">Started by mistake, or finished a rehearsal? This puts the party back in the lobby. Everybody keeps the character they claimed and every reservation stays typed in.</span>
+      <button id="lobbyBtn" class="ghost" style="flex:1;margin-top:0">Back to the lobby</button>
+    </div>
 
     <div class="divider"></div>
     <h3>Polls this phase</h3>
@@ -252,7 +256,7 @@ el('#resumeHost').addEventListener('click', async () => {
   }
 });
 el('#doorsBtn').addEventListener('click', async () => {
-  if (!confirm('Open the doors? This starts Phase 1 and unlocks every dossier. There is no undo.')) return;
+  if (!confirm('Open the doors? This starts Phase 1 and unlocks every dossier. Back to the lobby undoes it.')) return;
   el('#doorsErr').textContent = '';
   try { await api('advance', { partyCode: Store.party, hostToken: Store.host, openDoors: true }); tick(); }
   catch (e) { el('#doorsErr').textContent = e.message; }
@@ -261,6 +265,10 @@ el('#advBtn').addEventListener('click', async () => { try { await api('advance',
 el('#pauseBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,pause:!cur.paused}); tick(); } catch(e){ alert(e.message); } });
 el('#extendBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,extend:5}); tick(); } catch(e){ alert(e.message); } });
 el('#autopilotBtn').addEventListener('click', async () => { try { await api('advance',{partyCode:Store.party,hostToken:Store.host,autopilot:!cur.autopilot}); tick(); } catch(e){ alert(e.message); } });
+el('#lobbyBtn').addEventListener('click', async () => {
+  if (!confirm('Put the party back in the lobby? Seats and casting stay. Everything tonight produced is thrown away, the clock stops, and the solution is drawn again.')) return;
+  try { await api('advance',{partyCode:Store.party,hostToken:Store.host,backToLobby:true}); tick(); } catch(e){ alert(e.message); }
+});
 el('#cueBtn').addEventListener('click', async () => {
   const run = CUE_ACTIONS[el('#cueBtn').dataset.action];
   if (!run) return;

@@ -52,4 +52,16 @@ function voiceConfig(theme) {
   };
 }
 
-module.exports = { packId, loadTheme, voiceConfig };
+/* The room screen fills silence with a generative pad when a pack has no
+ * ambient audio files. That suits a gallery and does not suit a reunion, where
+ * the room has its own music playing and the pad reads as a hum behind the
+ * narration. A pack that wants silence says so.
+ *
+ *  pad   false turns the generative soundscape off for this pack
+ */
+function ambientConfig(theme) {
+  const a = (theme && theme.ambient) || {};
+  return { pad: a.pad !== false };
+}
+
+module.exports = { packId, loadTheme, voiceConfig, ambientConfig };

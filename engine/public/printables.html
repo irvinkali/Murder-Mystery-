@@ -92,7 +92,7 @@ function renderNFC() {
   const items = (KIT && KIT.items) || [];
   const item = itemWord(KIT, false);
   el('#nfc').innerHTML = items.map((it) =>
-    `<div class="label"><b>${esc(titleCase(item))} ${esc(it.number)} \u2014 ${esc(it.label)}</b><br/><span class="muted">${esc(it.placement)}</span>
+    `<div class="label"><b>${esc(titleCase(item))} ${esc(it.number)}, ${esc(it.label)}</b><br/><span class="muted">${esc(it.placement)}</span>
      <span class="url">${esc(base)}/prop/${esc(it.number)}</span></div>`).join('');
   el('#inviteUrl').textContent = base;
   el('#inviteQR').onerror = () => { el('#inviteQR').style.display = 'none'; };
@@ -138,7 +138,7 @@ function renderInvite() {
 }
 function renderNote() {
   const item = itemWord(KIT, false);
-  el('#nfcNote').textContent = `If a tag ever fails, guests can still use \u201cI found something\u201d in the app and type the ${item} number \u2014 the meaning is tied to the object, not the tag.`;
+  el('#nfcNote').textContent = `If a tag ever fails, guests can still use \u201cI found something\u201d in the app and type the ${item} number. The meaning is tied to the object, not the tag.`;
 }
 el('#site').addEventListener('input', renderNFC);
 el('#printBtn').addEventListener('click', () => window.print());

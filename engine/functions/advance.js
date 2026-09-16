@@ -1,6 +1,7 @@
 'use strict';
 /* POST /api/advance — host phase & clock control.
  *   { partyCode, hostToken, phase? }          advance now (next, or explicit)
+ *   { partyCode, hostToken, backToLobby: true } undo a start, keeping the casting
  *   { partyCode, hostToken, pause: bool }     pause/resume the phase clock
  *   { partyCode, hostToken, auto: bool }      turn auto-advance on/off
  *   { partyCode, hostToken, autopilot: bool } run the night for her (or stop)
@@ -19,7 +20,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return preflight();
   if (event.httpMethod !== 'POST') return bad('POST only');
 
-  const { partyCode, hostToken, phase, pause, auto, autopilot, extend, blackout, photo, openDoors } = parseBody(event);
+  const { partyCode, hostToken, phase, pause, auto, autopilot, extend, blackout, photo, openDoors, backToLobby } = parseBody(event);
   if (!partyCode) return bad('partyCode required');
   const code = partyCode.toUpperCase();
 
@@ -44,6 +45,17 @@ exports.handler = async (event) => {
       return g;
     });
     return ok({ lobby: false, phase: 1 });
+  }
+
+  // Back to the lobby: undo a start. The seats, the characters they hold and
+  // the typed-in reservations survive; everything the evening produced does
+  // not, and the sealed variant is drawn again so a rehearsal cannot teach
+  // anybody the answer to the night they are going to play.
+  if (backToLobby === true) {
+    if (game.lobby) return bad('the party is already in the lobby');
+    const { resetToLobby } = require('../lib/reset');
+    const next = await updateGame(code, (g) => resetToLobby(pack, g));
+    return ok({ lobby: true, phase: 1, autoAdvance: false, autopilot: false, seats: Object.keys((next && next.players) || {}).length });
   }
 
   // Every other host control belongs to an evening that has begun.

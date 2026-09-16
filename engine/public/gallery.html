@@ -92,8 +92,11 @@
 // The pack's narrator settings arrive with the presentation kit; until they do,
 // the engine's neutral defaults stand in.
 let voiceCfg = { prefer: [], rate: 1, pitch: 1, audition: '' };
+// Some packs want the room silent between narration; see lib/theme.js.
+let ambientCfg = { pad: true };
 applyBrand().then((k) => {
   if (k && k.voice) voiceCfg = k.voice;
+  if (k && k.ambient) ambientCfg = k.ambient;
   docentVoice = pickVoice();
   if (audioReady) fillVoicePicker();
 });
@@ -133,6 +136,7 @@ function bell(done){
 const PAD_FREQ = { 1: 110, 2: 82.4, 3: 98, 4: 73.4, 5: 87.3, 6: 65.4 };
 const pad = { nodes: null, dark: false };
 function padEnsure(){
+  if (!ambientCfg.pad) return;   // this pack runs silent between narration
   if (pad.nodes || !audioCtx) return;
   try {
     const g = audioCtx.createGain(); g.gain.value = 0.0001;

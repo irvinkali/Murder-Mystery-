@@ -17,6 +17,10 @@
     "audition": "Testing. Can everybody hear me at the back?",
     "edge": "en-US-AvaMultilingualNeural"
   },
+  "ambient": {
+    "$comment": "The room has a playlist and fourteen people talking in it. The generative pad sits under all of that as a hum, so this pack runs silent between narration.",
+    "pad": false
+  },
   "vars": {
     "bg": "#0E1018",
     "panel": "#191D2E",

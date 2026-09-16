@@ -14,7 +14,7 @@
 const { ok, preflight } = require('../lib/api');
 const { connect } = require('../lib/store');
 const { loadRuntimePack, propCatalog, worldCopy, say } = require('../lib/runtime');
-const { loadTheme, voiceConfig } = require('../lib/theme');
+const { loadTheme, voiceConfig, ambientConfig } = require('../lib/theme');
 
 exports.handler = async (event) => {
   connect(event);
@@ -57,6 +57,8 @@ exports.handler = async (event) => {
     brand,
     // How the narrator should sound on the room screen (from the pack's theme).
     voice: voiceConfig(loadTheme()),
+    // Whether the room screen fills silence with its generative pad.
+    ambient: ambientConfig(loadTheme()),
     items,
     printables,
     invite,
