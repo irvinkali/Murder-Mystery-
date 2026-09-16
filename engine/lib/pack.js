@@ -238,7 +238,7 @@ function parseBranching(text) {
   // §3 Medical files reveal — per variant, a FULL and a PARTIAL text.
   const medBody = body('MEDICAL');
   const medical = {};
-  const medRe = /\*\*Variant\s+([A-D])\s*—\s*FULL:\*\*\s*"([^"]*)"\s*—\s*PARTIAL:\s*"([^"]*)"/g;
+  const medRe = /\*\*Variant\s+([A-D])\s*[|—]\s*FULL:\*\*\s*"([^"]*)"\s*[|—]\s*PARTIAL:\s*"([^"]*)"/g;
   while ((m = medRe.exec(medBody)) !== null) medical[m[1]] = { full: m[2], partial: m[3] };
 
   return { defense: { targets }, alibi, medical };
@@ -317,7 +317,9 @@ function parseScriptLines(text) {
   // §2 find-hints per prop.
   const s2 = section(2, 3);
   const findHints = {};
-  const hintRe = /^-\s*(P[1-7])\b[^—\n]*—\s*PH3:\s*"([^"]*)"\s*\|\s*PH4\s*\[SCREEN\]:\s*"([^"]*)"/gm;
+  // The field separator may be a pipe or a dash: packs written before the
+  // no-dash rule still use a dash, and both have to keep parsing.
+  const hintRe = /^-\s*(P[1-7])\b[^|—\n]*[|—]\s*PH3:\s*"([^"]*)"\s*\|\s*PH4\s*\[SCREEN\]:\s*"([^"]*)"/gm;
   while ((m = hintRe.exec(s2)) !== null) {
     findHints[m[1]] = { ph3: m[2].trim(), ph4: m[3].trim() };
   }

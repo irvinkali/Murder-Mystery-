@@ -49,16 +49,16 @@
       <button id="cueBtn">Do it</button>
     </div>
     <p class="muted"><a id="galleryLink" target="_blank">Open Gallery Screen →</a></p>
-    <details><summary class="muted">Host key — for running these controls on a second device</summary>
+    <details><summary class="muted">Host key (for running these controls on a second device)</summary>
       <p class="muted" style="font-size:13px;margin-top:10px">Anyone with this can drive the party, so keep it to yourself. Write it down before the night: it is the only way back into host controls if this device dies.</p>
       <div class="copybox" id="hostKey" style="background:var(--field);border:1px solid var(--line);border-radius:var(--radius);padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all"></div>
     </details>
-    <p class="muted">Playing too? <a href="/">Join as a guest on this phone →</a> — your dossier page will include a fold-out <b>Host controls</b> drawer, so you never have to switch tabs.</p>
+    <p class="muted">Playing too? <a href="/">Join as a guest on this phone →</a>. Your dossier page will include a fold-out <b>Host controls</b> drawer, so you never have to switch tabs.</p>
     <div class="divider"></div>
 
     <div class="row" style="align-items:baseline">
       <div style="flex:2">
-        <div class="serif" style="font-size:22px" id="phaseTitle">Phase —</div>
+        <div class="serif" style="font-size:22px" id="phaseTitle">Phase -</div>
         <div class="muted" id="phaseDetail"></div>
         <div class="muted clock" id="phaseClock"></div>
       </div>
@@ -72,7 +72,7 @@
       <button id="advBtn" style="flex:2">Advance phase →</button>
     </div>
     <div class="row" style="align-items:center;margin-top:8px">
-      <span class="muted" style="flex:2;font-size:13px" id="autoLabel">Auto-advance is on — phases change themselves when time runs out (with a 2-minute warning).</span>
+      <span class="muted" style="flex:2;font-size:13px" id="autoLabel">Auto-advance is on: phases change themselves when time runs out (with a 2-minute warning).</span>
       <button id="autoBtn" class="ghost" style="flex:1;margin-top:0">Turn auto off</button>
     </div>
     <div class="row" style="align-items:center;margin-top:8px">
@@ -86,7 +86,7 @@
 
     <div class="divider"></div>
     <h3>Polls this phase</h3>
-    <div class="list" id="pollList"><span class="muted">—</span></div>
+    <div class="list" id="pollList"><span class="muted">-</span></div>
     <details style="margin-top:10px"><summary class="muted">Run an extra poll</summary>
       <label>Question</label><input id="pq" placeholder="Type your question" />
       <label>Options (comma-separated)</label><input id="po" placeholder="Option one, Option two" />
@@ -95,7 +95,7 @@
 
     <div class="divider"></div>
     <details id="castingBox">
-      <summary><h3 style="display:inline">Casting</h3> <span class="muted">— assign characters to guests in advance</span></summary>
+      <summary><h3 style="display:inline">Casting</h3> <span class="muted">(assign characters to guests in advance)</span></summary>
       <p class="muted">Type a guest's name against a character. When they join with that name (capitals and extra spaces don't matter), they get that character. A first name on its own is enough unless two guests share it, in which case write both names. Anyone else is seated from what's left. Any flex characters can be used, in any order. Nothing here appears on the gallery screen.</p>
       <p class="muted">If somebody has already joined and ended up with the wrong character, use the "move to" box on their row. Typing a name against a different character will not move them: once a guest holds a seat, that seat is theirs, which is what stops anybody being re-seated on the night. Their phone keeps working and shows the new character next time it refreshes.</p>
       <p class="muted">Remove takes a guest out of the party and opens the seat again. Use it when one person has signed up twice under two versions of their name, or when somebody drops out. Their old seat code stops working, and their vote and their 6:40 answer go with them. They can always join again.</p>
@@ -106,7 +106,7 @@
 
     <div class="divider"></div>
     <h3>The 6:40 question</h3>
-    <p class="muted">Ask the room aloud in Phase 3; guests answer on their phones. Then resolve — a contradiction is flagged privately. You won't be told who.</p>
+    <p class="muted">Ask the room aloud in Phase 3; guests answer on their phones. Then resolve: a contradiction is flagged privately. You won't be told who.</p>
     <button id="alibiBtn" class="ghost">Resolve the 6:40 flag</button>
 
     <div class="divider"></div>
@@ -208,8 +208,8 @@ async function tick() {
     cur.auto = !state.timing || state.timing.autoAdvance !== false;
     el('#autoBtn').textContent = cur.auto ? 'Turn auto off' : 'Turn auto on';
     el('#autoLabel').textContent = cur.auto
-      ? 'Auto-advance is on — phases change themselves when time runs out (with a 2-minute warning).'
-      : 'Auto-advance is off — phases change only when you click Advance.';
+      ? 'Auto-advance is on: phases change themselves when time runs out (with a 2-minute warning).'
+      : 'Auto-advance is off: phases change only when you click Advance.';
     el('#phaseTitle').textContent = `Phase ${state.phase} · ${state.phaseName}`;
     el('#nextUp').textContent = state.phase < 6 ? `Next: ${PHASE_NAMES[state.phase+1]}` : 'Final phase';
     const openPolls = (state.polls||[]).filter(p=>!p.closed).map(p=>p.question);
@@ -227,8 +227,8 @@ async function tick() {
     for (const id of (SCHED[state.phase]||[])) {
       if (!(state.polls||[]).some(p=>p.id===id)) rows.push(`<div class="barrow"><span>${esc(SCHED_LABEL[id]||id)} <span class="muted">(not open)</span></span><span></span><span><button data-open="${id}" style="margin:0">Open now</button> <button class="ghost" data-skip="${id}" style="margin:0">Skip</button></span></div>`);
     }
-    el('#pollList').innerHTML = rows.join('') || '<span class="muted">—</span>';
-    document.querySelectorAll('[data-close]').forEach(b=>b.onclick=async()=>{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.close}); if(r.counts) alert('Results — '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); tick(); });
+    el('#pollList').innerHTML = rows.join('') || '<span class="muted">-</span>';
+    document.querySelectorAll('[data-close]').forEach(b=>b.onclick=async()=>{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.close}); if(r.counts) alert('Results: '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); tick(); });
     document.querySelectorAll('[data-extend]').forEach(b=>b.onclick=async()=>{ await api('poll',{action:'extend',partyCode:Store.party,hostToken:Store.host,id:b.dataset.extend}); tick(); });
     document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async()=>{ await api('poll',{action:'open',partyCode:Store.party,hostToken:Store.host,id:b.dataset.open}); tick(); });
     document.querySelectorAll('[data-skip]').forEach(b=>b.onclick=async()=>{ if(confirm('Skip this scheduled poll?')){ await api('poll',{action:'skip',partyCode:Store.party,hostToken:Store.host,id:b.dataset.skip}); tick(); } });
@@ -283,7 +283,7 @@ el('#pollBtn').addEventListener('click', async () => {
 el('#alibiBtn').addEventListener('click', async () => { try { await api('alibi',{action:'resolve',partyCode:Store.party,hostToken:Store.host}); alert('Resolved. Any contradiction has been flagged privately.'); } catch(e){ alert(e.message); } });
 el('#revealBtn').addEventListener('click', async () => {
   try { const r = await api('reveal',{partyCode:Store.party,hostToken:Store.host}); const box=el('#revealBox'); box.style.display='block';
-    box.innerHTML=`<div class="kicker">Now on the gallery screen</div><div class="serif" style="font-size:20px">Variant ${esc(r.variant)} — ${esc(r.killer)}</div><p>${esc(r.method||'')}</p>`; }
+    box.innerHTML=`<div class="kicker">Now on the gallery screen</div><div class="serif" style="font-size:20px">Variant ${esc(r.variant)}: ${esc(r.killer)}</div><p>${esc(r.method||'')}</p>`; }
   catch(e){ alert(e.message); }
 });
 // Two buttons, deliberately apart: one opens the voting and lets the room watch

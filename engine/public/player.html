@@ -12,7 +12,7 @@
   <div class="eyebrow" data-brand="siteTitle">Mystery Party</div>
   <div class="row" style="align-items:baseline">
     <h1 id="charName" style="flex:3">…</h1>
-    <span class="pill" id="phasePill" style="flex:0 0 auto">Phase —</span>
+    <span class="pill" id="phasePill" style="flex:0 0 auto">Phase -</span>
   </div>
 
   <!-- The weeks before. Everything private stays sealed until the doors open. -->
@@ -100,12 +100,12 @@
     <h2>Your dossier</h2>
     <div class="brief" id="brief">Loading…</div>
     <div class="divider"></div>
-    <p class="muted" style="font-size:12px;margin:0">Seat code: <b id="seatCode" class="serif" style="color:var(--gold-2)"></b> — if your phone dies, rejoin at the party site with this code to get your character back.</p>
+    <p class="muted" style="font-size:12px;margin:0">Seat code: <b id="seatCode" class="serif" style="color:var(--gold-2)"></b>. If your phone dies, rejoin at the party site with this code to get your character back.</p>
   </div>
 
   <div class="card gameOnly" id="alibiBox" style="display:none;border-color:var(--gold)">
     <h2 id="alibiQ">Where were you at 6:40?</h2>
-    <p class="muted">Everyone is being asked. Answer honestly — or don't.</p>
+    <p class="muted">Everyone is being asked. Answer honestly, or don't.</p>
     <input id="alibiInput" placeholder="Where you were, and who saw you…" />
     <button id="alibiBtn">Log my answer</button>
     <div class="err" id="alibiErr"></div>
@@ -197,7 +197,7 @@ function renderHost(state) {
     : ca.running ? 'Next award' : 'Announced';
   el('#hpAwards').disabled = !!(ca && !ca.running);
   el('#hpPolls').innerHTML = rows.join('');
-  document.querySelectorAll('[data-hclose]').forEach(b=>b.onclick=async()=>{ try{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hclose}); if(r.counts) alert('Results — '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); refresh(); }catch(e){ alert(e.message); } });
+  document.querySelectorAll('[data-hclose]').forEach(b=>b.onclick=async()=>{ try{ const r=await api('poll',{action:'close',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hclose}); if(r.counts) alert('Results: '+Object.entries(r.counts).map(([k,v])=>`${k}: ${v}`).join('   ')); refresh(); }catch(e){ alert(e.message); } });
   document.querySelectorAll('[data-hopen]').forEach(b=>b.onclick=async()=>{ try{ await api('poll',{action:'open',partyCode:Store.party,hostToken:Store.host,id:b.dataset.hopen}); refresh(); }catch(e){ alert(e.message); } });
 }
 // "Run the night for me." One switch, and one cue line at a time underneath it:

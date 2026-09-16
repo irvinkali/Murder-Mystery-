@@ -12,7 +12,7 @@
   <div class="center">
     <div class="eyebrow" data-brand="screenEyebrow">Tonight</div>
     <h1 data-brand="siteTitle">Mystery Party</h1>
-    <div class="big" id="phase">—</div>
+    <div class="big" id="phase">-</div>
     <p class="muted" id="phaseName"></p>
     <button class="audio-btn ghost" id="audioBtn">▶ Enable sound &amp; narration</button>
     <div id="voiceRow" style="display:none;margin-top:10px">
@@ -33,7 +33,7 @@
       <div class="divider"></div>
       <h2>The honours</h2>
       <div class="grid" id="awards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))"></div>
-      <p class="center" style="margin-top:16px"><a id="caseLink">Keep tonight — open the printable Case File →</a></p>
+      <p class="center" style="margin-top:16px"><a id="caseLink">Keep tonight: open the printable Case File →</a></p>
     </div>
     <div id="superlatives" style="display:none">
       <div class="divider"></div>
@@ -467,7 +467,7 @@ async function refresh() {
 
     if (state.reveal) {
       el('#revealBox').style.display = 'block'; el('#mainStage').style.display = 'none';
-      const title = `Variant ${state.reveal.variant} — ${state.reveal.killer}`;
+      const title = `Variant ${state.reveal.variant}: ${state.reveal.killer}`;
       el('#revealTitle').textContent = title; el('#revealBody').textContent = state.reveal.method || '';
       const af = state.reveal.audio || [];
       enqueue('reveal.title', `Variant ${state.reveal.variant}. ${state.reveal.killer}.`, af[0], true); // bell first
@@ -485,7 +485,7 @@ async function refresh() {
         el('#awards').innerHTML = awards.map(a =>
           `<div class="tile"><span class="pill on">${esc(a.title)}</span><b>${esc(a.firstName)}</b><span class="muted">as ${esc(a.characterName)}</span><div class="muted" style="font-size:12px;margin-top:6px">${esc(a.note)}</div></div>`).join('');
         if (awards.length && state.attention) {
-          enqueue('awards.intro', 'But before you compare notes over the good wine — the house has a few honours to bestow.', state.reveal.awardsIntroAudio || null);
+          enqueue('awards.intro', 'But before you compare notes over the good wine, the house has a few honours to bestow.', state.reveal.awardsIntroAudio || null);
           awards.forEach((a, i) => enqueue('award:'+i, `${a.title}: ${a.firstName}, as ${a.characterName}. ${a.note}`, null));
         }
       }

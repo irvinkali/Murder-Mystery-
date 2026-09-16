@@ -87,8 +87,8 @@ exports.handler = async (event) => {
   });
 
   if (!game) return notFound('no such party');
-  if (alreadyClaimed) return bad('that character was just claimed — pick another');
-  if (reservedElsewhere) return bad('that character is reserved for another guest — pick another');
+  if (alreadyClaimed) return bad('that character was just claimed, so pick another');
+  if (reservedElsewhere) return bad('that character is reserved for another guest, so pick another');
   if (!assignedId) return bad('party is full (all characters assigned)');
 
   return ok({ personalCode: pcode, character: playerBrief(pack, assignedId), returning });

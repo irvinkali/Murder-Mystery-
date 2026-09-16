@@ -413,12 +413,12 @@ function killerUnlock(pack, variantLetter, characterId, phase) {
     unlockedAtPhase: KILLER_UNLOCK_PHASE,
     whatYouDid: v.method,
     guidance: [
-      'The app will never expose you — only the evidence can. Stay calm.',
+      'The app will never expose you; only the evidence can. Stay calm.',
       'Keep playing your character exactly as before. No new performance is required.',
       'You may lie about where you were and what you know. You never have to volunteer anything.',
-      'React to accusations with the same energy as everyone else — curiosity, not panic.',
+      'React to accusations with the same energy as everyone else: curiosity, not panic.',
       'You "win" if no accusation reaches a group majority against you before the Reveal.',
-      'Do NOT confess, wink, or hint. Do NOT invent evidence — the props speak for themselves.',
+      'Do NOT confess, wink, or hint. Do NOT invent evidence; the props speak for themselves.',
     ],
   };
 }

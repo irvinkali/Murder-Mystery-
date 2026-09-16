@@ -32,7 +32,7 @@
   <div class="card noprint">
     <div class="eyebrow" data-brand="siteTitle">Mystery Party</div>
     <h2>The Case File</h2>
-    <p class="muted">The keepsake record of your evening — who found what, how the room voted, and who fooled whom. Print it, or save it as a PDF.</p>
+    <p class="muted">The keepsake record of your evening: who found what, how the room voted, and who fooled whom. Print it, or save it as a PDF.</p>
     <button id="printBtn">Print / Save as PDF</button>
     <div class="err" id="err"></div>
   </div>
@@ -76,12 +76,12 @@ el('#printBtn').addEventListener('click', () => window.print());
     el('#sheet').style.display = 'block';
     const when = d.playedAt ? new Date(d.playedAt).toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' }) : '';
     el('#meta').textContent = `Party ${d.partyCode} · ${when} · ${d.guests.length} guests · variant ${d.solution.variant}${d.blackoutHappened ? ' · one unexplained blackout' : ''}`;
-    el('#verdict').textContent = `${d.solution.killer} — ${d.solution.caught ? 'caught by the room’s final vote.' : 'walked free; the room accused the wrong guest.'} ${d.solution.method || ''}`;
+    el('#verdict').textContent = `${d.solution.killer}: ${d.solution.caught ? 'caught by the room’s final vote.' : 'walked free; the room accused the wrong guest.'} ${d.solution.method || ''}`;
     el('#votes').innerHTML = '<tr><th>Accused</th><th>Votes</th></tr>' +
       Object.entries(d.voteCounts).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1])
         .map(([name,n]) => `<tr><td>${esc(name)}${name===d.solution.killer?' 🗡':''}</td><td>${n}</td></tr>`).join('');
     el('#awards').innerHTML = d.awards.map(a =>
-      `<div class="aw"><b>${esc(a.title)}</b> — ${esc(a.firstName)}, as ${esc(a.characterName)}<br/><span class="meta">${esc(a.note)}</span></div>`).join('') || '<p class="meta">No honours were bestowed.</p>';
+      `<div class="aw"><b>${esc(a.title)}</b>: ${esc(a.firstName)}, as ${esc(a.characterName)}<br/><span class="meta">${esc(a.note)}</span></div>`).join('') || '<p class="meta">No honours were bestowed.</p>';
     el('#discoveries').innerHTML = `<tr><th>${esc(titleCase(item))}</th><th>Item</th><th>Examinations</th></tr>` +
       (d.discoveries.map(x => `<tr><td>No. ${esc(x.exhibit||'?')}</td><td>${esc(x.label)}</td><td>${x.examinations}</td></tr>`).join('') || `<tr><td colspan="3">The ${esc(items)} kept their secrets.</td></tr>`);
     el('#guests').innerHTML = `<tr><th>Guest</th><th>Played</th><th>${esc(titleCase(items))} examined</th></tr>` +
