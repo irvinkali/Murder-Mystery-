@@ -3,8 +3,9 @@
   "name": "Class of 1989",
   "fonts": "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Archivo+Black&display=swap",
   "voice": {
-    "$comment": "An American woman, dry and unhurried, at the pace of somebody reading announcements off an index card. Ava and Samantha are the built-in US voices on an iPad; the rest are fallbacks for other devices.",
+    "$comment": "An American woman, dry and unhurried, at the pace of somebody reading announcements off an index card. Google US English is Chrome's own network voice and is far better than anything installed on a Mac by default, so it goes first; Ava and Samantha are the built-in fallbacks. Pre-rendered edge-tts audio beats all of them and is used whenever the file exists.",
     "prefer": [
+      "Google US English",
       "Ava",
       "Samantha",
       "Allison",
