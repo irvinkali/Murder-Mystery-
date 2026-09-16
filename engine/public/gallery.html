@@ -425,6 +425,26 @@ async function refresh() {
   if (!party) { el('#phaseName').textContent = 'Add ?party=CODE to this URL'; return; }
   try {
     const { state } = await api(`state?partyCode=${party}`);
+
+    // Before the doors open there is no phase, no narration and no poll: the
+    // lobby payload carries none of the fields below, and reading them threw an
+    // error onto the television. The room screen gets its own waiting view.
+    if (state.lobby) {
+      const copy = state.copy || {};
+      el('#phase').textContent = '';
+      el('#phaseName').textContent = copy.standfirst || 'The doors are not open yet.';
+      for (const id of ['#revealBox', '#superlatives', '#screenBox', '#resultsBox', '#captionBox', '#interjectBox']) {
+        const n = el(id); if (n) n.style.display = 'none';
+      }
+      el('#mainStage').style.display = '';
+      el('#narration').textContent = copy.doorsNote || '';
+      const room = state.room || [];
+      el('#roster').innerHTML = room.length
+        ? room.map((c) => `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName || '')}</span></div>`).join('')
+        : '<span class="muted">Nobody has claimed a character yet.</span>';
+      return;
+    }
+
     el('#phase').textContent = state.phase;
     el('#phaseName').textContent = state.phaseName;
     setTrack(state.phase);
@@ -500,7 +520,7 @@ async function refresh() {
       if (latest.kind !== 'medical' && latest.kind !== 'photo') enqueue('card:'+(latest.audio||latest.text), latest.text, latest.audio); }
     else el('#screenBox').style.display='none';
 
-    el('#roster').innerHTML = state.roster.map(c =>
+    el('#roster').innerHTML = (state.roster || []).map(c =>
       `<div class="tile"><b>${esc(c.characterName)}</b><span class="muted">${esc(c.firstName||'')}</span></div>`).join('');
 
     const res = state.pollResults || [];
