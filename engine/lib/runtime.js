@@ -150,8 +150,17 @@ function say(pack, text, extra) {
 // A logical key ("phase.3", "reveal.A.method", …) hashes to an opaque mp3 name.
 // The generator and the server compute this identically (sha256), so files line
 // up without a manifest. Keys and prop IDs never reach the client — only hashes.
+/* The narration file for a logical key.
+ *
+ * The pack id is part of the hash. Without it every pack produces the SAME
+ * filenames, and a deployment that rendered one pack's audio will happily serve
+ * it to another: the reunion's room screen speaking gallery lines, which is
+ * exactly what happened the first time this was built at deploy time. The
+ * generator and the server both call this, so they stay in step. */
 function audioName(key) {
-  return crypto.createHash('sha256').update('narration:' + key).digest('hex').slice(0, 20) + '.mp3';
+  let pack = '';
+  try { pack = (loadRuntimePack() || {}).id || ''; } catch (_) { pack = process.env.MYSTERY_PACK || ''; }
+  return crypto.createHash('sha256').update('narration:' + pack + ':' + key).digest('hex').slice(0, 20) + '.mp3';
 }
 const AUDIO_KEYS = {
   phase: (n) => 'phase.' + n,

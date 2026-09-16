@@ -298,5 +298,20 @@ files in `/assets/audio`, which is still true.
 Gate after this change, both packs: engine 245/245, branching 21/21, smoke 18/18, validate 15/15,
 spoiler-scan clean.
 
+## Narration audio is rendered at deploy time, per pack
+
+`netlify.toml` runs `engine/tts/build-narration.sh` after validate: it installs edge-tts, renders the
+pack's 63 narration lines into `engine/public/assets/narration` (git-ignored, so reveal audio is
+published and never committed), and is bounded by timeouts on every step so it can never hang or
+fail a build. A missing file still falls back to the browser voice line by line.
+
+Two traps, both hit on the first attempt. `MYSTERY_PACK` is set on the site for the functions but
+was NOT reaching the build, so build-pack, validate and the renderer all ran last-exhibit; it is now
+named in `netlify.toml [build.environment]` so the build and the functions agree. And `audioName`
+hashed only the logical key, so every pack produced identical filenames and the reunion's room
+screen served the gallery's audio. The pack id is now part of the hash.
+
+Gate, both packs: engine 245/245, branching 21/21, smoke 18/18, validate 15/15, spoiler-scan clean.
+
 ## Instructions for Claude Code sessions
 Read this file first. Decode b64 pack files only into memory/tmp for build+validation; delete decoded copies; never print their content to the terminal, logs, or commits. Keep all Kali-facing output spoiler-free.
